@@ -615,7 +615,7 @@ class ADFLOW(AeroSolver):
             pts.T, conn.T, familyName, famID, isInflow)
 
     def addActuatorRegion(self, fileName, axis1, axis2, familyName,
-                          thrust=0.0, torque=0.0, relaxStart=None,
+                          thrust=0.0, torque=0.0, swirlFact=0.0, relaxStart=None,
                           relaxEnd=None):
         """Add an actuator disk zone defined by the (closed) supplied
         in the plot3d file "fileName". Axis1 and Axis2 defines the
@@ -690,7 +690,7 @@ class ADFLOW(AeroSolver):
         #  Now continue to fortran were we setup the actual
         #  region.
         self.adflow.actuatorregion.addactuatorregion(
-            pts.T, conn.T, axis1, axis2, familyName, famID, thrust, torque,
+            pts.T, conn.T, axis1, axis2, familyName, famID, thrust, torque, swirlFact,
             relaxStart, relaxEnd)
 
 
