@@ -327,7 +327,8 @@ contains
 
     ! Working
     integer(kind=intType) :: i, j, k, ii, iStart, iEnd
-    real(kind=realType) :: Ftmp(3), Vx, Vy, Vz, Fact(3), reDim, factor, oStart, oEnd
+    real(kind=realType) :: Ftmp(3), Vx, Vy, Vz, Fact(3), reDim, factor, oStart, oEnd, swirlfact
+    real(kind=realType), dimension(3) :: Ftang
 
     reDim = pRef*uRef
 
@@ -361,6 +362,9 @@ contains
        
        ! This actually gets the force
        FTmp = volRef(i, j, k) * fact
+       swirlfact = actuatorRegions(iRegion)%swirlFact * factor
+       Ftang = swirlfact * actuatorRegions(iRegion)%F_mag * actuatorRegions(iRegion)%cellTangentials(:, ii)
+       FTmp = FTmp + volRef(i, j, k) * Ftang / actuatorRegions(iRegion)%volume / pRef
        
        Vx = w(i, j, k, iVx)
        Vy = w(i, j, k, iVy)

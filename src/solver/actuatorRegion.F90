@@ -7,7 +7,7 @@ module actuatorRegion
 
 contains
   subroutine addActuatorRegion(pts, conn, axis1, axis2, famName, famID, &
-       thrust, torque, relaxStart, relaxEnd, nPts, nConn)
+       thrust, torque, swirlFact, relaxStart, relaxEnd, nPts, nConn)
     ! Add a user-supplied integration surface.
 
     use communication, only : myID, adflow_comm_world
@@ -27,7 +27,7 @@ contains
     integer(kind=intType), intent(in) :: nPts, nConn, famID
     real(kind=realType), intent(in), dimension(3) :: axis1, axis2
     character(len=*) :: famName
-    real(kind=realType) :: thrust, torque, relaxStart, relaxEnd
+    real(kind=realType) :: thrust, torque, relaxStart, relaxEnd, swirlFact
 
     ! Working variables
     integer(kind=intType) :: i, j, k, nn, iDim, cellID, intInfo(3), sps, level, iii, ierr
@@ -39,6 +39,7 @@ contains
     real(kind=realType), dimension(:, :), allocatable :: norm
     integer(kind=intType), dimension(:), allocatable :: normCount
     integer(kind=intType), dimension(:, :), pointer :: tmp
+    real(kind=realType), dimension(:, :), pointer :: tmp2
 
     ! ADT Type required data
     integer(kind=intType), dimension(:), pointer :: frontLeaves, frontLeavesNew
@@ -75,6 +76,8 @@ contains
 
     region%F = axisVec*thrust
     region%axisVec = axisVec
+    region%F_mag = thrust
+    region%swirlFact = swirlFact
 
     allocate(region%blkPtr(0:nDom))
     region%blkPtr(0) = 0
@@ -140,6 +143,9 @@ contains
     ! Allocate sufficient space for the maximum possible number of cellIDs
     allocate(region%cellIDs(3, nCellsLocal(1)))
 
+    ! Allocate sufficient space for the maximum possible number of cellIDs
+    allocate(region%cellTangentials(3, nCellsLocal(1)))
+
     ! Now search for all the coordinate. Note that We have explictly
     ! set sps to 1 becuase it is only implemented for single grid.
     sps = 1
@@ -173,6 +179,17 @@ contains
                          ! to the list.
                          region%nCellIDs = region%nCellIDs + 1
                          region%cellIDs(:, region%nCellIDs) = (/i, j, k/)
+
+                         ! Compute cross product for tangential vector and normize
+                         v1 = xCen - axis1
+                         v2 = axisVec
+
+                         sss(1) = (v1(2)*v2(3) - v1(3)*v2(2))
+                         sss(2) = (v1(3)*v2(1) - v1(1)*v2(3))
+                         sss(3) = (v1(1)*v2(2) - v1(2)*v2(1))
+                         sss = sss / sqrt(sss(1)**2 + sss(2)**2 + sss(3)**2)
+                         region%cellTangentials(:, region%nCellIDs) = sss
+
                       end if
                    end if
                 end if
@@ -192,6 +209,13 @@ contains
     allocate(region%cellIDs(3, region%nCellIDs))
     region%cellIDs = tmp(:, 1:region%nCellIDs)
     deallocate(tmp)
+
+    ! Resize the cellTangentials to the correct size now that we know the
+    ! correct exact number.
+    tmp2 => region%cellTangentials
+    allocate(region%cellTangentials(3, region%nCellIDs))
+    region%cellTangentials = tmp2(:, 1:region%nCellIDs)
+    deallocate(tmp2)
 
     ! Now go back and generate the total volume of the the cells we've flagged
     volLocal = zero

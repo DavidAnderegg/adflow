@@ -8,11 +8,18 @@ module actuatorRegionData
      ! The block indexes of the cells included in this region
      integer(kind=intType), dimension(:, :), pointer :: cellIDs
 
+     ! The tangent unit-vectors of the cells included in this region
+     real(kind=realType), dimension(:, :), pointer :: cellTangentials
+
      ! The total number of cells included this proc has
      integer(kind=intType) :: nCellIDs
 
      ! F is the total Force to be applied on this region
      real(kind=realType) :: F(3)
+
+     ! F_mag is the total Force magnitude to be applied on this region
+     real(kind=realType) :: F_mag
+     real(kind=realType) :: swirlFact
 
      ! T is the total torque to be applied on this regoin
      real(kind=realType) :: T
