@@ -31,15 +31,16 @@ contains
 
     ! Working variables
     integer(kind=intType) :: i, j, k, nn, iDim, cellID, intInfo(3), sps, level, iii, ierr
-    real(kind=realType) :: dStar, frac, volLocal
+    real(kind=realType) :: dStar, frac, volLocal, dotP
     type(actuatorRegionType), pointer :: region
-    real(kind=realType), dimension(3) :: minX, maxX, sss, v1, v2, xCen, axisVec
+    real(kind=realType), dimension(3) :: minX, maxX, sss, v1, v2, xCen, axisVec, radVec
     type(adtType) :: ADT
     real(kind=realType) :: axisVecNorm
     real(kind=realType), dimension(:, :), allocatable :: norm
     integer(kind=intType), dimension(:), allocatable :: normCount
     integer(kind=intType), dimension(:, :), pointer :: tmp
     real(kind=realType), dimension(:, :), pointer :: tmp2
+    real(kind=realType), dimension(:), pointer :: tmp3
 
     ! ADT Type required data
     integer(kind=intType), dimension(:), pointer :: frontLeaves, frontLeavesNew
@@ -146,6 +147,10 @@ contains
     ! Allocate sufficient space for the maximum possible number of cellIDs
     allocate(region%cellTangentials(3, nCellsLocal(1)))
 
+    ! Allocate sufficient space for the maximum possible number of cellIDs
+    allocate(region%cellRadii(nCellsLocal(1)))
+    region%cellRadii(:) = zero
+
     ! Now search for all the coordinate. Note that We have explictly
     ! set sps to 1 becuase it is only implemented for single grid.
     sps = 1
@@ -177,6 +182,15 @@ contains
                       if (checkInside()) then
                          ! Whoohoo! We are inside the region. Add this cell
                          ! to the list.
+                        !  write (*,*), x(i-1,j-1,k-1,:)
+                        !  write (*,*), x(i,j-1,k-1,:)
+                        !  write (*,*), x(i-1,j,  k-1,:)
+                        !  write (*,*), x(i,j,  k-1,:)
+                        !  write (*,*), x(i-1,j-1,k,  :)
+                        !  write (*,*), x(i,j-1,k,  :)
+                        !  write (*,*), x(i-1,j,  k,  :)
+                        !  write (*,*), x(i,j,  k,  :)
+                        ! write (*,*), xCen
                          region%nCellIDs = region%nCellIDs + 1
                          region%cellIDs(:, region%nCellIDs) = (/i, j, k/)
 
@@ -189,6 +203,12 @@ contains
                          sss(3) = (v1(1)*v2(2) - v1(2)*v2(1))
                          sss = sss / sqrt(sss(1)**2 + sss(2)**2 + sss(3)**2)
                          region%cellTangentials(:, region%nCellIDs) = sss
+                         
+                         ! Compute the dot product and subtract to get radius
+                         dotP = v1(1)*v2(2) + v1(2)*v2(2) + v1(3)*v2(3)
+                         radVec = v1 - dotP * axisVec
+                         region%cellRadii(region%nCellIDs) = &
+                            sqrt(radVec(1)**2 + radVec(2)**2 + radVec(3)**2)
 
                       end if
                    end if
@@ -216,6 +236,13 @@ contains
     allocate(region%cellTangentials(3, region%nCellIDs))
     region%cellTangentials = tmp2(:, 1:region%nCellIDs)
     deallocate(tmp2)
+
+    ! Resize the cellRadii to the correct size now that we know the
+    ! correct exact number.
+    tmp3 => region%cellRadii
+    allocate(region%cellRadii(region%nCellIDs))
+    region%cellRadii = tmp3(1:region%nCellIDs)
+    deallocate(tmp3)
 
     ! Now go back and generate the total volume of the the cells we've flagged
     volLocal = zero

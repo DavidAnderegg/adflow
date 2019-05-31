@@ -327,8 +327,8 @@ contains
 
     ! Working
     integer(kind=intType) :: i, j, k, ii, iStart, iEnd
-    real(kind=realType) :: Ftmp(3), Vx, Vy, Vz, Fact(3), reDim, factor, oStart, oEnd, swirlfact
-    real(kind=realType), dimension(3) :: Ftang
+    real(kind=realType) :: Ftmp(3), Vx, Vy, Vz, Fact, reDim, factor, oStart, oEnd, swirlfact
+    real(kind=realType) :: maxRad, cellradius, fact2, totalT, totalSw, Ftang
 
     reDim = pRef*uRef
 
@@ -346,11 +346,19 @@ contains
     end if
 
     ! Compute the constant force factor
-    fact = factor*actuatorRegions(iRegion)%F / actuatorRegions(iRegion)%volume / pRef
+    ! fact = factor*actuatorRegions(iRegion)%F / actuatorRegions(iRegion)%volume / pRef
 
     ! Loop over the ranges for this block
     iStart = actuatorRegions(iRegion)%blkPtr(nn-1) + 1
     iEnd =  actuatorRegions(iRegion)%blkPtr(nn)
+    
+    maxRad = maxval(actuatorRegions(iRegion)%cellRadii)
+    ! write (*,*) 'maxrad is', maxRad
+    ! write (*,*) 'volume is', actuatorRegions(iRegion)%volume
+    ! write (*,*) 'cellids is', size(actuatorRegions(iRegion)%cellIDs)
+    
+    totalT = 0._realType
+    totalSw = 0._realType
     
     !$AD II-LOOP
     do ii=iStart, iEnd
@@ -360,11 +368,20 @@ contains
        j = actuatorRegions(iRegion)%cellIDs(2, ii)
        k = actuatorRegions(iRegion)%cellIDs(3, ii)
        
+       cellRadius = actuatorRegions(iRegion)%cellRadii(ii)
+       
        ! This actually gets the force
-       FTmp = volRef(i, j, k) * fact
-       swirlfact = actuatorRegions(iRegion)%swirlFact * factor
-       Ftang = swirlfact * actuatorRegions(iRegion)%F_mag * actuatorRegions(iRegion)%cellTangentials(:, ii)
-       FTmp = FTmp + volRef(i, j, k) * Ftang / actuatorRegions(iRegion)%volume / pRef
+       fact = factor * actuatorRegions(iRegion)%F_mag * 3.75_realType / maxRad
+       fact2 = cellRadius / maxRad * sqrt(one - cellRadius / maxRad) / (two * pi * cellRadius * 0.009091_realType)
+       FTmp = volRef(i, j, k) * fact * fact2 * actuatorRegions(iRegion)%axisVec / pRef
+       
+       totalT = totalT + volRef(i, j, k) * fact * fact2
+
+       swirlfact = 0.5_realType / pi / cellRadius * maxRad * actuatorRegions(iRegion)%swirlFact
+       Ftang = swirlfact * fact * fact2
+       FTmp = FTmp + volRef(i, j, k) * Ftang * actuatorRegions(iRegion)%cellTangentials(:, ii) / pRef
+       
+       totalSw = totalSw + volRef(i, j, k) * Ftang
        
        Vx = w(i, j, k, iVx)
        Vy = w(i, j, k, iVy)
@@ -382,6 +399,15 @@ contains
           pLocal = pLocal + (Vx*Ftmp(1) + Vy*FTmp(2) + Vz*Ftmp(3))*reDim
        end if
     end do
+    
+    ! write (*,*) 'ncells', actuatorRegions(iRegion)%nCellIDs
+    ! write (*,*) 'iStart', iStart
+    ! write (*,*) 'iEnd', iEnd
+    ! write (*,*) 'swirlFact input is', actuatorRegions(iRegion)%swirlFact
+    ! write (*,*) 'totalT is', totalT
+    ! write (*,*) 'totalSw is', totalSw
+    ! write (*,*) '________'
+    ! write (*,*) '________'
 
   end subroutine sourceTerms_block
 

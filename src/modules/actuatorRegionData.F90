@@ -11,6 +11,9 @@ module actuatorRegionData
      ! The tangent unit-vectors of the cells included in this region
      real(kind=realType), dimension(:, :), pointer :: cellTangentials
 
+     ! The radii of the cells included in this region
+     real(kind=realType), dimension(:), pointer :: cellRadii
+
      ! The total number of cells included this proc has
      integer(kind=intType) :: nCellIDs
 
