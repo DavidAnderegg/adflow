@@ -357,8 +357,8 @@ contains
     ! write (*,*) 'volume is', actuatorRegions(iRegion)%volume
     ! write (*,*) 'cellids is', size(actuatorRegions(iRegion)%cellIDs)
     
-    totalT = 0._realType
-    totalSw = 0._realType
+    ! totalT = 0._realType
+    ! totalSw = 0._realType
     
     !$AD II-LOOP
     do ii=iStart, iEnd
@@ -371,17 +371,18 @@ contains
        cellRadius = actuatorRegions(iRegion)%cellRadii(ii)
        
        ! This actually gets the force
-       fact = factor * actuatorRegions(iRegion)%F_mag * 3.75_realType / maxRad
-       fact2 = cellRadius / maxRad * sqrt(one - cellRadius / maxRad) / (two * pi * cellRadius * 0.009091_realType)
+       fact = factor * actuatorRegions(iRegion)%F_mag * actuatorRegions(iRegion)%distribFfactor / maxRad
+       fact2 = cellRadius / maxRad * (one - cellRadius / maxRad)**actuatorRegions(iRegion)%distribExponent &
+                / (two * pi * cellRadius * actuatorRegions(iRegion)%diskThickness)
        FTmp = volRef(i, j, k) * fact * fact2 * actuatorRegions(iRegion)%axisVec / pRef
        
-       totalT = totalT + volRef(i, j, k) * fact * fact2
+      !  totalT = totalT + volRef(i, j, k) * fact * fact2
 
-       swirlfact = 0.5_realType / pi / cellRadius * maxRad * actuatorRegions(iRegion)%swirlFact
+       swirlfact = actuatorRegions(iRegion)%distribPDfactor / pi / cellRadius * maxRad * actuatorRegions(iRegion)%swirlFact
        Ftang = swirlfact * fact * fact2
        FTmp = FTmp + volRef(i, j, k) * Ftang * actuatorRegions(iRegion)%cellTangentials(:, ii) / pRef
        
-       totalSw = totalSw + volRef(i, j, k) * Ftang
+      !  totalSw = totalSw + volRef(i, j, k) * Ftang
        
        Vx = w(i, j, k, iVx)
        Vy = w(i, j, k, iVy)

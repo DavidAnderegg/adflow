@@ -23,6 +23,10 @@ module actuatorRegionData
      ! F_mag is the total Force magnitude to be applied on this region
      real(kind=realType) :: F_mag
      real(kind=realType) :: swirlFact
+     real(kind=realType) :: distribFfactor
+     real(kind=realType) :: distribExponent
+     real(kind=realType) :: distribPDfactor
+     real(kind=realType) :: diskThickness
 
      ! T is the total torque to be applied on this regoin
      real(kind=realType) :: T

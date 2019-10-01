@@ -615,8 +615,10 @@ class ADFLOW(AeroSolver):
             pts.T, conn.T, familyName, famID, isInflow)
 
     def addActuatorRegion(self, fileName, axis1, axis2, familyName,
-                          thrust=0.0, torque=0.0, swirlFact=0.0, relaxStart=None,
-                          relaxEnd=None):
+                          thrust=0.0, torque=0.0, swirlFact=0.0,
+                          distribFfactor=3.75, distribExponent=0.5,
+                          distribPDfactor=0.5, diskThickness=0.1,
+                          relaxStart=None, relaxEnd=None):
         """Add an actuator disk zone defined by the (closed) supplied
         in the plot3d file "fileName". Axis1 and Axis2 defines the
         physical extent of the region overwhich to apply the ramp
@@ -691,7 +693,12 @@ class ADFLOW(AeroSolver):
         #  region.
         self.adflow.actuatorregion.addactuatorregion(
             pts.T, conn.T, axis1, axis2, familyName, famID, thrust, torque, swirlFact,
+            distribFfactor, distribExponent, distribPDfactor, diskThickness,
             relaxStart, relaxEnd)
+        
+    def writeActuatorRegions(self, fileName):
+            self.adflow.actuatorregion.writeactuatorregions(
+                fileName)
 
 
     def addUserFunction(self, funcName, functions, callBack):

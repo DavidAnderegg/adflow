@@ -7,7 +7,8 @@ module actuatorRegion
 
 contains
   subroutine addActuatorRegion(pts, conn, axis1, axis2, famName, famID, &
-       thrust, torque, swirlFact, relaxStart, relaxEnd, nPts, nConn)
+       thrust, torque, swirlFact, distribFfactor, distribExponent, &
+       distribPDfactor, diskThickness, relaxStart, relaxEnd, nPts, nConn)
     ! Add a user-supplied integration surface.
 
     use communication, only : myID, adflow_comm_world
@@ -28,6 +29,7 @@ contains
     real(kind=realType), intent(in), dimension(3) :: axis1, axis2
     character(len=*) :: famName
     real(kind=realType) :: thrust, torque, relaxStart, relaxEnd, swirlFact
+    real(kind=realType) :: distribFfactor, distribExponent, distribPDfactor, diskThickness
 
     ! Working variables
     integer(kind=intType) :: i, j, k, nn, iDim, cellID, intInfo(3), sps, level, iii, ierr
@@ -79,6 +81,10 @@ contains
     region%axisVec = axisVec
     region%F_mag = thrust
     region%swirlFact = swirlFact
+    region%distribFfactor = distribFfactor
+    region%distribExponent = distribExponent
+    region%distribPDfactor = distribPDfactor
+    region%diskThickness = diskThickness
 
     allocate(region%blkPtr(0:nDom))
     region%blkPtr(0) = 0
@@ -195,7 +201,7 @@ contains
                          region%cellIDs(:, region%nCellIDs) = (/i, j, k/)
 
                          ! Compute cross product for tangential vector and normize
-                         v1 = xCen - axis1
+                         v1 = xCen - axis2
                          v2 = axisVec
 
                          sss(1) = (v1(2)*v2(3) - v1(3)*v2(2))
