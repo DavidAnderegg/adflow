@@ -323,15 +323,29 @@ contains
     use communication
     use iteration, only : ordersconverged
     implicit none
+! write (*,*) 'ncells', actuatorregions(iregion)%ncellids
+! write (*,*) 'istart', istart
+! write (*,*) 'iend', iend
+! write (*,*) 'swirlfact input is', actuatorregions(iregion)%swirlfact
+! write (*,*) 'totalt is', totalt
+! write (*,*) 'totalsw is', totalsw
+! write (*,*) '________'
+! write (*,*) '________'
 ! input
     integer(kind=inttype), intent(in) :: nn, iregion
     logical, intent(in) :: res
     real(kind=realtype), intent(inout) :: plocal
 ! working
     integer(kind=inttype) :: i, j, k, ii, istart, iend
-    real(kind=realtype) :: ftmp(3), vx, vy, vz, fact(3), redim, factor, &
+    real(kind=realtype) :: ftmp(3), vx, vy, vz, fact, redim, factor, &
 &   ostart, oend
     real(kind=realtype) :: vxd, vyd, vzd
+    real(kind=realtype) :: maxrad, cellradius, fact2, totalt, totalsw, &
+&   ftang
+    real(kind=realtype) :: fmag, distribffactor, distribexponent, &
+&   diskthickness
+    real(kind=realtype) :: distribpdfactor, swirlfact, swirlfact2
+    intrinsic maxval
 ! compute the relaxation factor based on the ordersconverged
 ! how far we are into the ramp:
     if (ordersconverged .lt. actuatorregions(iregion)%relaxstart) then
@@ -346,18 +360,35 @@ contains
       factor = (ordersconverged-ostart)/(oend-ostart)
     end if
 ! compute the constant force factor
-    fact = factor*actuatorregions(iregion)%f/actuatorregions(iregion)%&
-&     volume/pref
+! fact = factor*actuatorregions(iregion)%f / actuatorregions(iregion)%volume / pref
 ! loop over the ranges for this block
     istart = actuatorregions(iregion)%blkptr(nn-1) + 1
     iend = actuatorregions(iregion)%blkptr(nn)
+    maxrad = maxval(actuatorregions(iregion)%cellradii)
+    fmag = actuatorregions(iregion)%fmag
+    distribffactor = actuatorregions(iregion)%distribffactor
+    distribexponent = actuatorregions(iregion)%distribexponent
+    diskthickness = actuatorregions(iregion)%diskthickness
+    distribpdfactor = actuatorregions(iregion)%distribpdfactor
+    swirlfact = actuatorregions(iregion)%swirlfact
     do ii=istart,iend
 ! extract the cell id.
       i = actuatorregions(iregion)%cellids(1, ii)
       j = actuatorregions(iregion)%cellids(2, ii)
       k = actuatorregions(iregion)%cellids(3, ii)
+      cellradius = actuatorregions(iregion)%cellradii(ii)
 ! this actually gets the force
-      ftmp = volref(i, j, k)*fact
+      fact = factor*fmag*distribffactor/maxrad
+      fact2 = cellradius/maxrad*(one-cellradius/maxrad)**distribexponent&
+&       /(two*pi*cellradius*diskthickness)
+      ftmp = volref(i, j, k)*fact*fact2*actuatorregions(iregion)%axisvec&
+&       /pref
+!  totalt = totalt + volref(i, j, k) * fact * fact2
+      swirlfact2 = distribpdfactor/pi/cellradius*maxrad*swirlfact
+      ftang = swirlfact2*fact*fact2
+      ftmp = ftmp + volref(i, j, k)*ftang*actuatorregions(iregion)%&
+&       celltangentials(:, ii)/pref
+!  totalsw = totalsw + volref(i, j, k) * ftang
       if (res) then
         vxd = -(ftmp(1)*dwd(i, j, k, irhoe))
         vyd = -(ftmp(2)*dwd(i, j, k, irhoe))
@@ -382,14 +413,28 @@ contains
     use communication
     use iteration, only : ordersconverged
     implicit none
+! write (*,*) 'ncells', actuatorregions(iregion)%ncellids
+! write (*,*) 'istart', istart
+! write (*,*) 'iend', iend
+! write (*,*) 'swirlfact input is', actuatorregions(iregion)%swirlfact
+! write (*,*) 'totalt is', totalt
+! write (*,*) 'totalsw is', totalsw
+! write (*,*) '________'
+! write (*,*) '________'
 ! input
     integer(kind=inttype), intent(in) :: nn, iregion
     logical, intent(in) :: res
     real(kind=realtype), intent(inout) :: plocal
 ! working
     integer(kind=inttype) :: i, j, k, ii, istart, iend
-    real(kind=realtype) :: ftmp(3), vx, vy, vz, fact(3), redim, factor, &
+    real(kind=realtype) :: ftmp(3), vx, vy, vz, fact, redim, factor, &
 &   ostart, oend
+    real(kind=realtype) :: maxrad, cellradius, fact2, totalt, totalsw, &
+&   ftang
+    real(kind=realtype) :: fmag, distribffactor, distribexponent, &
+&   diskthickness
+    real(kind=realtype) :: distribpdfactor, swirlfact, swirlfact2
+    intrinsic maxval
     redim = pref*uref
 ! compute the relaxation factor based on the ordersconverged
 ! how far we are into the ramp:
@@ -405,18 +450,40 @@ contains
       factor = (ordersconverged-ostart)/(oend-ostart)
     end if
 ! compute the constant force factor
-    fact = factor*actuatorregions(iregion)%f/actuatorregions(iregion)%&
-&     volume/pref
+! fact = factor*actuatorregions(iregion)%f / actuatorregions(iregion)%volume / pref
 ! loop over the ranges for this block
     istart = actuatorregions(iregion)%blkptr(nn-1) + 1
     iend = actuatorregions(iregion)%blkptr(nn)
+    maxrad = maxval(actuatorregions(iregion)%cellradii)
+    fmag = actuatorregions(iregion)%fmag
+    distribffactor = actuatorregions(iregion)%distribffactor
+    distribexponent = actuatorregions(iregion)%distribexponent
+    diskthickness = actuatorregions(iregion)%diskthickness
+    distribpdfactor = actuatorregions(iregion)%distribpdfactor
+    swirlfact = actuatorregions(iregion)%swirlfact
+! write (*,*) 'maxrad is', maxrad
+! write (*,*) 'volume is', actuatorregions(iregion)%volume
+! write (*,*) 'cellids is', size(actuatorregions(iregion)%cellids)
+! totalt = 0._realtype
+! totalsw = 0._realtype
     do ii=istart,iend
 ! extract the cell id.
       i = actuatorregions(iregion)%cellids(1, ii)
       j = actuatorregions(iregion)%cellids(2, ii)
       k = actuatorregions(iregion)%cellids(3, ii)
+      cellradius = actuatorregions(iregion)%cellradii(ii)
 ! this actually gets the force
-      ftmp = volref(i, j, k)*fact
+      fact = factor*fmag*distribffactor/maxrad
+      fact2 = cellradius/maxrad*(one-cellradius/maxrad)**distribexponent&
+&       /(two*pi*cellradius*diskthickness)
+      ftmp = volref(i, j, k)*fact*fact2*actuatorregions(iregion)%axisvec&
+&       /pref
+!  totalt = totalt + volref(i, j, k) * fact * fact2
+      swirlfact2 = distribpdfactor/pi/cellradius*maxrad*swirlfact
+      ftang = swirlfact2*fact*fact2
+      ftmp = ftmp + volref(i, j, k)*ftang*actuatorregions(iregion)%&
+&       celltangentials(:, ii)/pref
+!  totalsw = totalsw + volref(i, j, k) * ftang
       vx = w(i, j, k, ivx)
       vy = w(i, j, k, ivy)
       vz = w(i, j, k, ivz)
