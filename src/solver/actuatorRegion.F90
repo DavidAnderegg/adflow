@@ -79,7 +79,7 @@ contains
 
     region%F = axisVec*thrust
     region%axisVec = axisVec
-    region%F_mag = thrust
+    region%FMag = thrust
     region%swirlFact = swirlFact
     region%distribFfactor = distribFfactor
     region%distribExponent = distribExponent

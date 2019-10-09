@@ -327,8 +327,10 @@ contains
 
     ! Working
     integer(kind=intType) :: i, j, k, ii, iStart, iEnd
-    real(kind=realType) :: Ftmp(3), Vx, Vy, Vz, Fact, reDim, factor, oStart, oEnd, swirlfact
-    real(kind=realType) :: maxRad, cellradius, fact2, totalT, totalSw, Ftang
+    real(kind=realType) :: Ftmp(3), Vx, Vy, Vz, fact, reDim, factor, oStart, oEnd
+    real(kind=realType) :: maxRad, cellRadius, fact2, totalT, totalSw, FTang
+    real(kind=realType) :: FMag, distribFfactor, distribExponent, diskThickness
+    real(kind=realType) :: distribPDfactor, swirlFact, swirlFact2
 
     reDim = pRef*uRef
 
@@ -353,6 +355,12 @@ contains
     iEnd =  actuatorRegions(iRegion)%blkPtr(nn)
     
     maxRad = maxval(actuatorRegions(iRegion)%cellRadii)
+    FMag = actuatorRegions(iRegion)%FMag
+    distribFfactor = actuatorRegions(iRegion)%distribFfactor
+    distribExponent= actuatorRegions(iRegion)%distribExponent
+    diskThickness = actuatorRegions(iRegion)%diskThickness
+    distribPDfactor = actuatorRegions(iRegion)%distribPDfactor
+    swirlFact = actuatorRegions(iRegion)%swirlFact
     ! write (*,*) 'maxrad is', maxRad
     ! write (*,*) 'volume is', actuatorRegions(iRegion)%volume
     ! write (*,*) 'cellids is', size(actuatorRegions(iRegion)%cellIDs)
@@ -371,18 +379,18 @@ contains
        cellRadius = actuatorRegions(iRegion)%cellRadii(ii)
        
        ! This actually gets the force
-       fact = factor * actuatorRegions(iRegion)%F_mag * actuatorRegions(iRegion)%distribFfactor / maxRad
-       fact2 = cellRadius / maxRad * (one - cellRadius / maxRad)**actuatorRegions(iRegion)%distribExponent &
-                / (two * pi * cellRadius * actuatorRegions(iRegion)%diskThickness)
-       FTmp = volRef(i, j, k) * fact * fact2 * actuatorRegions(iRegion)%axisVec / pRef
+       fact = factor * FMag * distribFfactor / maxRad
+       fact2 = cellRadius / maxRad * (one - cellRadius / maxRad)**distribExponent &
+                / (two * pi * cellRadius * diskThickness)
+       Ftmp = volRef(i, j, k) * fact * fact2 * actuatorRegions(iRegion)%axisVec / pRef
        
       !  totalT = totalT + volRef(i, j, k) * fact * fact2
 
-       swirlfact = actuatorRegions(iRegion)%distribPDfactor / pi / cellRadius * maxRad * actuatorRegions(iRegion)%swirlFact
-       Ftang = swirlfact * fact * fact2
-       FTmp = FTmp + volRef(i, j, k) * Ftang * actuatorRegions(iRegion)%cellTangentials(:, ii) / pRef
+       swirlFact2 = distribPDfactor / pi / cellRadius * maxRad * swirlFact
+       FTang = swirlFact2 * fact * fact2
+       Ftmp = Ftmp + volRef(i, j, k) * FTang * actuatorRegions(iRegion)%cellTangentials(:, ii) / pRef
        
-      !  totalSw = totalSw + volRef(i, j, k) * Ftang
+      !  totalSw = totalSw + volRef(i, j, k) * FTang
        
        Vx = w(i, j, k, iVx)
        Vy = w(i, j, k, iVy)
@@ -397,7 +405,7 @@ contains
                Ftmp(1)*Vx - Ftmp(2)*Vy - Ftmp(3)*Vz
        else
           ! Add in the local power contribution:
-          pLocal = pLocal + (Vx*Ftmp(1) + Vy*FTmp(2) + Vz*Ftmp(3))*reDim
+          pLocal = pLocal + (Vx*Ftmp(1) + Vy*Ftmp(2) + Vz*Ftmp(3))*reDim
        end if
     end do
     

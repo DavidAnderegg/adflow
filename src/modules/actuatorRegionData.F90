@@ -20,8 +20,8 @@ module actuatorRegionData
      ! F is the total Force to be applied on this region
      real(kind=realType) :: F(3)
 
-     ! F_mag is the total Force magnitude to be applied on this region
-     real(kind=realType) :: F_mag
+     ! FMag is the total Force magnitude to be applied on this region
+     real(kind=realType) :: FMag
      real(kind=realType) :: swirlFact
      real(kind=realType) :: distribFfactor
      real(kind=realType) :: distribExponent
