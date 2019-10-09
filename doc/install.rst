@@ -11,20 +11,24 @@ See :ref:`install3rdPartyPackages` for details on installing required 3rd party 
 
 Building
 --------
-To see a list of architectures that ``ADflow`` has been known to
-compile on run::
+ADflow follows the standard MDO Lab build procedure.
+To start, find a configuration file close to your current setup in::
 
-   make
+    $ config/defaults
 
-from the root directory.
+and copy it to ''config/config.mk''. For example::
 
-The easiest approach to to try the closest one to your system and
-attempt a build using (for example)::
+    $ cp config/defaults/config.LINUX_GFORTRAN.mk config/config.mk
 
-   make LINUX_INTEL_OPENMPI
-
-ADflow has been successfully compiled on LINUX, and OS X with either
+If you are a beginner user installing the packages on a linux desktop, 
+you should use the ``config.LINUX_GFORTRAN`` versions of the configuration 
+files. The ``config.LINUX_INTEL`` versions are usually used on clusters.
+ADflow has been successfully compiled on LINUX with either
 ifort or gfortran.
+
+Once you have copied the config file, compile ADflow by running::
+
+    $ make
 
 If everything was successful, the following lines will be printed to
 the screen (near the end)::
@@ -33,16 +37,10 @@ the screen (near the end)::
    Module adflow was successfully imported.
 
 If you don't see this, it will be necessary to configure the build
-manually. To configure manually, first copy a default configuration
-file from the defaults folder like this (run this in the root
-directory)::
-
-   cp config/defaults/config.LINUX_INTEL_OPENMPI.mk config/config.mk
-
-Now open ``config/config.LINUX_INTEL_OPENMPI.mk``.
+manually. To configure manually, open ``config/config.mk`` and modify options as necessary.
 
 It is most likely that you need to modify the ``CGNS_INCLUDE_FLAGS`` and the ``CGNS_LINKER_FLAGS`` variables.
-It is also necessary to have``PETSc`` already compiled including support for ``SuperLU_dist``.
+It is also necessary to have``PETSc`` already compiled. 
 After changes to the configuration file, run ``make clean`` before attempting a new build.
 
 Verification
@@ -53,6 +51,15 @@ a diff-viewer installed. xxdiff is used by default which can be installed
 using::
 
     $ sudo apt-get install xxdiff
+
+After that, you will need to install other MACH packages in order to run the
+full regression suite successfully.
+Specifically, install
+`baseclasses <https://github.com/mdolab/baseclasses/>`__,
+`pyspline <https://github.com/mdolab/pyspline/>`__,
+`pygeo <https://github.com/mdolab/pygeo/>`__, and
+`idwarp <https://github.com/mdolab/idwarp/>`__.
+With all of these packages installed, you can fully verify your ADflow installation.
 
 Change to the regression tests directory at::
 
@@ -67,7 +74,7 @@ To run all regression tests, now simply run::
     $ python run_reg_tests.py
 
 If the tests are successful a 'adflow: Success!' message
-will be printed, otherwise a diff window will appear hihglighting
+will be printed, otherwise a diff window will appear highlighting
 the differences between the reference case and the most recently
 completed verification run.
 
@@ -80,15 +87,14 @@ ADflow_CS REQUIRES a complex build of petsc to build and run. The
 petsc configuration script must be re-run with the following
 options::
 
-    $ ./configure --with-shared-libraries --download-superlu_dist=yes --download-parmetis=yes --download-metis=yes --with-fortran-interfaces=1 --with-debuggig=yes --with-scalar-type=complex --PETSC_ARCH=complex-debug
+    $ ./configure --with-shared-libraries --download-superlu_dist=yes --download-parmetis=yes --download-metis=yes --with-fortran-interfaces=1 --with-debugging=yes --with-scalar-type=complex --PETSC_ARCH=complex-debug
 
 Follow instructions as before to complete complex build.
 
 Now, to build complex ADflow do::
 
     $ export PETSC_ARCH=complex-debug
-    $ make -f Makefile_CS <ARCH>
+    $ make -f Makefile_CS
 
-where arch is the same architecture used for the real version. Note
-that the correct, complex PETSC_ARCH MUST be set before the code is
+Note that the correct, complex PETSC_ARCH MUST be set before the code is
 compiled and also must be set when running in complex mode.

@@ -2898,7 +2898,7 @@ class ADFLOW(AeroSolver):
         # using mapVector.
         npts, ncell = self._getSurfaceSize(self.allWallsGroup)
         fullCpTarget = numpy.atleast_2d(self.adflow.getcptargets(npts, TS+1))
-        
+
         # Now map new values in and set.
         fullCpTarget = self.mapVector(numpy.atleast_2d(CpTargets).T, groupName, self.allWallsGroup, fullCpTarget.T)
         fullCpTarget = fullCpTarget.T
@@ -4415,6 +4415,7 @@ class ADFLOW(AeroSolver):
             'lowspeedpreconditioner':[bool, False],
             'walldistcutoff':[float, 1e20],
             'infchangecorrection':[bool, False],
+            'cavitationnumber':[float, 1.4],
 
             # Common Paramters
             'ncycles':[int, 500],
@@ -4725,6 +4726,7 @@ class ADFLOW(AeroSolver):
             'restrictionrelaxation':['iter', 'fcoll'],
             'forcesastractions':['physics', 'forcesastractions'],
             'lowspeedpreconditioner':['discr', 'lowspeedpreconditioner'],
+            'cavitationnumber':['physics','cavitationnumber'],
 
             # Common Paramters
             'ncycles':['iter', 'ncycles'],
@@ -5053,6 +5055,8 @@ class ADFLOW(AeroSolver):
             'cavitation':self.adflow.constants.costfunccavitation,
             'mdot':self.adflow.constants.costfuncmdot,
             'mavgptot':self.adflow.constants.costfuncmavgptot,
+            'aavgptot':self.adflow.constants.costfuncaavgptot,
+            'aavgps':self.adflow.constants.costfuncaavgps,
             'mavgttot':self.adflow.constants.costfuncmavgttot,
             'mavgps':self.adflow.constants.costfuncmavgps,
             'mavgmn':self.adflow.constants.costfuncmavgmn,
