@@ -341,9 +341,9 @@ contains
 &   ostart, oend
     real(kind=realtype) :: vxd, vyd, vzd
     real(kind=realtype) :: maxrad, cellradius, fact2, totalt, totalsw, &
-&   ftang
-    real(kind=realtype) :: fmag, distribffactor, distribexponent, &
-&   diskthickness
+&   ftang, hubradius, rhat
+    real(kind=realtype) :: fmag, distribffactor, distribexponentm, &
+&   distribexponentn, diskthickness
     real(kind=realtype) :: distribpdfactor, swirlfact, swirlfact2
     intrinsic maxval
 ! compute the relaxation factor based on the ordersconverged
@@ -365,9 +365,11 @@ contains
     istart = actuatorregions(iregion)%blkptr(nn-1) + 1
     iend = actuatorregions(iregion)%blkptr(nn)
     maxrad = maxval(actuatorregions(iregion)%cellradii)
+    hubradius = actuatorregions(iregion)%hubradius
     fmag = actuatorregions(iregion)%fmag
     distribffactor = actuatorregions(iregion)%distribffactor
-    distribexponent = actuatorregions(iregion)%distribexponent
+    distribexponentm = actuatorregions(iregion)%distribexponentm
+    distribexponentn = actuatorregions(iregion)%distribexponentn
     diskthickness = actuatorregions(iregion)%diskthickness
     distribpdfactor = actuatorregions(iregion)%distribpdfactor
     swirlfact = actuatorregions(iregion)%swirlfact
@@ -377,18 +379,25 @@ contains
       j = actuatorregions(iregion)%cellids(2, ii)
       k = actuatorregions(iregion)%cellids(3, ii)
       cellradius = actuatorregions(iregion)%cellradii(ii)
+      if (cellradius .lt. hubradius) then
+        ftmp = zero
+!  write (*,*) 'cellrad is', cellradius
+!  write (*,*) 'hubrad is', hubradius
+      else
 ! this actually gets the force
-      fact = factor*fmag*distribffactor/maxrad
-      fact2 = cellradius/maxrad*(one-cellradius/maxrad)**distribexponent&
-&       /(two*pi*cellradius*diskthickness)
-      ftmp = volref(i, j, k)*fact*fact2*actuatorregions(iregion)%axisvec&
-&       /pref
+        rhat = (cellradius-hubradius)/(maxrad-hubradius)
+        fact = factor*fmag*distribffactor/maxrad
+        fact2 = rhat**distribexponentm*(one-rhat)**distribexponentn/(two&
+&         *pi*cellradius*diskthickness)
+        ftmp = volref(i, j, k)*fact*fact2*actuatorregions(iregion)%&
+&         axisvec/pref
 !  totalt = totalt + volref(i, j, k) * fact * fact2
-      swirlfact2 = distribpdfactor/pi/cellradius*maxrad*swirlfact
-      ftang = swirlfact2*fact*fact2
-      ftmp = ftmp + volref(i, j, k)*ftang*actuatorregions(iregion)%&
-&       celltangentials(:, ii)/pref
+        swirlfact2 = distribpdfactor/pi/cellradius*maxrad*swirlfact
+        ftang = swirlfact2*fact*fact2
+        ftmp = ftmp + volref(i, j, k)*ftang*actuatorregions(iregion)%&
+&         celltangentials(:, ii)/pref
 !  totalsw = totalsw + volref(i, j, k) * ftang
+      end if
       if (res) then
         vxd = -(ftmp(1)*dwd(i, j, k, irhoe))
         vyd = -(ftmp(2)*dwd(i, j, k, irhoe))
@@ -430,9 +439,9 @@ contains
     real(kind=realtype) :: ftmp(3), vx, vy, vz, fact, redim, factor, &
 &   ostart, oend
     real(kind=realtype) :: maxrad, cellradius, fact2, totalt, totalsw, &
-&   ftang
-    real(kind=realtype) :: fmag, distribffactor, distribexponent, &
-&   diskthickness
+&   ftang, hubradius, rhat
+    real(kind=realtype) :: fmag, distribffactor, distribexponentm, &
+&   distribexponentn, diskthickness
     real(kind=realtype) :: distribpdfactor, swirlfact, swirlfact2
     intrinsic maxval
     redim = pref*uref
@@ -455,15 +464,20 @@ contains
     istart = actuatorregions(iregion)%blkptr(nn-1) + 1
     iend = actuatorregions(iregion)%blkptr(nn)
     maxrad = maxval(actuatorregions(iregion)%cellradii)
+    hubradius = actuatorregions(iregion)%hubradius
     fmag = actuatorregions(iregion)%fmag
     distribffactor = actuatorregions(iregion)%distribffactor
-    distribexponent = actuatorregions(iregion)%distribexponent
+    distribexponentm = actuatorregions(iregion)%distribexponentm
+    distribexponentn = actuatorregions(iregion)%distribexponentn
     diskthickness = actuatorregions(iregion)%diskthickness
     distribpdfactor = actuatorregions(iregion)%distribpdfactor
     swirlfact = actuatorregions(iregion)%swirlfact
 ! write (*,*) 'maxrad is', maxrad
 ! write (*,*) 'volume is', actuatorregions(iregion)%volume
 ! write (*,*) 'cellids is', size(actuatorregions(iregion)%cellids)
+! write (*,*) 'expm is', distribexponentm
+! write (*,*) 'expn is', distribexponentn
+! write (*,*) 'maxrad is', maxrad
 ! totalt = 0._realtype
 ! totalsw = 0._realtype
     do ii=istart,iend
@@ -472,18 +486,25 @@ contains
       j = actuatorregions(iregion)%cellids(2, ii)
       k = actuatorregions(iregion)%cellids(3, ii)
       cellradius = actuatorregions(iregion)%cellradii(ii)
+      if (cellradius .lt. hubradius) then
+        ftmp = zero
+!  write (*,*) 'cellrad is', cellradius
+!  write (*,*) 'hubrad is', hubradius
+      else
 ! this actually gets the force
-      fact = factor*fmag*distribffactor/maxrad
-      fact2 = cellradius/maxrad*(one-cellradius/maxrad)**distribexponent&
-&       /(two*pi*cellradius*diskthickness)
-      ftmp = volref(i, j, k)*fact*fact2*actuatorregions(iregion)%axisvec&
-&       /pref
+        rhat = (cellradius-hubradius)/(maxrad-hubradius)
+        fact = factor*fmag*distribffactor/maxrad
+        fact2 = rhat**distribexponentm*(one-rhat)**distribexponentn/(two&
+&         *pi*cellradius*diskthickness)
+        ftmp = volref(i, j, k)*fact*fact2*actuatorregions(iregion)%&
+&         axisvec/pref
 !  totalt = totalt + volref(i, j, k) * fact * fact2
-      swirlfact2 = distribpdfactor/pi/cellradius*maxrad*swirlfact
-      ftang = swirlfact2*fact*fact2
-      ftmp = ftmp + volref(i, j, k)*ftang*actuatorregions(iregion)%&
-&       celltangentials(:, ii)/pref
+        swirlfact2 = distribpdfactor/pi/cellradius*maxrad*swirlfact
+        ftang = swirlfact2*fact*fact2
+        ftmp = ftmp + volref(i, j, k)*ftang*actuatorregions(iregion)%&
+&         celltangentials(:, ii)/pref
 !  totalsw = totalsw + volref(i, j, k) * ftang
+      end if
       vx = w(i, j, k, ivx)
       vy = w(i, j, k, ivy)
       vz = w(i, j, k, ivz)

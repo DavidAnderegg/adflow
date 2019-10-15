@@ -7,8 +7,8 @@ module actuatorRegion
 
 contains
   subroutine addActuatorRegion(pts, conn, axis1, axis2, famName, famID, &
-       thrust, torque, swirlFact, distribFfactor, distribExponent, &
-       distribPDfactor, diskThickness, relaxStart, relaxEnd, nPts, nConn)
+       thrust, torque, swirlFact, distribFfactor, distribExponentM, distribExponentN, &
+       distribPDfactor, diskThickness, hubRadius, relaxStart, relaxEnd, nPts, nConn)
     ! Add a user-supplied integration surface.
 
     use communication, only : myID, adflow_comm_world
@@ -29,7 +29,8 @@ contains
     real(kind=realType), intent(in), dimension(3) :: axis1, axis2
     character(len=*) :: famName
     real(kind=realType) :: thrust, torque, relaxStart, relaxEnd, swirlFact
-    real(kind=realType) :: distribFfactor, distribExponent, distribPDfactor, diskThickness
+    real(kind=realType) :: distribFfactor, distribExponentM, distribExponentN
+    real(kind=realType) :: distribPDfactor, diskThickness, hubRadius
 
     ! Working variables
     integer(kind=intType) :: i, j, k, nn, iDim, cellID, intInfo(3), sps, level, iii, ierr
@@ -82,9 +83,11 @@ contains
     region%FMag = thrust
     region%swirlFact = swirlFact
     region%distribFfactor = distribFfactor
-    region%distribExponent = distribExponent
+    region%distribExponentM = distribExponentM
+    region%distribExponentN = distribExponentN
     region%distribPDfactor = distribPDfactor
     region%diskThickness = diskThickness
+    region%hubRadius = hubRadius
 
     allocate(region%blkPtr(0:nDom))
     region%blkPtr(0) = 0

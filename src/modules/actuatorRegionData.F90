@@ -24,9 +24,11 @@ module actuatorRegionData
      real(kind=realType) :: FMag
      real(kind=realType) :: swirlFact
      real(kind=realType) :: distribFfactor
-     real(kind=realType) :: distribExponent
+     real(kind=realType) :: distribExponentM
+     real(kind=realType) :: distribExponentN
      real(kind=realType) :: distribPDfactor
      real(kind=realType) :: diskThickness
+     real(kind=realType) :: hubRadius
 
      ! T is the total torque to be applied on this regoin
      real(kind=realType) :: T
