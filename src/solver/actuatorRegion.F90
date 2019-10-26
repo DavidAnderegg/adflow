@@ -217,11 +217,34 @@ contains
                             sqrt(radVec(1)**2 + radVec(2)**2 + radVec(3)**2)
                          
                           ! Compute unscaled thrust and swirl forces
-                         if (region%cellRadii(region%nCellIDs) < hubRadius) then
+                         if (region%cellRadii(region%nCellIDs) < 0.015_realType) then
+
                            Ftmp = zero
-                           !  write (*,*) 'cellrad is', cellRadius
-                           !  write (*,*) 'hubRad is', hubRadius
+                           region%thrustVec(:, region%nCellIDs) = Ftmp * axisVec
+
+                           Swtmp = zero
+                           region%swirlVec(:, region%nCellIDs) = Swtmp &
+                                                        * region%cellTangentials(:, region%nCellIDs)
+
+                         else if (region%cellRadii(region%nCellIDs) < hubRadius) then
+
+                           rHat = ((region%cellRadii(region%nCellIDs) - hubRadius) &
+                                  / (propRadius - hubRadius))
+                           fact = half / propRadius !!!!! Using half the thrust
+                           fact2 = rHat**distribExponentM * (one - rHat)**distribExponentN &
+                                   / (two * pi * region%cellRadii(region%nCellIDs) * diskThickness)
+                           Ftmp = volRef(i, j, k) * fact * fact2
+
+                          !  thrustSum = thrustSum + Ftmp
+
+                           region%thrustVec(:, region%nCellIDs) = Ftmp * axisVec
+
+                           Swtmp = zero
+                           region%swirlVec(:, region%nCellIDs) = Swtmp &
+                                                        * region%cellTangentials(:, region%nCellIDs)
+
                          else
+
                            rHat = ((region%cellRadii(region%nCellIDs) - hubRadius) &
                                   / (propRadius - hubRadius))
                            fact = one / propRadius
