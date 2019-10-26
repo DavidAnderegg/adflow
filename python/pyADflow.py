@@ -618,7 +618,7 @@ class ADFLOW(AeroSolver):
                           thrust=0.0, torque=0.0, swirlFact=0.0,
                           distribExponentM=1.0, distribExponentN=0.5,
                           distribPDfactor=0.5, diskThickness=0.1,
-                          hubRadius=0.0, propRadius=0.12,
+                          hubRadius=0.0, propRadius=0.12, spinnerRadius=0.0,
                           relaxStart=None, relaxEnd=None):
         """Add an actuator disk zone defined by the (closed) supplied
         in the plot3d file "fileName". Axis1 and Axis2 defines the
@@ -695,7 +695,7 @@ class ADFLOW(AeroSolver):
         self.adflow.actuatorregion.addactuatorregion(
             pts.T, conn.T, axis1, axis2, familyName, famID, thrust, torque, swirlFact,
             distribExponentM, distribExponentN, distribPDfactor, diskThickness,
-            hubRadius, propRadius, relaxStart, relaxEnd)
+            hubRadius, propRadius, spinnerRadius, relaxStart, relaxEnd)
         
     def writeActuatorRegions(self, fileName):
             self.adflow.actuatorregion.writeactuatorregions(

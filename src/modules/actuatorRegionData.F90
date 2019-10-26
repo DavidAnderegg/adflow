@@ -28,6 +28,7 @@ module actuatorRegionData
      real(kind=realType) :: distribPDfactor
      real(kind=realType) :: diskThickness
      real(kind=realType) :: hubRadius
+     real(kind=realType) :: spinnerRadius
 
      ! T is the total torque to be applied on this regoin
      real(kind=realType) :: T

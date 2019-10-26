@@ -8,7 +8,7 @@ module actuatorRegion
 contains
   subroutine addActuatorRegion(pts, conn, axis1, axis2, famName, famID, &
        thrust, torque, swirlFact, distribExponentM, distribExponentN, &
-       distribPDfactor, diskThickness, hubRadius, propRadius, relaxStart, relaxEnd, nPts, nConn)
+       distribPDfactor, diskThickness, hubRadius, propRadius, spinnerRadius, relaxStart, relaxEnd, nPts, nConn)
     ! Add a user-supplied integration surface.
 
     use communication, only : myID, adflow_comm_world
@@ -30,7 +30,7 @@ contains
     character(len=*) :: famName
     real(kind=realType) :: thrust, torque, relaxStart, relaxEnd, swirlFact
     real(kind=realType) :: distribExponentM, distribExponentN
-    real(kind=realType) :: distribPDfactor, diskThickness, hubRadius, propRadius
+    real(kind=realType) :: distribPDfactor, diskThickness, hubRadius, propRadius, spinnerRadius
 
     ! Working variables
     integer(kind=intType) :: i, j, k, nn, iDim, cellID, intInfo(3), sps, level, iii, ierr
@@ -217,7 +217,7 @@ contains
                             sqrt(radVec(1)**2 + radVec(2)**2 + radVec(3)**2)
                          
                           ! Compute unscaled thrust and swirl forces
-                         if (region%cellRadii(region%nCellIDs) < 0.015_realType) then
+                         if (region%cellRadii(region%nCellIDs) < spinnerRadius) then
 
                            Ftmp = zero
                            region%thrustVec(:, region%nCellIDs) = Ftmp * axisVec
