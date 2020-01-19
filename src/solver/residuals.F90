@@ -359,8 +359,8 @@ contains
        j = actuatorRegions(iRegion)%cellIDs(2, ii)
        k = actuatorRegions(iRegion)%cellIDs(3, ii)
 
-      Ftmp = factor * actuatorRegions(iRegion)%thrustVec(:, ii) / pRef
-      Ftmp = Ftmp + factor * actuatorRegions(iRegion)%swirlVec(:, ii) / pRef
+      Ftmp = factor * actuatorRegions(iRegion)%thrustVec(:, ii) * actuatorRegions(iRegion)%thrust / pRef
+      Ftmp = Ftmp + factor * actuatorRegions(iRegion)%swirlVec(:, ii) * actuatorRegions(iRegion)%thrust / pRef
 
        Vx = w(i, j, k, iVx)
        Vy = w(i, j, k, iVy)

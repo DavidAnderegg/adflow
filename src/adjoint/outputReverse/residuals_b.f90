@@ -309,10 +309,12 @@ contains
     end if
   end subroutine residual_block
 !  differentiation of sourceterms_block in reverse (adjoint) mode (with options i4 dr8 r8 noisize):
-!   gradient     of useful results: uref pref *dw *w plocal
-!   with respect to varying inputs: uref pref *dw *w plocal
+!   gradient     of useful results: uref pref *dw *w actuatorregions.thrust
+!                plocal
+!   with respect to varying inputs: uref pref *dw *w actuatorregions.thrust
+!                plocal
 !   rw status of diff variables: uref:incr pref:incr *dw:in-out
-!                *w:incr plocal:in-out
+!                *w:incr actuatorregions.thrust:incr plocal:in-out
 !   plus diff mem management of: dw:in w:in
   subroutine sourceterms_block_b(nn, res, iregion, plocal, plocald)
 ! apply the source terms for the given block. assume that the
@@ -335,6 +337,8 @@ contains
 &   ostart, oend
     real(kind=realtype) :: ftmpd(3), vxd, vyd, vzd, redimd
     real(kind=realtype) :: tempd
+    real(kind=realtype) :: tempd1
+    real(kind=realtype) :: tempd0
     redim = pref*uref
 ! compute the relaxation factor based on the ordersconverged
 ! how far we are into the ramp:
@@ -360,8 +364,10 @@ contains
       i = actuatorregions(iregion)%cellids(1, ii)
       j = actuatorregions(iregion)%cellids(2, ii)
       k = actuatorregions(iregion)%cellids(3, ii)
-      ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)/pref
-      ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)/pref
+      ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)*&
+&       actuatorregions(iregion)%thrust/pref
+      ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)*&
+&       actuatorregions(iregion)%thrust/pref
       vx = w(i, j, k, ivx)
       vy = w(i, j, k, ivy)
       vz = w(i, j, k, ivz)
@@ -376,21 +382,26 @@ contains
         ftmpd = ftmpd - dwd(i, j, k, imx:imz)
       else
         ftmpd = 0.0_8
-        tempd = redim*plocald
-        vxd = ftmp(1)*tempd
-        ftmpd(1) = ftmpd(1) + vx*tempd
-        vyd = ftmp(2)*tempd
-        ftmpd(2) = ftmpd(2) + vy*tempd
-        vzd = ftmp(3)*tempd
-        ftmpd(3) = ftmpd(3) + vz*tempd
+        tempd1 = redim*plocald
+        vxd = ftmp(1)*tempd1
+        ftmpd(1) = ftmpd(1) + vx*tempd1
+        vyd = ftmp(2)*tempd1
+        ftmpd(2) = ftmpd(2) + vy*tempd1
+        vzd = ftmp(3)*tempd1
+        ftmpd(3) = ftmpd(3) + vz*tempd1
         redimd = redimd + (vx*ftmp(1)+vy*ftmp(2)+vz*ftmp(3))*plocald
       end if
+      tempd0 = sum(factor*actuatorregions(iregion)%thrustvec(:, ii)*&
+&       ftmpd)/pref
       wd(i, j, k, ivz) = wd(i, j, k, ivz) + vzd
       wd(i, j, k, ivy) = wd(i, j, k, ivy) + vyd
       wd(i, j, k, ivx) = wd(i, j, k, ivx) + vxd
-      prefd = prefd - factor*sum(actuatorregions(iregion)%thrustvec(:, &
-&       ii)*ftmpd)/pref**2 - factor*sum(actuatorregions(iregion)%&
-&       swirlvec(:, ii)*ftmpd)/pref**2
+      tempd = sum(factor*actuatorregions(iregion)%swirlvec(:, ii)*ftmpd)&
+&       /pref
+      actuatorregionsd(iregion)%thrust = actuatorregionsd(iregion)%&
+&       thrust + tempd0 + tempd
+      prefd = prefd - actuatorregions(iregion)%thrust*tempd0/pref - &
+&       actuatorregions(iregion)%thrust*tempd/pref
     end do
     prefd = prefd + uref*redimd
     urefd = urefd + pref*redimd
@@ -437,8 +448,10 @@ contains
       i = actuatorregions(iregion)%cellids(1, ii)
       j = actuatorregions(iregion)%cellids(2, ii)
       k = actuatorregions(iregion)%cellids(3, ii)
-      ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)/pref
-      ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)/pref
+      ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)*&
+&       actuatorregions(iregion)%thrust/pref
+      ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)*&
+&       actuatorregions(iregion)%thrust/pref
       vx = w(i, j, k, ivx)
       vy = w(i, j, k, ivy)
       vz = w(i, j, k, ivz)

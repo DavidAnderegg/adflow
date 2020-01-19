@@ -314,9 +314,10 @@ contains
   end subroutine residual_block
 !  differentiation of sourceterms_block in forward (tangent) mode (with options i4 dr8 r8):
 !   variations   of useful results: *dw plocal
-!   with respect to varying inputs: uref pref *dw *w plocal
+!   with respect to varying inputs: uref pref *dw *w actuatorregions.thrust
+!                plocal
 !   rw status of diff variables: uref:in pref:in *dw:in-out *w:in
-!                plocal:in-out
+!                actuatorregions.thrust:in plocal:in-out
 !   plus diff mem management of: dw:in w:in
   subroutine sourceterms_block_d(nn, res, iregion, plocal, plocald)
 ! apply the source terms for the given block. assume that the
@@ -363,12 +364,18 @@ contains
       i = actuatorregions(iregion)%cellids(1, ii)
       j = actuatorregions(iregion)%cellids(2, ii)
       k = actuatorregions(iregion)%cellids(3, ii)
-      ftmpd = -(factor*actuatorregions(iregion)%thrustvec(:, ii)*prefd/&
-&       pref**2)
-      ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)/pref
-      ftmpd = ftmpd - factor*actuatorregions(iregion)%swirlvec(:, ii)*&
-&       prefd/pref**2
-      ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)/pref
+      ftmpd = (factor*actuatorregions(iregion)%thrustvec(:, ii)*&
+&       actuatorregionsd(iregion)%thrust*pref-factor*actuatorregions(&
+&       iregion)%thrustvec(:, ii)*actuatorregions(iregion)%thrust*prefd)&
+&       /pref**2
+      ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)*&
+&       actuatorregions(iregion)%thrust/pref
+      ftmpd = ftmpd + (factor*actuatorregions(iregion)%swirlvec(:, ii)*&
+&       actuatorregionsd(iregion)%thrust*pref-factor*actuatorregions(&
+&       iregion)%swirlvec(:, ii)*actuatorregions(iregion)%thrust*prefd)/&
+&       pref**2
+      ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)*&
+&       actuatorregions(iregion)%thrust/pref
       vxd = wd(i, j, k, ivx)
       vx = w(i, j, k, ivx)
       vyd = wd(i, j, k, ivy)
@@ -435,8 +442,10 @@ contains
       i = actuatorregions(iregion)%cellids(1, ii)
       j = actuatorregions(iregion)%cellids(2, ii)
       k = actuatorregions(iregion)%cellids(3, ii)
-      ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)/pref
-      ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)/pref
+      ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)*&
+&       actuatorregions(iregion)%thrust/pref
+      ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)*&
+&       actuatorregions(iregion)%thrust/pref
       vx = w(i, j, k, ivx)
       vy = w(i, j, k, ivy)
       vz = w(i, j, k, ivz)

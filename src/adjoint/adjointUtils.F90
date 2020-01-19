@@ -1058,6 +1058,7 @@ contains
     do i=1, nActuatorRegions
        actuatorRegionsd(i)%F = zero
        actuatorRegionsd(i)%T = zero
+       actuatorRegionsd(i)%thrust = zero
     end do
 
   end subroutine zeroADSeeds

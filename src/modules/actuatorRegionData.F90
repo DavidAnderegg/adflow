@@ -10,7 +10,6 @@ module actuatorRegionData
 
      ! The tangent unit-vectors of the cells included in this region
      real(kind=realType), dimension(:, :), pointer :: cellTangentials
-
      ! The radii of the cells included in this region
      real(kind=realType), dimension(:), pointer :: cellRadii
 
@@ -20,15 +19,15 @@ module actuatorRegionData
      ! F is the total Force to be applied on this region
      real(kind=realType) :: F(3)
 
-     ! FMag is the total Force magnitude to be applied on this region
-     real(kind=realType) :: Fmag
+     ! thrust is the total thrust magnitude to be applied on this region
+     real(kind=realType) :: thrust
      real(kind=realType) :: swirlFact
-     real(kind=realType) :: distribExponentM
-     real(kind=realType) :: distribExponentN
+     real(kind=realType) :: mDistribParam
+     real(kind=realType) :: nDistribParam
      real(kind=realType) :: distribPDfactor
-     real(kind=realType) :: diskThickness
-     real(kind=realType) :: hubRadius
+     real(kind=realType) :: innerZeroThrustRadius
      real(kind=realType) :: spinnerRadius
+     real(kind=realType) :: rootDragFactor
 
      ! T is the total torque to be applied on this regoin
      real(kind=realType) :: T
@@ -38,8 +37,8 @@ module actuatorRegionData
      ! Volume is the total integrated volume of all cells (on all
      ! procs) included in this region
      real(kind=realType) :: volume
-     real(kind=realType) :: Tsum
-     real(kind=realType) :: Swsum
+     real(kind=realType) :: totalThrustSum
+     real(kind=realType) :: totalSwirlSum
 
      integer(kind=intType), dimension(:), allocatable :: blkPtr
      

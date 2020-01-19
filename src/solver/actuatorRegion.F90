@@ -7,8 +7,8 @@ module actuatorRegion
 
 contains
   subroutine addActuatorRegion(pts, conn, axis1, axis2, famName, famID, &
-       thrust, torque, swirlFact, distribExponentM, distribExponentN, &
-       distribPDfactor, diskThickness, hubRadius, propRadius, spinnerRadius, relaxStart, relaxEnd, nPts, nConn)
+       thrust, torque, swirlFact, mDistribParam, nDistribParam, &
+       distribPDfactor, innerZeroThrustRadius, propRadius, spinnerRadius, rootDragFactor, relaxStart, relaxEnd, nPts, nConn)
     ! Add a user-supplied integration surface.
 
     use communication, only : myID, adflow_comm_world
@@ -29,8 +29,8 @@ contains
     real(kind=realType), intent(in), dimension(3) :: axis1, axis2
     character(len=*) :: famName
     real(kind=realType) :: thrust, torque, relaxStart, relaxEnd, swirlFact
-    real(kind=realType) :: distribExponentM, distribExponentN
-    real(kind=realType) :: distribPDfactor, diskThickness, hubRadius, propRadius, spinnerRadius
+    real(kind=realType) :: mDistribParam, nDistribParam
+    real(kind=realType) :: distribPDfactor, innerZeroThrustRadius, propRadius, spinnerRadius, rootDragFactor
 
     ! Working variables
     integer(kind=intType) :: i, j, k, nn, iDim, cellID, intInfo(3), sps, level, iii, ierr
@@ -80,6 +80,7 @@ contains
     axisVec = axisVec / axisVecNorm
 
     region%F = axisVec*thrust
+    region%thrust = thrust
 
     allocate(region%blkPtr(0:nDom))
     region%blkPtr(0) = 0
@@ -226,13 +227,13 @@ contains
                            region%swirlVec(:, region%nCellIDs) = Swtmp &
                                                         * region%cellTangentials(:, region%nCellIDs)
 
-                         else if (region%cellRadii(region%nCellIDs) < hubRadius) then
+                         else if (region%cellRadii(region%nCellIDs) < innerZeroThrustRadius) then
 
-                           rHat = ((region%cellRadii(region%nCellIDs) - hubRadius) &
-                                  / (propRadius - hubRadius))
-                           fact = half / propRadius !!!!! Using half the thrust
-                           fact2 = rHat**distribExponentM * (one - rHat)**distribExponentN &
-                                   / (two * pi * region%cellRadii(region%nCellIDs) * diskThickness)
+                           rHat = ((region%cellRadii(region%nCellIDs) - innerZeroThrustRadius) &
+                                  / (propRadius - innerZeroThrustRadius))
+                           fact = rootDragFactor / propRadius
+                           fact2 = rHat**mDistribParam * (one - rHat)**nDistribParam &
+                                   / (two * pi * region%cellRadii(region%nCellIDs))
                            Ftmp = volRef(i, j, k) * fact * fact2
 
                           !  thrustSum = thrustSum + Ftmp
@@ -245,11 +246,11 @@ contains
 
                          else
 
-                           rHat = ((region%cellRadii(region%nCellIDs) - hubRadius) &
-                                  / (propRadius - hubRadius))
+                           rHat = ((region%cellRadii(region%nCellIDs) - innerZeroThrustRadius) &
+                                  / (propRadius - innerZeroThrustRadius))
                            fact = one / propRadius
-                           fact2 = rHat**distribExponentM * (one - rHat)**distribExponentN &
-                                   / (two * pi * region%cellRadii(region%nCellIDs) * diskThickness)
+                           fact2 = rHat**mDistribParam * (one - rHat)**nDistribParam &
+                                   / (two * pi * region%cellRadii(region%nCellIDs))
                            Ftmp = volRef(i, j, k) * fact * fact2
 
                            thrustSum = thrustSum + Ftmp
@@ -335,19 +336,19 @@ contains
     write (*,*) "Total vol of actuator region is", region%volume
 
     write (*,*) "thrust sum is", thrustSum
-    call mpi_allreduce(thrustSum, region%Tsum, 1, adflow_real, &
+    call mpi_allreduce(thrustSum, region%totalThrustSum, 1, adflow_real, &
          MPI_SUM, adflow_comm_world, ierr)
     call ECHK(ierr, __FILE__, __LINE__)
-    write (*,*) "Total thrust magnitude (mpi sum) without scaling factor  is", region%Tsum
+    write (*,*) "Total thrust magnitude (mpi sum) without scaling factor  is", region%totalThrustSum
 
     write (*,*) "swirl sum is", swirlSum
-    call mpi_allreduce(swirlSum, region%Swsum, 1, adflow_real, &
+    call mpi_allreduce(swirlSum, region%totalSwirlSum, 1, adflow_real, &
          MPI_SUM, adflow_comm_world, ierr)
     call ECHK(ierr, __FILE__, __LINE__)
-    write (*,*) "Total swirl magnitude (mpi sum) without scaling factor is", region%Swsum
+    write (*,*) "Total swirl magnitude (mpi sum) without scaling factor is", region%totalSwirlSum
 
-    region%thrustVec = region%thrustVec * thrust / region%Tsum 
-    region%swirlVec = region%swirlVec * thrust / region%Tsum
+    region%thrustVec = region%thrustVec / region%totalThrustSum 
+    region%swirlVec = region%swirlVec / region%totalThrustSum
 
     ! Final memory cleanup
     deallocate(norm, frontLeaves, frontLeavesNew, BB, region%cellTangentials)

@@ -355,8 +355,10 @@ contains
       i = actuatorregions(iregion)%cellids(1, ii)
       j = actuatorregions(iregion)%cellids(2, ii)
       k = actuatorregions(iregion)%cellids(3, ii)
-      ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)/pref
-      ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)/pref
+      ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)*&
+&       actuatorregions(iregion)%thrust/pref
+      ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)*&
+&       actuatorregions(iregion)%thrust/pref
       if (res) then
         vxd = -(ftmp(1)*dwd(i, j, k, irhoe))
         vyd = -(ftmp(2)*dwd(i, j, k, irhoe))
@@ -413,8 +415,10 @@ contains
       i = actuatorregions(iregion)%cellids(1, ii)
       j = actuatorregions(iregion)%cellids(2, ii)
       k = actuatorregions(iregion)%cellids(3, ii)
-      ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)/pref
-      ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)/pref
+      ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)*&
+&       actuatorregions(iregion)%thrust/pref
+      ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)*&
+&       actuatorregions(iregion)%thrust/pref
       vx = w(i, j, k, ivx)
       vy = w(i, j, k, ivy)
       vz = w(i, j, k, ivz)
