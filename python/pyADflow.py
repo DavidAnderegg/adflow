@@ -618,37 +618,81 @@ class ADFLOW(AeroSolver):
                           thrust=0.0, torque=0.0, swirlFact=0.0,
                           mDistribParam=1.0, nDistribParam=0.5,
                           distribPDfactor=0.5, innerZeroThrustRadius=0.0,
-                          propRadius=0.12, spinnerRadius=0.0,
+                          propRadius=0.1, spinnerRadius=0.0,
                           rootDragFactor=0.0, relaxStart=None, relaxEnd=None):
-        """Add an actuator disk zone defined by the (closed) supplied
-        in the plot3d file "fileName". Axis1 and Axis2 defines the
-        physical extent of the region overwhich to apply the ramp
-        factor.
+        """Add an actuator-disk zone representing a propeller. The zone is
+        defined by the (closed) supplied surface in the plot3d file "fileName".
+        The radial distributions of the axial and tangential forces can be tuned
+        using the parameters. For the distributions, the models used by Hoekstra
+        in “A RANS-based analysis tool for ducted propeller systems in open water
+        condition” [International Shipbuilding Progress, 2006] are used here.
+        See "RANS-based aerodynamic shape optimization of a wing considering
+        propeller-wing interaction" by Chauhan and Martins [AIAA SciTech 2020]
+        for more. Note that this applies axis-symmetric forces.
 
         Parameters
         ----------
 
         fileName : str
-           Surface Plot 3D file (multiblock ascii) defining the closed
-           region over which the integration is to be applied.
+           The surface Plot3D file (multiblock ascii) defining the closed
+           region to which the forces are to be applied.
 
         axis1 : numpy array, length 3
-           The physical location of the start of the axis
+           The physical location of the start of the propeller axis (x,y,z)
 
-        axis2 : numpy array, length 4
-           The physical location of the end of the axis
+        axis2 : numpy array, length 3
+           The physical location of the end of the propeller axis (x,y,z).
+           The axis1 and axis2 points are used to define the propeller axis.
+           The propeller axis is used to compute the radii of the cells in the
+           actuator zone and also to calculate the directions for axial and
+           tangential forces. 
 
         familyName : str
-           The name to be associated with the functions defined on this
-           region.
+           The name to be associated with the functions defined on this region.
 
         thrust : scalar
-           The total amount of axial force to apply to this region, in the direction
-           of axis1 -> axis2
+           The total magnitude of the (axial) thrust to apply to the region,
+           in the direction of axis1 -> axis2. (This does not include the forces
+           applied inside the innerZeroThrustRadius. See below for a description
+           of innerZeroThrustRadius.)
 
         torque : scalar
-           The total amount of torque to apply to the region, about the
-           specified axis.
+           [IGNORE THIS; NOT USED FOR THE PROPELLER; TODO: THIS NEEDS TO BE REMOVED]
+
+        swirlFact : scalar
+           A factor to multiply the tangential forces by. For example, this can
+           be used to reverse the swirl rotation direction or remove the swirl.
+           If axis1 -> axis2 points front to back, then a positive swirlFact will
+           give a clockwise rotation looking from the back.
+
+        mDistribParam : scalar
+           The m parameter in the distribution. See the Hoekstra or Chauhan and
+           Martins papers mentioned above.
+
+        nDistribParam : scalar
+           The n parameter for the distribution. See the Hoekstra or Chauhan and
+           Martins papers mentioned above.
+
+        distribPDfactor : scalar
+           The pitch-to-diameter ratio for the blade. See the Hoekstra or
+           Chauhan and Martins papers mentioned above. Increasing the pitch-to-
+           diameter ratio increases the swirl.
+
+        innerZeroThrustRadius : scalar
+           The radius at which the thrust becomes zero and then goes negative.
+           Only use this if you know the propeller produces drag near the root,
+           otherwise use the default value of 0.
+
+        propRadius : scalar
+           The outer radius of the propeller.
+
+        spinnerRadius : scalar
+           The radius at which the blades connect to the spinner (aka the hub).
+
+        rootDragFactor : scalar
+           A factor that the negative thrust (drag) inside the innerZeroThrustRadius
+           is multiplied by. This is used to scale the forces in the region.
+           This is not required if not using the innerZeroThrustRadius.
 
         """
         # ActuatorDiskRegions cannot be used in timeSpectralMode
