@@ -450,9 +450,10 @@ python module libadflow
        end module usersurfaceintegrations
 
        module actuatorregion ! in :test:actuatorDiskRegion.F90
-         subroutine addactuatorregion(pts,conn,axis1,axis2,famname,famid,thrust,torque,swirlfact,mdistribparam,ndistribparam,distribpdfactor,innerzerothrustradius,propradius,spinnerradius,rootdragfactor,relaxstart,relaxend,npts,nconn) ! in :test:actuatorDiskRegion.F90:actuatorregion
+         subroutine addactuatorregion(pts,conn,acttype,axis1,axis2,famname,famid,thrust,torque,swirlfact,mdistribparam,ndistribparam,distribpdfactor,innerzerothrustradius,propradius,spinnerradius,rootdragfactor,relaxstart,relaxend,npts,nconn) ! in :test:actuatorDiskRegion.F90:actuatorregion
            real(kind=realtype) dimension(3,npts),intent(in) :: pts
            integer(kind=inttype) dimension(4,nconn),intent(in) :: conn
+           character*(*) :: acttype
            real(kind=realtype), dimension(3),intent(in) :: axis1
            real(kind=realtype), dimension(3),intent(in) :: axis2
            character*(*) :: famname

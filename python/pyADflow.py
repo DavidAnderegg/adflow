@@ -614,21 +614,28 @@ class ADFLOW(AeroSolver):
         self.adflow.usersurfaceintegrations.addintegrationsurface(
             pts.T, conn.T, familyName, famID, isInflow)
 
-    def addActuatorRegion(self, fileName, axis1, axis2, familyName,
+    def addActuatorRegion(self, fileName, actType, axis1, axis2, familyName,
                           thrust=0.0, torque=0.0, swirlFact=0.0,
                           mDistribParam=1.0, nDistribParam=0.5,
                           distribPDfactor=0.5, innerZeroThrustRadius=0.0,
                           propRadius=0.1, spinnerRadius=0.0,
                           rootDragFactor=0.0, relaxStart=None, relaxEnd=None):
-        """Add an actuator-disk zone representing a propeller. The zone is
-        defined by the (closed) supplied surface in the plot3d file "fileName".
+        """Add an actuator zone with a uniform force distribution or add
+        an actuator-disk zone representing a propeller. The zone is defined by
+        the (closed) supplied surface in the plot3d file "fileName". The type
+        is set with the string "actType" as either 'uniform' or 'simpleProp'.
+
+        For the uniform distribution (i.e., actType = 'uniform'):
+        The specified thrust is applied uniformly over the specified zone.
+
+        For the propeller model (i.e., actType = 'simpleProp'):
         The radial distributions of the axial and tangential forces can be tuned
         using the parameters. For the distributions, the models used by Hoekstra
         in "A RANS-based analysis tool for ducted propeller systems in open water
         condition" [International Shipbuilding Progress, 2006] are used here.
         See "RANS-based aerodynamic shape optimization of a wing considering
         propeller-wing interaction" by Chauhan and Martins [AIAA SciTech 2020]
-        for more. Note that this applies axis-symmetric forces.
+        for more. This applies axis-symmetric (but radially varying) forces.
 
         Parameters
         ----------
@@ -637,14 +644,19 @@ class ADFLOW(AeroSolver):
            The surface Plot3D file (multiblock ascii) defining the closed
            region to which the forces are to be applied.
 
+        actType : str
+           The type of force distribution.
+           Uniform ('uniform') or propeller ('simpleProp').
+
         axis1 : numpy array, length 3
-           The physical location of the start of the propeller axis (x,y,z)
+           The physical location of the start of the thrust or propeller axis (x,y,z).
 
         axis2 : numpy array, length 3
-           The physical location of the end of the propeller axis (x,y,z).
-           The axis1 and axis2 points are used to define the propeller axis.
+           The physical location of the end of the thrust or propeller axis (x,y,z).
+           The axis1 and axis2 points are used to define the direction of the
+           thrust, and also to define the propeller axis for the propeller model.
            The propeller axis is used to compute the radii of the cells in the
-           actuator zone and also to calculate the directions for axial and
+           actuator-disk zone and also to calculate the directions for axial and
            tangential forces. 
 
         familyName : str
@@ -653,11 +665,14 @@ class ADFLOW(AeroSolver):
         thrust : scalar
            The total magnitude of the (axial) thrust to apply to the region,
            in the direction of axis1 -> axis2. (This does not include the forces
-           applied inside the innerZeroThrustRadius. See below for a description
-           of innerZeroThrustRadius.)
+           applied inside the innerZeroThrustRadius for the propeller model.
+           See below for a description of innerZeroThrustRadius.)
 
         torque : scalar
-           [IGNORE THIS; NOT USED FOR THE PROPELLER; TODO: THIS NEEDS TO BE REMOVED]
+           The total amount of torque to apply to the region, about the
+           specified axis. This is only for the uniform actuator zone.
+
+        Note that the following are only for the propeller model.
 
         swirlFact : scalar
            A factor to multiply the tangential forces by. For example, this can
@@ -734,10 +749,13 @@ class ADFLOW(AeroSolver):
         if relaxEnd is None and relaxStart is not None:
             raise Error("relaxEnd must be given is relaxStart is specified")
 
+        if actType != 'uniform' and actType != 'simpleProp':
+            raise Error("actType must be 'uniform' or 'simpleProp'")
+
         #  Now continue to fortran were we setup the actual
         #  region.
         self.adflow.actuatorregion.addactuatorregion(
-            pts.T, conn.T, axis1, axis2, familyName, famID, thrust, torque, swirlFact,
+            pts.T, conn.T, actType, axis1, axis2, familyName, famID, thrust, torque, swirlFact,
             mDistribParam, nDistribParam, distribPDfactor, innerZeroThrustRadius,
             propRadius, spinnerRadius, rootDragFactor, relaxStart, relaxEnd)
         

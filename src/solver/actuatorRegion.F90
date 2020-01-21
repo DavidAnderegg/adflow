@@ -6,7 +6,7 @@ module actuatorRegion
   implicit none
 
 contains
-  subroutine addActuatorRegion(pts, conn, axis1, axis2, famName, famID, &
+  subroutine addActuatorRegion(pts, conn, actType, axis1, axis2, famName, famID, &
        thrust, torque, swirlFact, mDistribParam, nDistribParam, &
        distribPDfactor, innerZeroThrustRadius, propRadius, spinnerRadius, rootDragFactor, relaxStart, relaxEnd, nPts, nConn)
     ! Add a user-supplied integration surface.
@@ -27,7 +27,7 @@ contains
     integer(kind=intType), dimension(4, nConn), intent(in), target :: conn
     integer(kind=intType), intent(in) :: nPts, nConn, famID
     real(kind=realType), intent(in), dimension(3) :: axis1, axis2
-    character(len=*) :: famName
+    character(len=*) :: famName, actType
     real(kind=realType) :: thrust, torque, relaxStart, relaxEnd, swirlFact
     real(kind=realType) :: mDistribParam, nDistribParam
     real(kind=realType) :: distribPDfactor, innerZeroThrustRadius, propRadius, spinnerRadius, rootDragFactor
@@ -61,6 +61,7 @@ contains
 
     ! Save the input information
     region => actuatorRegions(nActuatorRegions)
+    region%actType = actType
     region%famName = famName
     region%famID = famID
     region%T = torque
@@ -146,6 +147,7 @@ contains
     ! Allocate sufficient space for the maximum possible number of cellIDs
     allocate(region%cellIDs(3, nCellsLocal(1)))
 
+    if (region%actType == 'simpleProp') then
     ! Allocate sufficient space for the maximum possible number of cellIDs
     allocate(region%cellTangentials(3, nCellsLocal(1)))
     allocate(region%thrustVec(3, nCellsLocal(1)))
@@ -154,6 +156,7 @@ contains
     ! Allocate sufficient space for the maximum possible number of cellIDs
     allocate(region%cellRadii(nCellsLocal(1)))
     region%cellRadii(:) = zero
+    end if
 
     ! Now search for all the coordinate. Note that We have explictly
     ! set sps to 1 becuase it is only implemented for single grid.
@@ -201,6 +204,7 @@ contains
                          region%nCellIDs = region%nCellIDs + 1
                          region%cellIDs(:, region%nCellIDs) = (/i, j, k/)
 
+                         if (region%actType == 'simpleProp') then
                          ! Compute cross product for tangential vector and normize
                          v1 = xCen - axis2
                          v2 = axisVec
@@ -267,6 +271,7 @@ contains
                            region%swirlVec(:, region%nCellIDs) = Swtmp &
                                                         * region%cellTangentials(:, region%nCellIDs)
                          end if
+                         end if
                       end if
                    end if
                 end if
@@ -287,6 +292,7 @@ contains
     region%cellIDs = tmp(:, 1:region%nCellIDs)
     deallocate(tmp)
 
+    if (region%actType == 'simpleProp') then
     ! Resize the cellTangentials to the correct size now that we know the
     ! correct exact number.
     tmp2 => region%cellTangentials
@@ -314,6 +320,7 @@ contains
     allocate(region%cellRadii(region%nCellIDs))
     region%cellRadii = tmp3(1:region%nCellIDs)
     deallocate(tmp3)
+    end if
 
     ! Now go back and generate the total volume of the the cells we've flagged
     volLocal = zero
@@ -335,6 +342,7 @@ contains
     call ECHK(ierr, __FILE__, __LINE__)
     write (*,*) "Total vol of actuator region is", region%volume
 
+    if (region%actType == 'simpleProp') then
     write (*,*) "thrust sum is", thrustSum
     call mpi_allreduce(thrustSum, region%totalThrustSum, 1, adflow_real, &
          MPI_SUM, adflow_comm_world, ierr)
@@ -349,9 +357,12 @@ contains
 
     region%thrustVec = region%thrustVec / region%totalThrustSum 
     region%swirlVec = region%swirlVec / region%totalThrustSum
+    
+    deallocate(region%cellTangentials)
+    end if
 
     ! Final memory cleanup
-    deallocate(norm, frontLeaves, frontLeavesNew, BB, region%cellTangentials)
+    deallocate(norm, frontLeaves, frontLeavesNew, BB)
     call destroySerialQuad(ADT)
 
   contains

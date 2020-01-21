@@ -3,7 +3,7 @@ module actuatorRegionData
 
   type actuatorRegionType
 
-     character(len=maxStringLen) :: famName
+     character(len=maxStringLen) :: famName, actType
      integer(kind=intType) :: famID
      ! The block indexes of the cells included in this region
      integer(kind=intType), dimension(:, :), pointer :: cellIDs
