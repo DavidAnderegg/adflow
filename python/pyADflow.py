@@ -624,8 +624,8 @@ class ADFLOW(AeroSolver):
         defined by the (closed) supplied surface in the plot3d file "fileName".
         The radial distributions of the axial and tangential forces can be tuned
         using the parameters. For the distributions, the models used by Hoekstra
-        in “A RANS-based analysis tool for ducted propeller systems in open water
-        condition” [International Shipbuilding Progress, 2006] are used here.
+        in "A RANS-based analysis tool for ducted propeller systems in open water
+        condition" [International Shipbuilding Progress, 2006] are used here.
         See "RANS-based aerodynamic shape optimization of a wing considering
         propeller-wing interaction" by Chauhan and Martins [AIAA SciTech 2020]
         for more. Note that this applies axis-symmetric forces.
