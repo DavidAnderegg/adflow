@@ -98,7 +98,7 @@ module fortranPC
     integer(kind=intType) :: ierr, nn, sps, sps2, i, j, k, l, ll, ii, jj, kk
     integer(kind=intType) :: nColor, iColor, jColor, irow, icol, fmDim, frow
     integer(kind=intType) :: nTransfer, nState, tmp, icount
-    integer(kind=intType) :: n_stencil, i_stencil, ind1
+    integer(kind=intType) :: n_stencil, i_stencil, ind1, orderturbsave
     integer(kind=intType), dimension(:, :), pointer :: stencil
     real(kind=realType) :: delta_x, one_over_dx
     real(kind=realType) :: delta_x_turb, one_over_dx_turb
@@ -109,7 +109,7 @@ module fortranPC
     real(kind=realType), dimension(:,:), allocatable :: blk
 #endif
     integer(kind=intType) :: iBeg, iEnd, jBeg, jEnd, mm, colInd
-    logical :: resetToRANS, secondOrdSave,  splitMat
+    logical :: resetToRANS,  splitMat
     real :: val
 
     ! Setup number of state variable based on turbulence assumption
@@ -148,8 +148,9 @@ module fortranPC
 
     ! Very important to use only Second-Order dissipation for PC
     lumpedDiss=.True.
-    secondOrdSave = secondOrd
-    secondOrd = .False.
+    ! also use first order advection terms for turbulence
+    orderturbsave = orderturb
+    orderturb = firstOrder
 
     ! Need to trick the residual evalution to use coupled (mean flow and
     ! turbulent) together.
@@ -431,7 +432,7 @@ module fortranPC
 
     ! Return dissipation Parameters to normal -> VERY VERY IMPORTANT
     lumpedDiss = .False.
-    secondOrd = secondOrdSave
+    orderturb = orderturbsave
 
     ! Reset the correct equation parameters if we were useing the frozen
     ! Turbulent
@@ -660,17 +661,9 @@ module fortranPC
     use ADjointVars
     use inputTimeSpectral
     use utils, only : EChk, setPointers
-#include <petscversion.h>
-#if PETSC_VERSION_GE(3,8,0)
 #include <petsc/finclude/petsc.h>
-  use petsc
-  implicit none
-#else
-  implicit none
-#define PETSC_AVOID_MPIF_H
-#include "petsc/finclude/petsc.h"
-#include "petsc/finclude/petscvec.h90"
-#endif
+    use petsc
+    implicit none
 
     ! PETSc Arguments
     Mat   A
@@ -738,17 +731,9 @@ module fortranPC
     use inputTimeSpectral
     use flowvarrefstate
     use communication
-#include <petscversion.h>
-#if PETSC_VERSION_GE(3,8,0)
 #include <petsc/finclude/petsc.h>
-  use petsc
-  implicit none
-#else
-  implicit none
-#define PETSC_AVOID_MPIF_H
-#include "petsc/finclude/petsc.h"
-#include "petsc/finclude/petscvec.h90"
-#endif
+    use petsc
+    implicit none
 
     ! PETSc Arguments
     PC   pc
@@ -780,17 +765,9 @@ module fortranPC
     use inputTimeSpectral
     use flowVarRefState
     use utils, only : EChk, setPointers
-#include <petscversion.h>
-#if PETSC_VERSION_GE(3,8,0)
 #include <petsc/finclude/petsc.h>
-  use petsc
-  implicit none
-#else
-  implicit none
-#define PETSC_AVOID_MPIF_H
-#include "petsc/finclude/petsc.h"
-#include "petsc/finclude/petscvec.h90"
-#endif
+    use petsc
+    implicit none
 
     ! PETSc Arguments
     Vec   vecX

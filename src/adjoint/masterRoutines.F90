@@ -264,17 +264,10 @@ contains
     use inputOverset, only : oversetUpdateMode
     use oversetCommUtilities, only : updateOversetConnectivity_d
     use actuatorRegionData, only : nActuatorRegions
-#include <petscversion.h>
-#if PETSC_VERSION_GE(3,8,0)
 #include <petsc/finclude/petsc.h>
-  use petsc
-  implicit none
-#else
-  implicit none
-#define PETSC_AVOID_MPIF_H
-#include "petsc/finclude/petsc.h"
-#include "petsc/finclude/petscvec.h90"
-#endif
+    use petsc
+    implicit none
+
     ! Input Arguments:
     real(kind=realType), intent(in), dimension(:) :: wDot, xDot
     integer(kind=intType), optional, dimension(:, :), intent(in) :: famLists
@@ -590,17 +583,9 @@ contains
     use oversetCommUtilities, only : updateOversetConnectivity_b
     use BCRoutines, only : applyAllBC_block
     use actuatorRegionData, only : nActuatorRegions
-#include <petscversion.h>
-#if PETSC_VERSION_GE(3,8,0)
 #include <petsc/finclude/petsc.h>
-    use petsc, only : add_values, scatter_reverse
-  implicit none
-#else
-  implicit none
-#define PETSC_AVOID_MPIF_H
-#include "petsc/finclude/petsc.h"
-#include "petsc/finclude/petscvec.h90"
-#endif
+    use petsc
+    implicit none
 
     ! Input variables:
     real(kind=realType), intent(in), dimension(:) :: dwBar
@@ -1133,7 +1118,7 @@ contains
     ! Working Variables
     integer(kind=intType) :: ierr, mm,i,j,k, l, fSize, ii, jj, iRegion
     real(kind=realType) ::  pLocal
-    logical :: dissApprox, viscApprox, updateDt, flowRes, turbRes, storeWall
+    logical :: dissApprox, viscApprox, updateIntermed, flowRes, turbRes, storeWall
 
     flowRes = .True.
     if (present(useFlowRes)) then
@@ -1161,12 +1146,12 @@ contains
     ! Set the flags:
     dissApprox = lumpedDiss
     viscApprox = lumpedDiss
-    updateDt = .False.
+    updateIntermed = .False.
     storeWall = .True.
     blockettes: if (useBlockettes) then
-       call blocketteResCore(dissApprox, viscApprox, updateDt, flowRes, turbRes, storeWall)
+       call blocketteResCore(dissApprox, viscApprox, updateIntermed, flowRes, turbRes, storeWall)
     else
-       call blockResCore(dissApprox, viscApprox, updateDt, flowRes, turbRes, storeWall, nn, sps)
+       call blockResCore(dissApprox, viscApprox, updateIntermed, flowRes, turbRes, storeWall, nn, sps)
     end if blockettes
     do iRegion=1, nActuatorRegions
        call sourceTerms_block(nn, .True., iRegion, pLocal)

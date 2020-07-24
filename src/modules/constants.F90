@@ -5,11 +5,8 @@ module constants
 
   use precision
 #ifndef USE_TAPENADE
-#include <petscversion.h>
-#if PETSC_VERSION_GE(3,8,0)
 #include <petsc/finclude/petsc.h>
   use petsc
-#endif
 #endif
   implicit none
   save
@@ -204,7 +201,7 @@ module constants
        nlLusgsLine = 4
 
   integer(kind=intType), parameter :: &
-       segregated = 1,   &
+       decoupled  = 1,   &
        coupled    = 2
   integer(kind=intType), parameter :: &
        gmres = 1,        &
