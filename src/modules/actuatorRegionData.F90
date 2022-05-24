@@ -18,7 +18,7 @@ module actuatorRegionData
 
      ! the force vector to be applied on this region
      ! this is equal to torque * axisVec
-     real(kind=realType) :: force(3)
+     real(kind=realType) :: F(3)
 
      ! thrust is the total thrust magnitude to be applied on this region
      real(kind=realType) :: thrust

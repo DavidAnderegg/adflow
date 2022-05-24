@@ -343,18 +343,11 @@ contains
   end subroutine residual_block
 !  differentiation of sourceterms_block in forward (tangent) mode (with options i4 dr8 r8):
 !   variations   of useful results: *dw plocal
-<<<<<<< HEAD
-!   with respect to varying inputs: uref pref *dw *w actuatorregions.force
-!                actuatorregions.heat plocal
-!   rw status of diff variables: uref:in pref:in *dw:in-out *w:in
-!                actuatorregions.force:in actuatorregions.heat:in
-=======
 !   with respect to varying inputs: uref pref *dw *w actuatorregions.f
-!                actuatorregions.thrust plocal
+!                actuatorregions.thrust actuatorregions.heat plocal
 !   rw status of diff variables: uref:in pref:in *dw:in-out *w:in
 !                actuatorregions.f:in actuatorregions.thrust:in
->>>>>>> adflow_private/simple_prop
-!                plocal:in-out
+!                actuatorregions.heat:in plocal:in-out
 !   plus diff mem management of: dw:in w:in
   subroutine sourceterms_block_d(nn, res, iregion, plocal, plocald)
 ! apply the source terms for the given block. assume that the
@@ -374,9 +367,9 @@ contains
 ! working
     integer(kind=inttype) :: i, j, k, ii, istart, iend
     real(kind=realtype) :: ftmp(3), vx, vy, vz, f_fact(3), q_fact, qtmp&
-&   , redim, factor, ostart, oend
-    real(kind=realtype) :: ftmpd(3), vxd, vyd, vzd, f_factd(3), q_factd&
-&   , qtmpd, redimd
+&   , redim, factor, ostart, oend, fact
+    real(kind=realtype) :: ftmpd(3), vxd, vyd, vzd, q_factd, qtmpd, &
+&   redimd, factd
     redimd = prefd*uref + pref*urefd
     redim = pref*uref
 ! compute the relaxation factor based on the ordersconverged
@@ -395,29 +388,22 @@ contains
 ! if using the uniform force distribution
     if (actuatorregions(iregion)%acttype .eq. 'uniform') then
 ! compute the constant force factor
-<<<<<<< HEAD
-    f_factd = (factor*actuatorregionsd(iregion)%force*pref/&
-&     actuatorregions(iregion)%volume-factor*actuatorregions(iregion)%&
-&     force*prefd/actuatorregions(iregion)%volume)/pref**2
-    f_fact = factor*actuatorregions(iregion)%force/actuatorregions(&
-&     iregion)%volume/pref
-! heat factor. this is heat added per unit volume per unit time
-    q_factd = (factor*actuatorregionsd(iregion)%heat*pref*uref*lref**2/&
-&     actuatorregions(iregion)%volume-factor*actuatorregions(iregion)%&
-&     heat*lref**2*(prefd*uref+pref*urefd)/actuatorregions(iregion)%&
-&     volume)/(pref*uref*lref*lref)**2
-    q_fact = factor*actuatorregions(iregion)%heat/actuatorregions(&
-&     iregion)%volume/(pref*uref*lref*lref)
-=======
       factd = (factor*actuatorregionsd(iregion)%f*pref/actuatorregions(&
 &       iregion)%volume-factor*actuatorregions(iregion)%f*prefd/&
 &       actuatorregions(iregion)%volume)/pref**2
       fact = factor*actuatorregions(iregion)%f/actuatorregions(iregion)%&
 &       volume/pref
+! heat factor. this is heat added per unit volume per unit time
+      q_factd = (factor*actuatorregionsd(iregion)%heat*pref*uref*lref**2&
+&       /actuatorregions(iregion)%volume-factor*actuatorregions(iregion)&
+&       %heat*lref**2*(prefd*uref+pref*urefd)/actuatorregions(iregion)%&
+&       volume)/(pref*uref*lref*lref)**2
+      q_fact = factor*actuatorregions(iregion)%heat/actuatorregions(&
+&       iregion)%volume/(pref*uref*lref*lref)
     else
+      q_factd = 0.0_8
       factd = 0.0_8
     end if
->>>>>>> adflow_private/simple_prop
 ! loop over the ranges for this block
     istart = actuatorregions(iregion)%blkptr(nn-1) + 1
     iend = actuatorregions(iregion)%blkptr(nn)
@@ -429,20 +415,6 @@ contains
         j = actuatorregions(iregion)%cellids(2, ii)
         k = actuatorregions(iregion)%cellids(3, ii)
 ! this actually gets the force
-<<<<<<< HEAD
-      ftmpd = volref(i, j, k)*f_factd
-      ftmp = volref(i, j, k)*f_fact
-      vxd = wd(i, j, k, ivx)
-      vx = w(i, j, k, ivx)
-      vyd = wd(i, j, k, ivy)
-      vy = w(i, j, k, ivy)
-      vzd = wd(i, j, k, ivz)
-      vz = w(i, j, k, ivz)
-! this gets the heat addition rate
-      qtmpd = volref(i, j, k)*q_factd
-      qtmp = volref(i, j, k)*q_fact
-      if (res) then
-=======
         ftmpd = volref(i, j, k)*factd
         ftmp = volref(i, j, k)*fact
         vxd = wd(i, j, k, ivx)
@@ -451,27 +423,20 @@ contains
         vy = w(i, j, k, ivy)
         vzd = wd(i, j, k, ivz)
         vz = w(i, j, k, ivz)
+! this gets the heat addition rate
+        qtmpd = volref(i, j, k)*q_factd
+        qtmp = volref(i, j, k)*q_fact
         if (res) then
->>>>>>> adflow_private/simple_prop
 ! momentum residuals
           dwd(i, j, k, imx:imz) = dwd(i, j, k, imx:imz) - ftmpd
           dw(i, j, k, imx:imz) = dw(i, j, k, imx:imz) - ftmp
 ! energy residuals
-<<<<<<< HEAD
-        dwd(i, j, k, irhoe) = dwd(i, j, k, irhoe) - ftmpd(1)*vx - ftmp(1&
-&         )*vxd - ftmpd(2)*vy - ftmp(2)*vyd - ftmpd(3)*vz - ftmp(3)*vzd &
-&         - qtmpd
-        dw(i, j, k, irhoe) = dw(i, j, k, irhoe) - ftmp(1)*vx - ftmp(2)*&
-&         vy - ftmp(3)*vz - qtmp
-      else
-=======
           dwd(i, j, k, irhoe) = dwd(i, j, k, irhoe) - ftmpd(1)*vx - ftmp&
 &           (1)*vxd - ftmpd(2)*vy - ftmp(2)*vyd - ftmpd(3)*vz - ftmp(3)*&
-&           vzd
+&           vzd - qtmpd
           dw(i, j, k, irhoe) = dw(i, j, k, irhoe) - ftmp(1)*vx - ftmp(2)&
-&           *vy - ftmp(3)*vz
+&           *vy - ftmp(3)*vz - qtmp
         else
->>>>>>> adflow_private/simple_prop
 ! add in the local power contribution:
           plocald = plocald + (vxd*ftmp(1)+vx*ftmpd(1)+vyd*ftmp(2)+vy*&
 &           ftmpd(2)+vzd*ftmp(3)+vz*ftmpd(3))*redim + (vx*ftmp(1)+vy*&
@@ -542,7 +507,7 @@ contains
 ! working
     integer(kind=inttype) :: i, j, k, ii, istart, iend
     real(kind=realtype) :: ftmp(3), vx, vy, vz, f_fact(3), q_fact, qtmp&
-&   , redim, factor, ostart, oend
+&   , redim, factor, ostart, oend, fact
     redim = pref*uref
 ! compute the relaxation factor based on the ordersconverged
 ! how far we are into the ramp:
@@ -558,17 +523,14 @@ contains
       factor = (ordersconverged-ostart)/(oend-ostart)
     end if
 ! if using the uniform force distribution
-    if (actuatorregions(iregion)%acttype .eq. 'uniform') fact = factor*&
-&       actuatorregions(iregion)%f/actuatorregions(iregion)%volume/pref
+    if (actuatorregions(iregion)%acttype .eq. 'uniform') then
 ! compute the constant force factor
-<<<<<<< HEAD
-    f_fact = factor*actuatorregions(iregion)%force/actuatorregions(&
-&     iregion)%volume/pref
+      fact = factor*actuatorregions(iregion)%f/actuatorregions(iregion)%&
+&       volume/pref
 ! heat factor. this is heat added per unit volume per unit time
-    q_fact = factor*actuatorregions(iregion)%heat/actuatorregions(&
-&     iregion)%volume/(pref*uref*lref*lref)
-=======
->>>>>>> adflow_private/simple_prop
+      q_fact = factor*actuatorregions(iregion)%heat/actuatorregions(&
+&       iregion)%volume/(pref*uref*lref*lref)
+    end if
 ! loop over the ranges for this block
     istart = actuatorregions(iregion)%blkptr(nn-1) + 1
     iend = actuatorregions(iregion)%blkptr(nn)
@@ -580,33 +542,19 @@ contains
         j = actuatorregions(iregion)%cellids(2, ii)
         k = actuatorregions(iregion)%cellids(3, ii)
 ! this actually gets the force
-<<<<<<< HEAD
-      ftmp = volref(i, j, k)*f_fact
-      vx = w(i, j, k, ivx)
-      vy = w(i, j, k, ivy)
-      vz = w(i, j, k, ivz)
-! this gets the heat addition rate
-      qtmp = volref(i, j, k)*q_fact
-      if (res) then
-=======
         ftmp = volref(i, j, k)*fact
         vx = w(i, j, k, ivx)
         vy = w(i, j, k, ivy)
         vz = w(i, j, k, ivz)
+! this gets the heat addition rate
+        qtmp = volref(i, j, k)*q_fact
         if (res) then
->>>>>>> adflow_private/simple_prop
 ! momentum residuals
           dw(i, j, k, imx:imz) = dw(i, j, k, imx:imz) - ftmp
 ! energy residuals
-<<<<<<< HEAD
-        dw(i, j, k, irhoe) = dw(i, j, k, irhoe) - ftmp(1)*vx - ftmp(2)*&
-&         vy - ftmp(3)*vz - qtmp
-      else
-=======
           dw(i, j, k, irhoe) = dw(i, j, k, irhoe) - ftmp(1)*vx - ftmp(2)&
-&           *vy - ftmp(3)*vz
+&           *vy - ftmp(3)*vz - qtmp
         else
->>>>>>> adflow_private/simple_prop
 ! add in the local power contribution:
           plocal = plocal + (vx*ftmp(1)+vy*ftmp(2)+vz*ftmp(3))*redim
         end if

@@ -359,7 +359,7 @@ contains
 ! working
     integer(kind=inttype) :: i, j, k, ii, istart, iend
     real(kind=realtype) :: ftmp(3), vx, vy, vz, f_fact(3), q_fact, qtmp&
-&   , redim, factor, ostart, oend
+&   , redim, factor, ostart, oend, fact
     real(kind=realtype) :: vxd, vyd, vzd
     integer :: branch
 ! compute the relaxation factor based on the ordersconverged
@@ -379,12 +379,7 @@ contains
     if (actuatorregions(iregion)%acttype .eq. 'uniform') fact = factor*&
 &       actuatorregions(iregion)%f/actuatorregions(iregion)%volume/pref
 ! compute the constant force factor
-<<<<<<< HEAD
-    f_fact = factor*actuatorregions(iregion)%force/actuatorregions(&
-&     iregion)%volume/pref
 ! heat factor. this is heat added per unit volume per unit time
-=======
->>>>>>> adflow_private/simple_prop
 ! loop over the ranges for this block
     istart = actuatorregions(iregion)%blkptr(nn-1) + 1
     iend = actuatorregions(iregion)%blkptr(nn)
@@ -430,24 +425,8 @@ branch = myIntStack(myIntPtr)
         j = actuatorregions(iregion)%cellids(2, ii)
         k = actuatorregions(iregion)%cellids(3, ii)
 ! this actually gets the force
-<<<<<<< HEAD
-      ftmp = volref(i, j, k)*f_fact
-! this gets the heat addition rate
-      if (res) then
-        vxd = -(ftmp(1)*dwd(i, j, k, irhoe))
-        vyd = -(ftmp(2)*dwd(i, j, k, irhoe))
-        vzd = -(ftmp(3)*dwd(i, j, k, irhoe))
-      else
-        vxd = 0.0_8
-        vyd = 0.0_8
-        vzd = 0.0_8
-      end if
-      wd(i, j, k, ivz) = wd(i, j, k, ivz) + vzd
-      wd(i, j, k, ivy) = wd(i, j, k, ivy) + vyd
-      wd(i, j, k, ivx) = wd(i, j, k, ivx) + vxd
-    end do
-=======
         ftmp = volref(i, j, k)*fact
+! this gets the heat addition rate
         if (res) then
           vxd = -(ftmp(1)*dwd(i, j, k, irhoe))
           vyd = -(ftmp(2)*dwd(i, j, k, irhoe))
@@ -462,7 +441,6 @@ branch = myIntStack(myIntPtr)
         wd(i, j, k, ivx) = wd(i, j, k, ivx) + vxd
       end do
     end if
->>>>>>> adflow_private/simple_prop
   end subroutine sourceterms_block_fast_b
   subroutine sourceterms_block(nn, res, iregion, plocal)
 ! apply the source terms for the given block. assume that the
@@ -481,7 +459,7 @@ branch = myIntStack(myIntPtr)
 ! working
     integer(kind=inttype) :: i, j, k, ii, istart, iend
     real(kind=realtype) :: ftmp(3), vx, vy, vz, f_fact(3), q_fact, qtmp&
-&   , redim, factor, ostart, oend
+&   , redim, factor, ostart, oend, fact
     redim = pref*uref
 ! compute the relaxation factor based on the ordersconverged
 ! how far we are into the ramp:
@@ -497,17 +475,14 @@ branch = myIntStack(myIntPtr)
       factor = (ordersconverged-ostart)/(oend-ostart)
     end if
 ! if using the uniform force distribution
-    if (actuatorregions(iregion)%acttype .eq. 'uniform') fact = factor*&
-&       actuatorregions(iregion)%f/actuatorregions(iregion)%volume/pref
+    if (actuatorregions(iregion)%acttype .eq. 'uniform') then
 ! compute the constant force factor
-<<<<<<< HEAD
-    f_fact = factor*actuatorregions(iregion)%force/actuatorregions(&
-&     iregion)%volume/pref
+      fact = factor*actuatorregions(iregion)%f/actuatorregions(iregion)%&
+&       volume/pref
 ! heat factor. this is heat added per unit volume per unit time
-    q_fact = factor*actuatorregions(iregion)%heat/actuatorregions(&
-&     iregion)%volume/(pref*uref*lref*lref)
-=======
->>>>>>> adflow_private/simple_prop
+      q_fact = factor*actuatorregions(iregion)%heat/actuatorregions(&
+&       iregion)%volume/(pref*uref*lref*lref)
+    end if
 ! loop over the ranges for this block
     istart = actuatorregions(iregion)%blkptr(nn-1) + 1
     iend = actuatorregions(iregion)%blkptr(nn)
@@ -519,33 +494,19 @@ branch = myIntStack(myIntPtr)
         j = actuatorregions(iregion)%cellids(2, ii)
         k = actuatorregions(iregion)%cellids(3, ii)
 ! this actually gets the force
-<<<<<<< HEAD
-      ftmp = volref(i, j, k)*f_fact
-      vx = w(i, j, k, ivx)
-      vy = w(i, j, k, ivy)
-      vz = w(i, j, k, ivz)
-! this gets the heat addition rate
-      qtmp = volref(i, j, k)*q_fact
-      if (res) then
-=======
         ftmp = volref(i, j, k)*fact
         vx = w(i, j, k, ivx)
         vy = w(i, j, k, ivy)
         vz = w(i, j, k, ivz)
+! this gets the heat addition rate
+        qtmp = volref(i, j, k)*q_fact
         if (res) then
->>>>>>> adflow_private/simple_prop
 ! momentum residuals
           dw(i, j, k, imx:imz) = dw(i, j, k, imx:imz) - ftmp
 ! energy residuals
-<<<<<<< HEAD
-        dw(i, j, k, irhoe) = dw(i, j, k, irhoe) - ftmp(1)*vx - ftmp(2)*&
-&         vy - ftmp(3)*vz - qtmp
-      else
-=======
           dw(i, j, k, irhoe) = dw(i, j, k, irhoe) - ftmp(1)*vx - ftmp(2)&
-&           *vy - ftmp(3)*vz
+&           *vy - ftmp(3)*vz - qtmp
         else
->>>>>>> adflow_private/simple_prop
 ! add in the local power contribution:
           plocal = plocal + (vx*ftmp(1)+vy*ftmp(2)+vz*ftmp(3))*redim
         end if
