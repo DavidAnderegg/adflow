@@ -385,26 +385,21 @@ contains
 
     ! If using the uniform force distribution
     if (actuatorRegions(iRegion)%actType == 'uniform') then
+
     ! Compute the constant force factor
-<<<<<<< HEAD
-    F_fact = factor*actuatorRegions(iRegion)%force / actuatorRegions(iRegion)%volume / pRef
+    Fact = factor*actuatorRegions(iRegion)%F / actuatorRegions(iRegion)%volume / pRef
 
     ! Heat factor. This is heat added per unit volume per unit time
     Q_fact = factor * actuatorRegions(iRegion)%heat / actuatorRegions(iRegion)%volume / (pRef * uRef * LRef * LRef)
-=======
-    Fact = factor*actuatorRegions(iRegion)%F / actuatorRegions(iRegion)%volume / pRef
+
     end if
->>>>>>> adflow_private/simple_prop
 
     ! Loop over the ranges for this block
     iStart = actuatorRegions(iRegion)%blkPtr(nn-1) + 1
     iEnd =  actuatorRegions(iRegion)%blkPtr(nn)
 
-<<<<<<< HEAD
-=======
     ! If using the uniform force distribution
     if (actuatorRegions(iRegion)%actType == 'uniform') then
->>>>>>> adflow_private/simple_prop
     !$AD II-LOOP
     do ii=iStart, iEnd
 
@@ -414,13 +409,8 @@ contains
        k = actuatorRegions(iRegion)%cellIDs(3, ii)
 
        ! This actually gets the force
-<<<<<<< HEAD
-       FTmp = volRef(i, j, k) * F_fact
-
-=======
        FTmp = volRef(i, j, k) * Fact
        
->>>>>>> adflow_private/simple_prop
        Vx = w(i, j, k, iVx)
        Vy = w(i, j, k, iVy)
        Vz = w(i, j, k, iVz)

@@ -1054,15 +1054,10 @@ contains
 
     ! And the reverse seeds in the actuator zones
     do i=1, nActuatorRegions
-<<<<<<< HEAD
-       actuatorRegionsd(i)%force = zero
-       actuatorRegionsd(i)%torque = zero
-       actuatorRegionsd(i)%heat = zero
-=======
        actuatorRegionsd(i)%F = zero
        actuatorRegionsd(i)%T = zero
+       actuatorRegionsd(i)%heat = zero
        actuatorRegionsd(i)%thrust = zero
->>>>>>> adflow_private/simple_prop
     end do
 
   end subroutine zeroADSeeds

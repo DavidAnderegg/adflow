@@ -20,18 +20,12 @@ module actuatorRegionData
      ! this is equal to torque * axisVec
      real(kind=realType) :: force(3)
 
-<<<<<<< HEAD
-     ! magnitude of the total torque to be applied on this region
-     real(kind=realType) :: torque
-     ! vector that determines the direction of the applied torque
-     real(kind=realType), dimension(3) :: axisVec
-
+     ! thrust is the total thrust magnitude to be applied on this region
+     real(kind=realType) :: thrust
+     
      ! total heat flux to be added on this regoin
      real(kind=realType) :: heat
 
-=======
-     ! thrust is the total thrust magnitude to be applied on this region
-     real(kind=realType) :: thrust
      real(kind=realType) :: swirlFact
      real(kind=realType) :: mDistribParam
      real(kind=realType) :: nDistribParam
@@ -45,7 +39,6 @@ module actuatorRegionData
      real(kind=realType), dimension(3) :: axisVec
      real(kind=realType), dimension(:, :), pointer :: thrustVec
      real(kind=realType), dimension(:, :), pointer :: swirlVec
->>>>>>> adflow_private/simple_prop
      ! Volume is the total integrated volume of all cells (on all
      ! procs) included in this region
      real(kind=realType) :: volume

@@ -624,53 +624,8 @@ class ADFLOW(AeroSolver):
         pts, conn = self._readPlot3DSurfFile(fileName)
         self.adflow.usersurfaceintegrations.addintegrationsurface(pts.T, conn.T, familyName, famID, isInflow)
 
-<<<<<<< HEAD
-    def addActuatorRegion(
-        self, fileName, axis1, axis2, familyName, thrust=0.0, torque=0.0, heat=0.0, relaxStart=None, relaxEnd=None
-    ):
-        """
-        Add an actuator disk zone defined by the supplied closed
-        surface in the plot3d file "fileName". This surface defines the
-        physical extent of the region over which to apply the source terms.
-        Internally, we find all of the CFD volume cells that are inside
-        this closed surface and apply the source terms over these cells.
-        This surface is only used with the original mesh coordinates to
-        mark the internal CFD cells, and we keep using these cells even
-        if the geometric design and the mesh coordinates change. For
-        example, the marked cells can lie outside of the original
-        closed surface after a large design change, but we will still
-        use the cells that were inside the surface with the baseline design.
-
-        axis1 and axis2 define the vector that we use to determine the
-        direction of the thrust addition. Internally, we compute a
-        vector by $axisVec = axis2-axis1$ and then we normalize this
-        vector. When adding the thrust terms, the direction of the thrust
-        is obtained by multiplying the thrust magnitude by this vector.
-
-        Optionally, the source terms in the actuator zone can be
-        gradually ramped up as the solution converges. This continuation
-        approach can be more robust but the users should be careful with
-        the side effects of partially converged solutions. This behavior
-        can be controlled by relaxStart and relaxEnd parameters. By
-        default, the full magnitude of the source terms are added.
-        relaxStart controls when the continuation starts ramping up.
-        The value represents the relative convergence in a log10 basis.
-        So relaxStart = 2 means the source terms will be inactive until
-        the residual is decreased by a factor of 100 compared to free
-        stream conditions. The source terms are ramped to the full
-        magnitude at relaxEnd. E.g., a relaxEnd value of 4 would
-        result in the full source terms after a relative reduction of
-        1e4 in the total residuals. If relaxStart is not provided, but
-        relaxEnd is provided, then the relaxStart is assumed to be 0.
-        If both are not provided, we do not do ramping and just activate
-        the full source terms from the beginning. When this continuation
-        is used, we internally ramp up the magnitude of the source terms
-        monotonically to prevent oscillations; i.e., decrease in the total
-        residuals increase the source term magnitudes, but an increase
-        in the residuals do not reduce the source terms back down.
-=======
     def addActuatorRegion(self, fileName, actType, axis1, axis2, familyName,
-                          thrust=0.0, torque=0.0, swirlFact=0.0,
+                          thrust=0.0, torque=0.0, heat=0.0, swirlFact=0.0,
                           mDistribParam=1.0, nDistribParam=0.5,
                           distribPDfactor=0.5, innerZeroThrustRadius=0.0,
                           propRadius=0.1, spinnerRadius=0.0,
@@ -691,7 +646,6 @@ class ADFLOW(AeroSolver):
         See "RANS-based aerodynamic shape optimization of a wing considering
         propeller-wing interaction" by Chauhan and Martins [AIAA SciTech 2020]
         for more. This applies axis-symmetric (but radially varying) forces.
->>>>>>> adflow_private/simple_prop
 
         Parameters
         ----------
@@ -718,17 +672,11 @@ class ADFLOW(AeroSolver):
         familyName : str
            The name to be associated with the functions defined on this region.
 
-<<<<<<< HEAD
-        thrust : scalar, float
-           The total amount of axial force to apply to this region, in the direction
-           of axis1 -> axis2
-=======
         thrust : scalar
            The total magnitude of the (axial) thrust to apply to the region,
            in the direction of axis1 -> axis2. (This does not include the forces
            applied inside the innerZeroThrustRadius for the propeller model.
            See below for a description of innerZeroThrustRadius.)
->>>>>>> adflow_private/simple_prop
 
         torque : scalar, float
            The total amount of torque to apply to the region, about the
@@ -829,9 +777,9 @@ class ADFLOW(AeroSolver):
         #  Now continue to fortran were we setup the actual
         #  region.
         self.adflow.actuatorregion.addactuatorregion(
-<<<<<<< HEAD
-            pts.T, conn.T, axis1, axis2, familyName, famID, thrust, torque, heat, relaxStart, relaxEnd
-        )
+            pts.T, conn.T, actType, axis1, axis2, familyName, famID, thrust, torque, heat, swirlFact,
+            mDistribParam, nDistribParam, distribPDfactor, innerZeroThrustRadius,
+            propRadius, spinnerRadius, rootDragFactor, relaxStart, relaxEnd)
 
     def writeActuatorRegions(self, fileName, outputDir=None):
         """
@@ -859,15 +807,6 @@ class ADFLOW(AeroSolver):
         # Ensure extension is .plt even if the user didn't specify
         fileName, ext = os.path.splitext(fileName)
         fileName += ".plt"
-=======
-            pts.T, conn.T, actType, axis1, axis2, familyName, famID, thrust, torque, swirlFact,
-            mDistribParam, nDistribParam, distribPDfactor, innerZeroThrustRadius,
-            propRadius, spinnerRadius, rootDragFactor, relaxStart, relaxEnd)
-        
-    def writeActuatorRegions(self, fileName):
-            self.adflow.actuatorregion.writeactuatorregions(
-                fileName)
->>>>>>> adflow_private/simple_prop
 
         # just call the underlying fortran routine
         self.adflow.actuatorregion.writeactuatorregions(fileName)

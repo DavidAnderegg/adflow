@@ -6,14 +6,9 @@ module actuatorRegion
   implicit none
 
 contains
-<<<<<<< HEAD
-  subroutine addActuatorRegion(pts, conn, axis1, axis2, famName, famID, &
-       thrust, torque, heat, relaxStart, relaxEnd, nPts, nConn)
-=======
   subroutine addActuatorRegion(pts, conn, actType, axis1, axis2, famName, famID, &
-       thrust, torque, swirlFact, mDistribParam, nDistribParam, &
+       thrust, torque, heat, swirlFact, mDistribParam, nDistribParam, &
        distribPDfactor, innerZeroThrustRadius, propRadius, spinnerRadius, rootDragFactor, relaxStart, relaxEnd, nPts, nConn)
->>>>>>> adflow_private/simple_prop
     ! Add a user-supplied integration surface.
 
     use communication, only : myID, adflow_comm_world
@@ -32,15 +27,10 @@ contains
     integer(kind=intType), dimension(4, nConn), intent(in), target :: conn
     integer(kind=intType), intent(in) :: nPts, nConn, famID
     real(kind=realType), intent(in), dimension(3) :: axis1, axis2
-<<<<<<< HEAD
-    character(len=*) :: famName
-    real(kind=realType) :: thrust, torque, heat, relaxStart, relaxEnd
-=======
     character(len=*) :: famName, actType
-    real(kind=realType) :: thrust, torque, relaxStart, relaxEnd, swirlFact
+    real(kind=realType) :: thrust, torque, heat, relaxStart, relaxEnd, swirlFact
     real(kind=realType) :: mDistribParam, nDistribParam
     real(kind=realType) :: distribPDfactor, innerZeroThrustRadius, propRadius, spinnerRadius, rootDragFactor
->>>>>>> adflow_private/simple_prop
 
     ! Working variables
     integer(kind=intType) :: i, j, k, nn, iDim, cellID, intInfo(3), sps, level, iii, ierr
@@ -91,13 +81,8 @@ contains
 
     axisVec = axisVec / axisVecNorm
 
-<<<<<<< HEAD
-    region%force = axisVec*thrust
-    region%axisVec = axisVec
-=======
     region%F = axisVec*thrust
     region%thrust = thrust
->>>>>>> adflow_private/simple_prop
 
     allocate(region%blkPtr(0:nDom))
     region%blkPtr(0) = 0
