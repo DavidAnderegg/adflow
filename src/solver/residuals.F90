@@ -383,16 +383,28 @@ contains
        factor = (ordersConverged - oStart)/(oEnd - oStart)
     end if
 
+    ! If using the uniform force distribution
+    if (actuatorRegions(iRegion)%actType == 'uniform') then
     ! Compute the constant force factor
+<<<<<<< HEAD
     F_fact = factor*actuatorRegions(iRegion)%force / actuatorRegions(iRegion)%volume / pRef
 
     ! Heat factor. This is heat added per unit volume per unit time
     Q_fact = factor * actuatorRegions(iRegion)%heat / actuatorRegions(iRegion)%volume / (pRef * uRef * LRef * LRef)
+=======
+    Fact = factor*actuatorRegions(iRegion)%F / actuatorRegions(iRegion)%volume / pRef
+    end if
+>>>>>>> adflow_private/simple_prop
 
     ! Loop over the ranges for this block
     iStart = actuatorRegions(iRegion)%blkPtr(nn-1) + 1
     iEnd =  actuatorRegions(iRegion)%blkPtr(nn)
 
+<<<<<<< HEAD
+=======
+    ! If using the uniform force distribution
+    if (actuatorRegions(iRegion)%actType == 'uniform') then
+>>>>>>> adflow_private/simple_prop
     !$AD II-LOOP
     do ii=iStart, iEnd
 
@@ -402,8 +414,13 @@ contains
        k = actuatorRegions(iRegion)%cellIDs(3, ii)
 
        ! This actually gets the force
+<<<<<<< HEAD
        FTmp = volRef(i, j, k) * F_fact
 
+=======
+       FTmp = volRef(i, j, k) * Fact
+       
+>>>>>>> adflow_private/simple_prop
        Vx = w(i, j, k, iVx)
        Vy = w(i, j, k, iVy)
        Vz = w(i, j, k, iVz)
@@ -420,9 +437,41 @@ contains
                Ftmp(1)*Vx - Ftmp(2)*Vy - Ftmp(3)*Vz - Qtmp
        else
           ! Add in the local power contribution:
-          pLocal = pLocal + (Vx*Ftmp(1) + Vy*FTmp(2) + Vz*Ftmp(3))*reDim
+          pLocal = pLocal + (Vx*Ftmp(1) + Vy*Ftmp(2) + Vz*Ftmp(3))*reDim
        end if
     end do
+    end if
+
+    ! If using the simple propeller force distribution
+    if (actuatorRegions(iRegion)%actType == 'simpleProp') then
+    !$AD II-LOOP
+    do ii=iStart, iEnd
+       
+       ! Extract the cell ID.
+       i = actuatorRegions(iRegion)%cellIDs(1, ii)
+       j = actuatorRegions(iRegion)%cellIDs(2, ii)
+       k = actuatorRegions(iRegion)%cellIDs(3, ii)
+
+      Ftmp = factor * actuatorRegions(iRegion)%thrustVec(:, ii) * actuatorRegions(iRegion)%thrust / pRef
+      Ftmp = Ftmp + factor * actuatorRegions(iRegion)%swirlVec(:, ii) * actuatorRegions(iRegion)%thrust / pRef
+
+       Vx = w(i, j, k, iVx)
+       Vy = w(i, j, k, iVy)
+       Vz = w(i, j, k, iVz)
+       
+       if (res) then
+          ! Momentum residuals
+          dw(i, j, k, imx:imz) = dw(i, j, k, imx:imz) - Ftmp
+          
+          ! energy residuals
+          dw(i, j, k, iRhoE) = dw(i, j, k, iRhoE)  - &
+               Ftmp(1)*Vx - Ftmp(2)*Vy - Ftmp(3)*Vz
+       else
+          ! Add in the local power contribution:
+          pLocal = pLocal + (Vx*Ftmp(1) + Vy*Ftmp(2) + Vz*Ftmp(3))*reDim
+       end if
+    end do
+    end if
 
   end subroutine sourceTerms_block
 
