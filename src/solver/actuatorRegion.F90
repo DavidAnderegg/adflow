@@ -80,8 +80,9 @@ contains
     end if
 
     axisVec = axisVec / axisVecNorm
-
+      
     region%force = axisVec*thrust
+    region%axisVec = axisVec
     region%thrust = thrust
 
     allocate(region%blkPtr(0:nDom))
