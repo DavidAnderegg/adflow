@@ -343,10 +343,10 @@ contains
   end subroutine residual_block
 !  differentiation of sourceterms_block in forward (tangent) mode (with options i4 dr8 r8):
 !   variations   of useful results: *dw plocal
-!   with respect to varying inputs: uref pref *dw *w actuatorregions.f
+!   with respect to varying inputs: uref pref *dw *w actuatorregions.force
 !                actuatorregions.thrust actuatorregions.heat plocal
 !   rw status of diff variables: uref:in pref:in *dw:in-out *w:in
-!                actuatorregions.f:in actuatorregions.thrust:in
+!                actuatorregions.force:in actuatorregions.thrust:in
 !                actuatorregions.heat:in plocal:in-out
 !   plus diff mem management of: dw:in w:in
   subroutine sourceterms_block_d(nn, res, iregion, plocal, plocald)
@@ -367,9 +367,9 @@ contains
 ! working
     integer(kind=inttype) :: i, j, k, ii, istart, iend
     real(kind=realtype) :: ftmp(3), vx, vy, vz, f_fact(3), q_fact, qtmp&
-&   , redim, factor, ostart, oend, fact
-    real(kind=realtype) :: ftmpd(3), vxd, vyd, vzd, q_factd, qtmpd, &
-&   redimd, factd
+&   , redim, factor, ostart, oend
+    real(kind=realtype) :: ftmpd(3), vxd, vyd, vzd, f_factd(3), q_factd&
+&   , qtmpd, redimd
     redimd = prefd*uref + pref*urefd
     redim = pref*uref
 ! compute the relaxation factor based on the ordersconverged
@@ -388,11 +388,11 @@ contains
 ! if using the uniform force distribution
     if (actuatorregions(iregion)%acttype .eq. 'uniform') then
 ! compute the constant force factor
-      factd = (factor*actuatorregionsd(iregion)%f*pref/actuatorregions(&
-&       iregion)%volume-factor*actuatorregions(iregion)%f*prefd/&
-&       actuatorregions(iregion)%volume)/pref**2
-      fact = factor*actuatorregions(iregion)%f/actuatorregions(iregion)%&
-&       volume/pref
+      f_factd = (factor*actuatorregionsd(iregion)%force*pref/&
+&       actuatorregions(iregion)%volume-factor*actuatorregions(iregion)%&
+&       force*prefd/actuatorregions(iregion)%volume)/pref**2
+      f_fact = factor*actuatorregions(iregion)%force/actuatorregions(&
+&       iregion)%volume/pref
 ! heat factor. this is heat added per unit volume per unit time
       q_factd = (factor*actuatorregionsd(iregion)%heat*pref*uref*lref**2&
 &       /actuatorregions(iregion)%volume-factor*actuatorregions(iregion)&
@@ -402,7 +402,7 @@ contains
 &       iregion)%volume/(pref*uref*lref*lref)
     else
       q_factd = 0.0_8
-      factd = 0.0_8
+      f_factd = 0.0_8
     end if
 ! loop over the ranges for this block
     istart = actuatorregions(iregion)%blkptr(nn-1) + 1
@@ -415,8 +415,8 @@ contains
         j = actuatorregions(iregion)%cellids(2, ii)
         k = actuatorregions(iregion)%cellids(3, ii)
 ! this actually gets the force
-        ftmpd = volref(i, j, k)*factd
-        ftmp = volref(i, j, k)*fact
+        ftmpd = volref(i, j, k)*f_factd
+        ftmp = volref(i, j, k)*f_fact
         vxd = wd(i, j, k, ivx)
         vx = w(i, j, k, ivx)
         vyd = wd(i, j, k, ivy)
@@ -507,7 +507,7 @@ contains
 ! working
     integer(kind=inttype) :: i, j, k, ii, istart, iend
     real(kind=realtype) :: ftmp(3), vx, vy, vz, f_fact(3), q_fact, qtmp&
-&   , redim, factor, ostart, oend, fact
+&   , redim, factor, ostart, oend
     redim = pref*uref
 ! compute the relaxation factor based on the ordersconverged
 ! how far we are into the ramp:
@@ -525,8 +525,8 @@ contains
 ! if using the uniform force distribution
     if (actuatorregions(iregion)%acttype .eq. 'uniform') then
 ! compute the constant force factor
-      fact = factor*actuatorregions(iregion)%f/actuatorregions(iregion)%&
-&       volume/pref
+      f_fact = factor*actuatorregions(iregion)%force/actuatorregions(&
+&       iregion)%volume/pref
 ! heat factor. this is heat added per unit volume per unit time
       q_fact = factor*actuatorregions(iregion)%heat/actuatorregions(&
 &       iregion)%volume/(pref*uref*lref*lref)
@@ -542,7 +542,7 @@ contains
         j = actuatorregions(iregion)%cellids(2, ii)
         k = actuatorregions(iregion)%cellids(3, ii)
 ! this actually gets the force
-        ftmp = volref(i, j, k)*fact
+        ftmp = volref(i, j, k)*f_fact
         vx = w(i, j, k, ivx)
         vy = w(i, j, k, ivy)
         vz = w(i, j, k, ivz)

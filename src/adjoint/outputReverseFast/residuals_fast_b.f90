@@ -359,7 +359,7 @@ contains
 ! working
     integer(kind=inttype) :: i, j, k, ii, istart, iend
     real(kind=realtype) :: ftmp(3), vx, vy, vz, f_fact(3), q_fact, qtmp&
-&   , redim, factor, ostart, oend, fact
+&   , redim, factor, ostart, oend
     real(kind=realtype) :: vxd, vyd, vzd
     integer :: branch
 ! compute the relaxation factor based on the ordersconverged
@@ -376,8 +376,9 @@ contains
       factor = (ordersconverged-ostart)/(oend-ostart)
     end if
 ! if using the uniform force distribution
-    if (actuatorregions(iregion)%acttype .eq. 'uniform') fact = factor*&
-&       actuatorregions(iregion)%f/actuatorregions(iregion)%volume/pref
+    if (actuatorregions(iregion)%acttype .eq. 'uniform') f_fact = factor&
+&       *actuatorregions(iregion)%force/actuatorregions(iregion)%volume/&
+&       pref
 ! compute the constant force factor
 ! heat factor. this is heat added per unit volume per unit time
 ! loop over the ranges for this block
@@ -425,7 +426,7 @@ branch = myIntStack(myIntPtr)
         j = actuatorregions(iregion)%cellids(2, ii)
         k = actuatorregions(iregion)%cellids(3, ii)
 ! this actually gets the force
-        ftmp = volref(i, j, k)*fact
+        ftmp = volref(i, j, k)*f_fact
 ! this gets the heat addition rate
         if (res) then
           vxd = -(ftmp(1)*dwd(i, j, k, irhoe))
@@ -459,7 +460,7 @@ branch = myIntStack(myIntPtr)
 ! working
     integer(kind=inttype) :: i, j, k, ii, istart, iend
     real(kind=realtype) :: ftmp(3), vx, vy, vz, f_fact(3), q_fact, qtmp&
-&   , redim, factor, ostart, oend, fact
+&   , redim, factor, ostart, oend
     redim = pref*uref
 ! compute the relaxation factor based on the ordersconverged
 ! how far we are into the ramp:
@@ -477,8 +478,8 @@ branch = myIntStack(myIntPtr)
 ! if using the uniform force distribution
     if (actuatorregions(iregion)%acttype .eq. 'uniform') then
 ! compute the constant force factor
-      fact = factor*actuatorregions(iregion)%f/actuatorregions(iregion)%&
-&       volume/pref
+      f_fact = factor*actuatorregions(iregion)%force/actuatorregions(&
+&       iregion)%volume/pref
 ! heat factor. this is heat added per unit volume per unit time
       q_fact = factor*actuatorregions(iregion)%heat/actuatorregions(&
 &       iregion)%volume/(pref*uref*lref*lref)
@@ -494,7 +495,7 @@ branch = myIntStack(myIntPtr)
         j = actuatorregions(iregion)%cellids(2, ii)
         k = actuatorregions(iregion)%cellids(3, ii)
 ! this actually gets the force
-        ftmp = volref(i, j, k)*fact
+        ftmp = volref(i, j, k)*f_fact
         vx = w(i, j, k, ivx)
         vy = w(i, j, k, ivy)
         vz = w(i, j, k, ivz)

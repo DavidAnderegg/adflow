@@ -338,12 +338,12 @@ contains
     end if
   end subroutine residual_block
 !  differentiation of sourceterms_block in reverse (adjoint) mode (with options i4 dr8 r8 noisize):
-!   gradient     of useful results: uref pref *dw *w actuatorregions.f
+!   gradient     of useful results: uref pref *dw *w actuatorregions.force
 !                actuatorregions.thrust actuatorregions.heat plocal
-!   with respect to varying inputs: uref pref *dw *w actuatorregions.f
+!   with respect to varying inputs: uref pref *dw *w actuatorregions.force
 !                actuatorregions.thrust actuatorregions.heat plocal
 !   rw status of diff variables: uref:incr pref:incr *dw:in-out
-!                *w:incr actuatorregions.f:incr actuatorregions.thrust:incr
+!                *w:incr actuatorregions.force:incr actuatorregions.thrust:incr
 !                actuatorregions.heat:incr plocal:in-out
 !   plus diff mem management of: dw:in w:in
   subroutine sourceterms_block_b(nn, res, iregion, plocal, plocald)
@@ -364,9 +364,9 @@ contains
 ! working
     integer(kind=inttype) :: i, j, k, ii, istart, iend
     real(kind=realtype) :: ftmp(3), vx, vy, vz, f_fact(3), q_fact, qtmp&
-&   , redim, factor, ostart, oend, fact
-    real(kind=realtype) :: ftmpd(3), vxd, vyd, vzd, q_factd, qtmpd, &
-&   redimd, factd
+&   , redim, factor, ostart, oend
+    real(kind=realtype) :: ftmpd(3), vxd, vyd, vzd, f_factd(3), q_factd&
+&   , qtmpd, redimd
     integer :: branch
     real(kind=realtype) :: temp0
     real(kind=realtype) :: tempd
@@ -394,8 +394,8 @@ contains
 ! if using the uniform force distribution
     if (actuatorregions(iregion)%acttype .eq. 'uniform') then
 ! compute the constant force factor
-      fact = factor*actuatorregions(iregion)%f/actuatorregions(iregion)%&
-&       volume/pref
+      f_fact = factor*actuatorregions(iregion)%force/actuatorregions(&
+&       iregion)%volume/pref
 ! heat factor. this is heat added per unit volume per unit time
       call pushcontrol1b(0)
     else
@@ -463,14 +463,14 @@ contains
     call popcontrol1b(branch)
     if (branch .eq. 0) then
       q_factd = 0.0_8
-      factd = 0.0_8
+      f_factd = 0.0_8
       do ii=istart,iend
 ! extract the cell id.
         i = actuatorregions(iregion)%cellids(1, ii)
         j = actuatorregions(iregion)%cellids(2, ii)
         k = actuatorregions(iregion)%cellids(3, ii)
 ! this actually gets the force
-        ftmp = volref(i, j, k)*fact
+        ftmp = volref(i, j, k)*f_fact
         vx = w(i, j, k, ivx)
         vy = w(i, j, k, ivy)
         vz = w(i, j, k, ivz)
@@ -501,25 +501,27 @@ contains
         wd(i, j, k, ivz) = wd(i, j, k, ivz) + vzd
         wd(i, j, k, ivy) = wd(i, j, k, ivy) + vyd
         wd(i, j, k, ivx) = wd(i, j, k, ivx) + vxd
-        factd = factd + volref(i, j, k)*sum(ftmpd)
+        f_factd = f_factd + volref(i, j, k)*ftmpd
       end do
     else
       q_factd = 0.0_8
-      factd = 0.0_8
+      f_factd = 0.0_8
     end if
     call popcontrol1b(branch)
     if (branch .eq. 0) then
-      tempd1 = factor*factd/(actuatorregions(iregion)%volume*pref)
+      tempd1 = factor*f_factd/(actuatorregions(iregion)%volume*pref)
       temp0 = actuatorregions(iregion)%volume*lref**2
       temp = temp0*pref*uref
       tempd = factor*q_factd/temp
       tempd0 = -(actuatorregions(iregion)%heat*temp0*tempd/temp)
       actuatorregionsd(iregion)%heat = actuatorregionsd(iregion)%heat + &
 &       tempd
-      prefd = prefd + sum(-(actuatorregions(iregion)%f/pref))*tempd1 + &
-&       uref*tempd0
+      prefd = prefd + actuatorregions(iregion)%volume*sum(-(&
+&       actuatorregions(iregion)%force*tempd1/(actuatorregions(iregion)%&
+&       volume*pref))) + uref*tempd0
       urefd = urefd + pref*tempd0
-      actuatorregionsd(iregion)%f = actuatorregionsd(iregion)%f + tempd1
+      actuatorregionsd(iregion)%force = actuatorregionsd(iregion)%force &
+&       + tempd1
     end if
     prefd = prefd + uref*redimd
     urefd = urefd + pref*redimd
@@ -541,7 +543,7 @@ contains
 ! working
     integer(kind=inttype) :: i, j, k, ii, istart, iend
     real(kind=realtype) :: ftmp(3), vx, vy, vz, f_fact(3), q_fact, qtmp&
-&   , redim, factor, ostart, oend, fact
+&   , redim, factor, ostart, oend
     redim = pref*uref
 ! compute the relaxation factor based on the ordersconverged
 ! how far we are into the ramp:
@@ -559,8 +561,8 @@ contains
 ! if using the uniform force distribution
     if (actuatorregions(iregion)%acttype .eq. 'uniform') then
 ! compute the constant force factor
-      fact = factor*actuatorregions(iregion)%f/actuatorregions(iregion)%&
-&       volume/pref
+      f_fact = factor*actuatorregions(iregion)%force/actuatorregions(&
+&       iregion)%volume/pref
 ! heat factor. this is heat added per unit volume per unit time
       q_fact = factor*actuatorregions(iregion)%heat/actuatorregions(&
 &       iregion)%volume/(pref*uref*lref*lref)
@@ -576,7 +578,7 @@ contains
         j = actuatorregions(iregion)%cellids(2, ii)
         k = actuatorregions(iregion)%cellids(3, ii)
 ! this actually gets the force
-        ftmp = volref(i, j, k)*fact
+        ftmp = volref(i, j, k)*f_fact
         vx = w(i, j, k, ivx)
         vy = w(i, j, k, ivy)
         vz = w(i, j, k, ivz)

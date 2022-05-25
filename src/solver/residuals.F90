@@ -366,7 +366,7 @@ contains
 
     ! Working
     integer(kind=intType) :: i, j, k, ii, iStart, iEnd
-    real(kind=realType) :: Ftmp(3), Vx, Vy, Vz, F_fact(3), Q_fact, Qtmp, reDim, factor, oStart, oEnd,Fact
+    real(kind=realType) :: Ftmp(3), Vx, Vy, Vz, F_fact(3), Q_fact, Qtmp, reDim, factor, oStart, oEnd
 
     reDim = pRef*uRef
 
@@ -385,13 +385,11 @@ contains
 
     ! If using the uniform force distribution
     if (actuatorRegions(iRegion)%actType == 'uniform') then
-
     ! Compute the constant force factor
-    Fact = factor*actuatorRegions(iRegion)%F / actuatorRegions(iRegion)%volume / pRef
+    F_fact = factor*actuatorRegions(iRegion)%force / actuatorRegions(iRegion)%volume / pRef
 
     ! Heat factor. This is heat added per unit volume per unit time
     Q_fact = factor * actuatorRegions(iRegion)%heat / actuatorRegions(iRegion)%volume / (pRef * uRef * LRef * LRef)
-
     end if
 
     ! Loop over the ranges for this block
@@ -409,14 +407,14 @@ contains
        k = actuatorRegions(iRegion)%cellIDs(3, ii)
 
        ! This actually gets the force
-       FTmp = volRef(i, j, k) * Fact
+       FTmp = volRef(i, j, k) * F_fact
        
        Vx = w(i, j, k, iVx)
        Vy = w(i, j, k, iVy)
        Vz = w(i, j, k, iVz)
 
        ! this gets the heat addition rate
-       QTmp = volRef(i, j, k) * Q_fact
+       Qtmp = volRef(i, j, k) * Q_fact
 
        if (res) then
           ! Momentum residuals

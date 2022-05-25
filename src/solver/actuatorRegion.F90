@@ -6,8 +6,8 @@ module actuatorRegion
   implicit none
 
 contains
-  subroutine addActuatorRegion(pts, conn, actType, axis1, axis2, famName, famID, &
-       thrust, torque, heat, swirlFact, mDistribParam, nDistribParam, &
+  subroutine addActuatorRegion(pts, conn, axis1, axis2, famName, famID, &
+       actType, thrust, torque, heat, swirlFact, mDistribParam, nDistribParam, &
        distribPDfactor, innerZeroThrustRadius, propRadius, spinnerRadius, rootDragFactor, relaxStart, relaxEnd, nPts, nConn)
     ! Add a user-supplied integration surface.
 
@@ -81,7 +81,7 @@ contains
 
     axisVec = axisVec / axisVecNorm
 
-    region%F = axisVec*thrust
+    region%force = axisVec*thrust
     region%thrust = thrust
 
     allocate(region%blkPtr(0:nDom))

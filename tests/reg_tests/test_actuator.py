@@ -93,6 +93,7 @@ class ActuatorBasicTests(reg_test_classes.RegTest):
             np.array([0, 0, 0]),
             np.array([1, 0, 0]),
             "actuator_region",
+            actType = 'uniform',
             # we will set these individually in the tests below
             thrust=0.0,
             torque=0.0,
@@ -603,6 +604,7 @@ class ActuatorCmplxTests(reg_test_classes.CmplxRegTest):
             np.array([0, 0, 0]),
             np.array([1, 0, 0]),
             "actuator_region",
+            actType = 'uniform',
             # we will set these individually in the tests below
             thrust=0.0,
             torque=0.0,

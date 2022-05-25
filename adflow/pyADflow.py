@@ -624,7 +624,7 @@ class ADFLOW(AeroSolver):
         pts, conn = self._readPlot3DSurfFile(fileName)
         self.adflow.usersurfaceintegrations.addintegrationsurface(pts.T, conn.T, familyName, famID, isInflow)
 
-    def addActuatorRegion(self, fileName, actType, axis1, axis2, familyName,
+    def addActuatorRegion(self, fileName, axis1, axis2, familyName, actType = 'uniform',
                           thrust=0.0, torque=0.0, heat=0.0, swirlFact=0.0,
                           mDistribParam=1.0, nDistribParam=0.5,
                           distribPDfactor=0.5, innerZeroThrustRadius=0.0,
@@ -777,7 +777,7 @@ class ADFLOW(AeroSolver):
         #  Now continue to fortran were we setup the actual
         #  region.
         self.adflow.actuatorregion.addactuatorregion(
-            pts.T, conn.T, actType, axis1, axis2, familyName, famID, thrust, torque, heat, swirlFact,
+            pts.T, conn.T, axis1, axis2, familyName, famID,actType, thrust, torque, heat, swirlFact,
             mDistribParam, nDistribParam, distribPDfactor, innerZeroThrustRadius,
             propRadius, spinnerRadius, rootDragFactor, relaxStart, relaxEnd)
 
