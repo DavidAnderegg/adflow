@@ -1057,7 +1057,7 @@ contains
        actuatorRegionsd(i)%force = zero
        actuatorRegionsd(i)%torque = zero
        actuatorRegionsd(i)%heat = zero
-       actuatorRegionsd(i)%thrust = zero
+       !actuatorRegionsd(i)%thrust = zero
     end do
 
   end subroutine zeroADSeeds

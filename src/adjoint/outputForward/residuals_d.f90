@@ -344,10 +344,10 @@ contains
 !  differentiation of sourceterms_block in forward (tangent) mode (with options i4 dr8 r8):
 !   variations   of useful results: *dw plocal
 !   with respect to varying inputs: uref pref *dw *w actuatorregions.force
-!                actuatorregions.thrust actuatorregions.heat plocal
+!                actuatorregions.heat plocal
 !   rw status of diff variables: uref:in pref:in *dw:in-out *w:in
-!                actuatorregions.force:in actuatorregions.thrust:in
-!                actuatorregions.heat:in plocal:in-out
+!                actuatorregions.force:in actuatorregions.heat:in
+!                plocal:in-out
 !   plus diff mem management of: dw:in w:in
   subroutine sourceterms_block_d(nn, res, iregion, plocal, plocald)
 ! apply the source terms for the given block. assume that the
@@ -370,6 +370,11 @@ contains
 &   , redim, factor, ostart, oend
     real(kind=realtype) :: ftmpd(3), vxd, vyd, vzd, f_factd(3), q_factd&
 &   , qtmpd, redimd
+    real(kind=realtype) :: thrustt(3), thrusttnorm
+    real(kind=realtype) :: thrusttd(3), thrusttnormd
+    intrinsic sqrt
+    real(kind=realtype) :: arg1
+    real(kind=realtype) :: arg1d
     redimd = prefd*uref + pref*urefd
     redim = pref*uref
 ! compute the relaxation factor based on the ordersconverged
@@ -393,17 +398,16 @@ contains
 &       force*prefd/actuatorregions(iregion)%volume)/pref**2
       f_fact = factor*actuatorregions(iregion)%force/actuatorregions(&
 &       iregion)%volume/pref
-! heat factor. this is heat added per unit volume per unit time
-      q_factd = (factor*actuatorregionsd(iregion)%heat*pref*uref*lref**2&
-&       /actuatorregions(iregion)%volume-factor*actuatorregions(iregion)&
-&       %heat*lref**2*(prefd*uref+pref*urefd)/actuatorregions(iregion)%&
-&       volume)/(pref*uref*lref*lref)**2
-      q_fact = factor*actuatorregions(iregion)%heat/actuatorregions(&
-&       iregion)%volume/(pref*uref*lref*lref)
     else
-      q_factd = 0.0_8
       f_factd = 0.0_8
     end if
+! heat factor. this is heat added per unit volume per unit time
+    q_factd = (factor*actuatorregionsd(iregion)%heat*pref*uref*lref**2/&
+&     actuatorregions(iregion)%volume-factor*actuatorregions(iregion)%&
+&     heat*lref**2*(prefd*uref+pref*urefd)/actuatorregions(iregion)%&
+&     volume)/(pref*uref*lref*lref)**2
+    q_fact = factor*actuatorregions(iregion)%heat/actuatorregions(&
+&     iregion)%volume/(pref*uref*lref*lref)
 ! loop over the ranges for this block
     istart = actuatorregions(iregion)%blkptr(nn-1) + 1
     iend = actuatorregions(iregion)%blkptr(nn)
@@ -452,18 +456,29 @@ contains
         i = actuatorregions(iregion)%cellids(1, ii)
         j = actuatorregions(iregion)%cellids(2, ii)
         k = actuatorregions(iregion)%cellids(3, ii)
+        thrusttd = actuatorregionsd(iregion)%force
+        thrustt = actuatorregions(iregion)%force
+        arg1d = 2*thrustt(1)*thrusttd(1) + 2*thrustt(2)*thrusttd(2) + 2*&
+&         thrustt(3)*thrusttd(3)
+        arg1 = thrustt(1)**2 + thrustt(2)**2 + thrustt(3)**2
+        if (arg1 .eq. 0.0_8) then
+          thrusttnormd = 0.0_8
+        else
+          thrusttnormd = arg1d/(2.0*sqrt(arg1))
+        end if
+        thrusttnorm = sqrt(arg1)
         ftmpd = (factor*actuatorregions(iregion)%thrustvec(:, ii)*&
-&         actuatorregionsd(iregion)%thrust*pref-factor*actuatorregions(&
-&         iregion)%thrustvec(:, ii)*actuatorregions(iregion)%thrust*&
-&         prefd)/pref**2
+&         thrusttnormd*pref-factor*actuatorregions(iregion)%thrustvec(:&
+&         , ii)*thrusttnorm*prefd)/pref**2
         ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)*&
-&         actuatorregions(iregion)%thrust/pref
+&         thrusttnorm/pref
         ftmpd = ftmpd + (factor*actuatorregions(iregion)%swirlvec(:, ii)&
-&         *actuatorregionsd(iregion)%thrust*pref-factor*actuatorregions(&
-&         iregion)%swirlvec(:, ii)*actuatorregions(iregion)%thrust*prefd&
-&         )/pref**2
+&         *thrusttnormd*pref-factor*actuatorregions(iregion)%swirlvec(:&
+&         , ii)*thrusttnorm*prefd)/pref**2
         ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)*&
-&         actuatorregions(iregion)%thrust/pref
+&         thrusttnorm/pref
+        qtmpd = volref(i, j, k)*q_factd
+        qtmp = volref(i, j, k)*q_fact
         vxd = wd(i, j, k, ivx)
         vx = w(i, j, k, ivx)
         vyd = wd(i, j, k, ivy)
@@ -477,9 +492,9 @@ contains
 ! energy residuals
           dwd(i, j, k, irhoe) = dwd(i, j, k, irhoe) - ftmpd(1)*vx - ftmp&
 &           (1)*vxd - ftmpd(2)*vy - ftmp(2)*vyd - ftmpd(3)*vz - ftmp(3)*&
-&           vzd
+&           vzd - qtmpd
           dw(i, j, k, irhoe) = dw(i, j, k, irhoe) - ftmp(1)*vx - ftmp(2)&
-&           *vy - ftmp(3)*vz
+&           *vy - ftmp(3)*vz - qtmp
         else
 ! add in the local power contribution:
           plocald = plocald + (vxd*ftmp(1)+vx*ftmpd(1)+vyd*ftmp(2)+vy*&
@@ -508,6 +523,9 @@ contains
     integer(kind=inttype) :: i, j, k, ii, istart, iend
     real(kind=realtype) :: ftmp(3), vx, vy, vz, f_fact(3), q_fact, qtmp&
 &   , redim, factor, ostart, oend
+    real(kind=realtype) :: thrustt(3), thrusttnorm
+    intrinsic sqrt
+    real(kind=realtype) :: arg1
     redim = pref*uref
 ! compute the relaxation factor based on the ordersconverged
 ! how far we are into the ramp:
@@ -523,14 +541,13 @@ contains
       factor = (ordersconverged-ostart)/(oend-ostart)
     end if
 ! if using the uniform force distribution
-    if (actuatorregions(iregion)%acttype .eq. 'uniform') then
+    if (actuatorregions(iregion)%acttype .eq. 'uniform') f_fact = factor&
+&       *actuatorregions(iregion)%force/actuatorregions(iregion)%volume/&
+&       pref
 ! compute the constant force factor
-      f_fact = factor*actuatorregions(iregion)%force/actuatorregions(&
-&       iregion)%volume/pref
 ! heat factor. this is heat added per unit volume per unit time
-      q_fact = factor*actuatorregions(iregion)%heat/actuatorregions(&
-&       iregion)%volume/(pref*uref*lref*lref)
-    end if
+    q_fact = factor*actuatorregions(iregion)%heat/actuatorregions(&
+&     iregion)%volume/(pref*uref*lref*lref)
 ! loop over the ranges for this block
     istart = actuatorregions(iregion)%blkptr(nn-1) + 1
     iend = actuatorregions(iregion)%blkptr(nn)
@@ -567,10 +584,14 @@ contains
         i = actuatorregions(iregion)%cellids(1, ii)
         j = actuatorregions(iregion)%cellids(2, ii)
         k = actuatorregions(iregion)%cellids(3, ii)
+        thrustt = actuatorregions(iregion)%force
+        arg1 = thrustt(1)**2 + thrustt(2)**2 + thrustt(3)**2
+        thrusttnorm = sqrt(arg1)
         ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)*&
-&         actuatorregions(iregion)%thrust/pref
+&         thrusttnorm/pref
         ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)*&
-&         actuatorregions(iregion)%thrust/pref
+&         thrusttnorm/pref
+        qtmp = volref(i, j, k)*q_fact
         vx = w(i, j, k, ivx)
         vy = w(i, j, k, ivy)
         vz = w(i, j, k, ivz)
@@ -579,7 +600,7 @@ contains
           dw(i, j, k, imx:imz) = dw(i, j, k, imx:imz) - ftmp
 ! energy residuals
           dw(i, j, k, irhoe) = dw(i, j, k, irhoe) - ftmp(1)*vx - ftmp(2)&
-&           *vy - ftmp(3)*vz
+&           *vy - ftmp(3)*vz - qtmp
         else
 ! add in the local power contribution:
           plocal = plocal + (vx*ftmp(1)+vy*ftmp(2)+vz*ftmp(3))*redim

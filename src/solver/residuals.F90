@@ -367,7 +367,7 @@ contains
     ! Working
     integer(kind=intType) :: i, j, k, ii, iStart, iEnd
     real(kind=realType) :: Ftmp(3), Vx, Vy, Vz, F_fact(3), Q_fact, Qtmp, reDim, factor, oStart, oEnd
-
+    real(kind=realType) :: thrustT(3), thrustTNorm  
     reDim = pRef*uRef
 
     ! Compute the relaxation factor based on the ordersConverged
@@ -387,10 +387,11 @@ contains
     if (actuatorRegions(iRegion)%actType == 'uniform') then
     ! Compute the constant force factor
     F_fact = factor*actuatorRegions(iRegion)%force / actuatorRegions(iRegion)%volume / pRef
+    end if
 
     ! Heat factor. This is heat added per unit volume per unit time
-    Q_fact = factor * actuatorRegions(iRegion)%heat / actuatorRegions(iRegion)%volume / (pRef * uRef * LRef * LRef)
-    end if
+    Q_fact = factor * actuatorRegions(iRegion)%heat / actuatorRegions(iRegion)%volume &
+       / (pRef * uRef * LRef * LRef)
 
     ! Loop over the ranges for this block
     iStart = actuatorRegions(iRegion)%blkPtr(nn-1) + 1
@@ -440,8 +441,13 @@ contains
        j = actuatorRegions(iRegion)%cellIDs(2, ii)
        k = actuatorRegions(iRegion)%cellIDs(3, ii)
 
-      Ftmp = factor * actuatorRegions(iRegion)%thrustVec(:, ii) * actuatorRegions(iRegion)%thrust / pRef
-      Ftmp = Ftmp + factor * actuatorRegions(iRegion)%swirlVec(:, ii) * actuatorRegions(iRegion)%thrust / pRef
+      thrustT = actuatorRegions(iRegion)%force
+      thrustTnorm = sqrt((thrustT(1)**2 + thrustT(2)**2 + thrustT(3)**2))
+      
+      Ftmp = factor * actuatorRegions(iRegion)%thrustVec(:, ii) * thrustTnorm / pRef
+      Ftmp = Ftmp + factor * actuatorRegions(iRegion)%swirlVec(:, ii) * thrustTnorm / pRef
+      
+      Qtmp = volRef(i, j, k) * Q_fact
 
        Vx = w(i, j, k, iVx)
        Vy = w(i, j, k, iVy)
@@ -453,7 +459,7 @@ contains
           
           ! energy residuals
           dw(i, j, k, iRhoE) = dw(i, j, k, iRhoE)  - &
-               Ftmp(1)*Vx - Ftmp(2)*Vy - Ftmp(3)*Vz
+               Ftmp(1)*Vx - Ftmp(2)*Vy - Ftmp(3)*Vz - Qtmp
        else
           ! Add in the local power contribution:
           pLocal = pLocal + (Vx*Ftmp(1) + Vy*Ftmp(2) + Vz*Ftmp(3))*reDim

@@ -361,6 +361,8 @@ contains
     real(kind=realtype) :: ftmp(3), vx, vy, vz, f_fact(3), q_fact, qtmp&
 &   , redim, factor, ostart, oend
     real(kind=realtype) :: vxd, vyd, vzd
+    real(kind=realtype) :: thrustt(3), thrusttnorm
+    intrinsic sqrt
     integer :: branch
 ! compute the relaxation factor based on the ordersconverged
 ! how far we are into the ramp:
@@ -399,10 +401,13 @@ myIntPtr = myIntPtr + 1
         i = actuatorregions(iregion)%cellids(1, ii)
         j = actuatorregions(iregion)%cellids(2, ii)
         k = actuatorregions(iregion)%cellids(3, ii)
+        thrustt = actuatorregions(iregion)%force
+        thrusttnorm = sqrt(thrustt(1)**2 + thrustt(2)**2 + thrustt(3)**2&
+&         )
         ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)*&
-&         actuatorregions(iregion)%thrust/pref
+&         thrusttnorm/pref
         ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)*&
-&         actuatorregions(iregion)%thrust/pref
+&         thrusttnorm/pref
         if (res) then
           vxd = -(ftmp(1)*dwd(i, j, k, irhoe))
           vyd = -(ftmp(2)*dwd(i, j, k, irhoe))
@@ -461,6 +466,8 @@ branch = myIntStack(myIntPtr)
     integer(kind=inttype) :: i, j, k, ii, istart, iend
     real(kind=realtype) :: ftmp(3), vx, vy, vz, f_fact(3), q_fact, qtmp&
 &   , redim, factor, ostart, oend
+    real(kind=realtype) :: thrustt(3), thrusttnorm
+    intrinsic sqrt
     redim = pref*uref
 ! compute the relaxation factor based on the ordersconverged
 ! how far we are into the ramp:
@@ -476,14 +483,13 @@ branch = myIntStack(myIntPtr)
       factor = (ordersconverged-ostart)/(oend-ostart)
     end if
 ! if using the uniform force distribution
-    if (actuatorregions(iregion)%acttype .eq. 'uniform') then
+    if (actuatorregions(iregion)%acttype .eq. 'uniform') f_fact = factor&
+&       *actuatorregions(iregion)%force/actuatorregions(iregion)%volume/&
+&       pref
 ! compute the constant force factor
-      f_fact = factor*actuatorregions(iregion)%force/actuatorregions(&
-&       iregion)%volume/pref
 ! heat factor. this is heat added per unit volume per unit time
-      q_fact = factor*actuatorregions(iregion)%heat/actuatorregions(&
-&       iregion)%volume/(pref*uref*lref*lref)
-    end if
+    q_fact = factor*actuatorregions(iregion)%heat/actuatorregions(&
+&     iregion)%volume/(pref*uref*lref*lref)
 ! loop over the ranges for this block
     istart = actuatorregions(iregion)%blkptr(nn-1) + 1
     iend = actuatorregions(iregion)%blkptr(nn)
@@ -520,10 +526,14 @@ branch = myIntStack(myIntPtr)
         i = actuatorregions(iregion)%cellids(1, ii)
         j = actuatorregions(iregion)%cellids(2, ii)
         k = actuatorregions(iregion)%cellids(3, ii)
+        thrustt = actuatorregions(iregion)%force
+        thrusttnorm = sqrt(thrustt(1)**2 + thrustt(2)**2 + thrustt(3)**2&
+&         )
         ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)*&
-&         actuatorregions(iregion)%thrust/pref
+&         thrusttnorm/pref
         ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)*&
-&         actuatorregions(iregion)%thrust/pref
+&         thrusttnorm/pref
+        qtmp = volref(i, j, k)*q_fact
         vx = w(i, j, k, ivx)
         vy = w(i, j, k, ivy)
         vz = w(i, j, k, ivz)
@@ -532,7 +542,7 @@ branch = myIntStack(myIntPtr)
           dw(i, j, k, imx:imz) = dw(i, j, k, imx:imz) - ftmp
 ! energy residuals
           dw(i, j, k, irhoe) = dw(i, j, k, irhoe) - ftmp(1)*vx - ftmp(2)&
-&           *vy - ftmp(3)*vz
+&           *vy - ftmp(3)*vz - qtmp
         else
 ! add in the local power contribution:
           plocal = plocal + (vx*ftmp(1)+vy*ftmp(2)+vz*ftmp(3))*redim

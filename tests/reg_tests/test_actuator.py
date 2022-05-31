@@ -413,7 +413,7 @@ class ActuatorBasicTests(reg_test_classes.RegTest):
 
         # we test these w.r.t. thrust and heat analytically
         # The low accuracy is because the integrated quantities don't have a lot of precision
-
+        print(funcsSens["actuator_pipe_my_force"]["thrust"],funcsSens["actuator_pipe_cfd_force"]["thrust"])
         np.testing.assert_allclose(funcsSens["actuator_pipe_my_force"]["thrust"], 1, rtol=1e-3)
         np.testing.assert_allclose(funcsSens["actuator_pipe_cfd_force"]["thrust"], 1, rtol=1e-3)
 
@@ -689,70 +689,126 @@ class ActuatorBasicTestsSimpleProp(reg_test_classes.RegTest):
         # the tolerance is slightly worse but not terrible
         np.testing.assert_allclose(my_power, az_power, rtol=1.5e-3)
 
-    # def test_actuator_heat(self):
-    #     "Tests if the correct amount of heat is added to the flow by the actuator"
+    def test_actuator_adjoint(self):
+        "Tests if the adjoint sensitivities are correct for the AZ DVs"
 
-    #     # set the az heat
-    #     az_heat = 1e5
-    #     # need to set all dvs because training may re-use leftover dvs from a previous test
-    #     self.ap.setDesignVars({"thrust": 0.0, "heat": az_heat})
+        # define user functions
+        my_force_functions = [
+            "mdot_in",
+            "mdot_out",
+            "mavgvx_in",
+            "mavgvx_out",
+            "area_in",
+            "area_out",
+            "aavgps_in",
+            "aavgps_out",
+        ]
+        cfd_force_functions = [
+            "forcexpressure_in",
+            "forcexpressure_out",
+            "forcexmomentum_in",
+            "forcexmomentum_out",
+        ]
+        my_power_functions = [
+            "mdot_in",
+            "mdot_out",
+            "mavgttot_in",
+            "mavgttot_out",
+        ]
 
-    #     self.CFDSolver(self.ap)
+        def f_my_force(funcs):
+            mdot_i = funcs["mdot_in"]
+            mdot_o = -funcs["mdot_out"]
 
-    #     # check if solution failed
-    #     self.assert_solution_failure()
+            vx_i = funcs["mavgvx_in"]
+            vx_o = funcs["mavgvx_out"]
 
-    #     funcs = {}
-    #     self.CFDSolver.evalFunctions(self.ap, funcs)
+            area_i = funcs["area_in"]
+            area_o = funcs["area_out"]
 
-    #     # negate mdot out because of the normal, mdot in is already positive
-    #     mdot_i = funcs[self.ap.name + "_mdot_in"]
-    #     mdot_o = -funcs[self.ap.name + "_mdot_out"]
+            aavgps_i = funcs["aavgps_in"]
+            aavgps_o = funcs["aavgps_out"]
 
-    #     vx_i = funcs[self.ap.name + "_mavgvx_in"]
-    #     vx_o = funcs[self.ap.name + "_mavgvx_out"]
+            funcs["my_force"] = mdot_o * vx_o + aavgps_o * area_o - (mdot_i * vx_i + aavgps_i * area_i)
+            return funcs
 
-    #     area_i = funcs[self.ap.name + "_area_in"]
-    #     area_o = funcs[self.ap.name + "_area_out"]
+        def f_cfd_force(funcs):
+            fp_i = funcs["forcexpressure_in"]
+            fp_o = funcs["forcexpressure_out"]
 
-    #     aavgps_i = funcs[self.ap.name + "_aavgps_in"]
-    #     aavgps_o = funcs[self.ap.name + "_aavgps_out"]
+            fm_i = funcs["forcexmomentum_in"]
+            fm_o = funcs["forcexmomentum_out"]
 
-    #     ttot_i = funcs[self.ap.name + "_mavgttot_in"]
-    #     ttot_o = funcs[self.ap.name + "_mavgttot_out"]
+            funcs["cfd_force"] = fp_o + fm_o + fp_i + fm_i
+            return funcs
 
-    #     # also get the pressure and momentum forces directly from CFD
-    #     fp_i = funcs[self.ap.name + "_forcexpressure_in"]
-    #     fp_o = funcs[self.ap.name + "_forcexpressure_out"]
+        def f_my_power(funcs):
+            mdot_i = funcs["mdot_in"]
+            mdot_o = -funcs["mdot_out"]
 
-    #     fm_i = funcs[self.ap.name + "_forcexmomentum_in"]
-    #     fm_o = funcs[self.ap.name + "_forcexmomentum_out"]
+            ttot_i = funcs["mavgttot_in"]
+            ttot_o = funcs["mavgttot_out"]
 
-    #     #####################
-    #     # TEST MOMENTUM ADDED
-    #     #####################
+            funcs["my_power"] = 1004.5 * (mdot_o * ttot_o - mdot_i * ttot_i)
+            return funcs
 
-    #     # this is the analytical force based on primitive values (like mdot, ps etc)
-    #     my_force = mdot_o * vx_o + aavgps_o * area_o - (mdot_i * vx_i + aavgps_i * area_i)
+        self.CFDSolver.addUserFunction("my_force", my_force_functions, f_my_force)
+        self.CFDSolver.addUserFunction("cfd_force", cfd_force_functions, f_cfd_force)
+        self.CFDSolver.addUserFunction("my_power", my_power_functions, f_my_power)
 
-    #     # this is the force computed by the momentum integration directly from CFD
-    #     # just sum these up, the forces contain the correct normals from CFD
-    #     cfd_force = fp_o + fm_o + fp_i + fm_i
+        # set the az force
+        az_force = 0.0
+        az_heat = 1e5
+        self.ap.setDesignVars({"thrust": az_force, "heat": az_heat})
 
-    #     # the true value is 0. However, we get an error around 0.07964251
-    #     # because of accumulated integration/convergence/precision errors.
-    #     np.testing.assert_allclose(my_force, 0.0, atol=0.08)
-    #     np.testing.assert_allclose(cfd_force, 0.0, atol=0.08)
+        self.CFDSolver(self.ap)
 
-    #     ##################
-    #     # TEST POWER ADDED
-    #     ##################
+        # check if solution failed
+        self.assert_solution_failure()
 
-    #     # this is the total energy rise based on total temperature
-    #     cfd_heat = 1004.5 * (mdot_o * ttot_o - mdot_i * ttot_i)
+        funcs = {}
+        funcsSens = {}
+        # self.CFDSolver.evalFunctions(self.ap, funcs)
+        self.CFDSolver.evalFunctions(self.ap, funcs, evalFuncs=["my_force", "cfd_force", "my_power"])
+        self.CFDSolver.evalFunctionsSens(self.ap, funcsSens, evalFuncs=["my_force", "cfd_force", "my_power"])
+        # check if adjoint failed
+        self.assert_adjoint_failure()
 
-    #     # the tolerance is slightly worse but not terrible
-    #     np.testing.assert_allclose(cfd_heat, az_heat, rtol=1.5e-3)
+        #####################
+        # TEST MOMENTUM ADDED
+        #####################
+
+        # we test these w.r.t. thrust and heat analytically
+        # The low accuracy is because the integrated quantities don't have a lot of precision
+
+        np.testing.assert_allclose(funcsSens["actuator_pipe_my_force"]["thrust"], 1, rtol=1e-3)
+        np.testing.assert_allclose(funcsSens["actuator_pipe_cfd_force"]["thrust"], 1, rtol=1e-3)
+
+        # heat addition should not affect these
+        np.testing.assert_allclose(funcsSens["actuator_pipe_my_force"]["heat"] + 100, 100, rtol=1e-3)
+        np.testing.assert_allclose(funcsSens["actuator_pipe_cfd_force"]["heat"] + 100, 100, rtol=1e-3)
+
+        # also test the actual values from the ref file
+        self.handler.root_print("my_force sens")
+        self.handler.root_add_dict("my_force sens", funcsSens["actuator_pipe_my_force"], rtol=1e-12, atol=1e-12)
+
+        self.handler.root_print("cfd_force sens")
+        self.handler.root_add_dict("cfd_force sens", funcsSens["actuator_pipe_cfd_force"], rtol=1e-12, atol=1e-12)
+
+        ##################
+        # TEST POWER ADDED
+        ##################
+
+        # analytically test heat addition
+        # this should be equal to one because we are not adding any thrust in this test.
+        # if we also added thrust, addition of heat would affect flow power integration
+        # due to the changes in the flowfield and as a result the derivative would not be one.
+        # flowpower is more complicated here so we just check with json reference
+        np.testing.assert_allclose(funcsSens["actuator_pipe_my_power"]["heat"], 1, rtol=1e-3)
+
+        # test values with the ref file
+        self.handler.root_print("my_power sens")
+        self.handler.root_add_dict("my_power sens", funcsSens["actuator_pipe_my_power"], rtol=1e-12, atol=1e-12)
 
 
 
