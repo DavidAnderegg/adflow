@@ -362,7 +362,6 @@ contains
 &   , redim, factor, ostart, oend
     real(kind=realtype) :: vxd, vyd, vzd
     real(kind=realtype) :: thrustt(3), thrusttnorm
-    intrinsic sqrt
     integer :: branch
 ! compute the relaxation factor based on the ordersconverged
 ! how far we are into the ramp:
@@ -401,13 +400,12 @@ myIntPtr = myIntPtr + 1
         i = actuatorregions(iregion)%cellids(1, ii)
         j = actuatorregions(iregion)%cellids(2, ii)
         k = actuatorregions(iregion)%cellids(3, ii)
-        thrustt = actuatorregions(iregion)%force
-        thrusttnorm = sqrt(thrustt(1)**2 + thrustt(2)**2 + thrustt(3)**2&
-&         )
+!thrustt = actuatorregions(iregion)%force
+!thrusttnorm = sqrt((thrustt(1)**2 + thrustt(2)**2 + thrustt(3)**2))
         ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)*&
-&         thrusttnorm/pref
+&         actuatorregions(iregion)%thrust/pref
         ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)*&
-&         thrusttnorm/pref
+&         actuatorregions(iregion)%thrust/pref
         if (res) then
           vxd = -(ftmp(1)*dwd(i, j, k, irhoe))
           vyd = -(ftmp(2)*dwd(i, j, k, irhoe))
@@ -467,7 +465,6 @@ branch = myIntStack(myIntPtr)
     real(kind=realtype) :: ftmp(3), vx, vy, vz, f_fact(3), q_fact, qtmp&
 &   , redim, factor, ostart, oend
     real(kind=realtype) :: thrustt(3), thrusttnorm
-    intrinsic sqrt
     redim = pref*uref
 ! compute the relaxation factor based on the ordersconverged
 ! how far we are into the ramp:
@@ -526,13 +523,12 @@ branch = myIntStack(myIntPtr)
         i = actuatorregions(iregion)%cellids(1, ii)
         j = actuatorregions(iregion)%cellids(2, ii)
         k = actuatorregions(iregion)%cellids(3, ii)
-        thrustt = actuatorregions(iregion)%force
-        thrusttnorm = sqrt(thrustt(1)**2 + thrustt(2)**2 + thrustt(3)**2&
-&         )
+!thrustt = actuatorregions(iregion)%force
+!thrusttnorm = sqrt((thrustt(1)**2 + thrustt(2)**2 + thrustt(3)**2))
         ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)*&
-&         thrusttnorm/pref
+&         actuatorregions(iregion)%thrust/pref
         ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)*&
-&         thrusttnorm/pref
+&         actuatorregions(iregion)%thrust/pref
         qtmp = volref(i, j, k)*q_fact
         vx = w(i, j, k, ivx)
         vy = w(i, j, k, ivy)

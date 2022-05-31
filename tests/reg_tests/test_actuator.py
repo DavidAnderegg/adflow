@@ -600,7 +600,7 @@ class ActuatorBasicTestsSimpleProp(reg_test_classes.RegTest):
             np.array([-0.38305, 0, 0.3]),
             np.array([-0.2518, 0, 0.3]),
             "actuator_region",
-            actType = 'simpleProp',
+            actType = 'simpleprop',
             # we will set these individually in the tests below
             thrust=0.0,
             torque=0.0,
@@ -688,6 +688,85 @@ class ActuatorBasicTestsSimpleProp(reg_test_classes.RegTest):
         
         # the tolerance is slightly worse but not terrible
         np.testing.assert_allclose(my_power, az_power, rtol=1.5e-3)
+
+    def test_actuator_thrust_and_heat(self):
+        "Tests if the correct amount of momentum and heat is added to the flow by the actuator"
+
+        # set the az force
+        az_force = 600.0
+        az_heat = 1e5
+        self.ap.setDesignVars({"thrust": az_force, "heat": az_heat})
+
+        self.CFDSolver(self.ap)
+
+        # check if solution failed
+        self.assert_solution_failure()
+
+        funcs = {}
+        self.CFDSolver.evalFunctions(self.ap, funcs)
+
+        # negate mdot out because of the normal, mdot in is already positive
+        mdot_i = funcs[self.ap.name + "_mdot_in"]
+        mdot_o = -funcs[self.ap.name + "_mdot_out"]
+
+        vx_i = funcs[self.ap.name + "_mavgvx_in"]
+        vx_o = funcs[self.ap.name + "_mavgvx_out"]
+
+        area_i = funcs[self.ap.name + "_area_in"]
+        area_o = funcs[self.ap.name + "_area_out"]
+
+        aavgps_i = funcs[self.ap.name + "_aavgps_in"]
+        aavgps_o = funcs[self.ap.name + "_aavgps_out"]
+
+        ttot_i = funcs[self.ap.name + "_mavgttot_in"]
+        ttot_o = funcs[self.ap.name + "_mavgttot_out"]
+
+        # also get the pressure and momentum forces directly from CFD
+        fp_i = funcs[self.ap.name + "_forcexpressure_in"]
+        fp_o = funcs[self.ap.name + "_forcexpressure_out"]
+
+        fm_i = funcs[self.ap.name + "_forcexmomentum_in"]
+        fm_o = funcs[self.ap.name + "_forcexmomentum_out"]
+
+        #####################
+        # TEST MOMENTUM ADDED
+        #####################
+
+        # this is the analytical force based on primitive values (like mdot, ps etc)
+        my_force = mdot_o * vx_o + aavgps_o * area_o - (mdot_i * vx_i + aavgps_i * area_i)
+
+        # this is the force computed by the momentum integration directly from CFD
+        # just sum these up, the forces contain the correct normals from CFD
+        cfd_force = fp_o + fm_o + fp_i + fm_i
+
+        # The low accuracy is because the integrated quantities don't have a lot of precision
+        np.testing.assert_allclose(my_force, az_force, rtol=1e-3)
+        np.testing.assert_allclose(cfd_force, az_force, rtol=1e-3)
+
+        ##################
+        # TEST POWER ADDED
+        ##################
+
+        # this is the integration done in the AZ plus the heat added by us
+        az_power = funcs[self.ap.name + "_flowpower_az"] + az_heat
+
+        # this is the energy balance of the control volume.
+        # Cp of air is taken as 1004.5 J/kg
+        my_power = 1004.5 * (mdot_o * ttot_o - mdot_i * ttot_i)
+
+        # the tolerance is slightly worse but not terrible
+        np.testing.assert_allclose(my_power, az_power, rtol=1.5e-3)
+
+        #################
+        # TEST STATE NORM
+        #################
+        utils.assert_states_allclose(self.handler, self.CFDSolver)
+
+        ################
+        # TEST ALL FUNCS
+        ################
+        self.handler.root_print("all functionals")
+        self.handler.root_add_dict("all functionals", funcs, rtol=1e-12, atol=1e-12)
 
     def test_actuator_adjoint(self):
         "Tests if the adjoint sensitivities are correct for the AZ DVs"

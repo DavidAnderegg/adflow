@@ -432,7 +432,7 @@ contains
     end if
 
     ! If using the simple propeller force distribution
-    if (actuatorRegions(iRegion)%actType == 'simpleProp') then
+    if (actuatorRegions(iRegion)%actType == 'simpleprop') then
     !$AD II-LOOP
     do ii=iStart, iEnd
        
@@ -441,11 +441,11 @@ contains
        j = actuatorRegions(iRegion)%cellIDs(2, ii)
        k = actuatorRegions(iRegion)%cellIDs(3, ii)
 
-      thrustT = actuatorRegions(iRegion)%force
-      thrustTnorm = sqrt((thrustT(1)**2 + thrustT(2)**2 + thrustT(3)**2))
+      !thrustT = actuatorRegions(iRegion)%force
+      !thrustTnorm = sqrt((thrustT(1)**2 + thrustT(2)**2 + thrustT(3)**2))
       
-      Ftmp = factor * actuatorRegions(iRegion)%thrustVec(:, ii) * thrustTnorm / pRef
-      Ftmp = Ftmp + factor * actuatorRegions(iRegion)%swirlVec(:, ii) * thrustTnorm / pRef
+      Ftmp = factor * actuatorRegions(iRegion)%thrustVec(:, ii) * actuatorRegions(iRegion)%thrust / pRef
+      Ftmp = Ftmp + factor * actuatorRegions(iRegion)%swirlVec(:, ii) * actuatorRegions(iRegion)%thrust / pRef
       
       Qtmp = volRef(i, j, k) * Q_fact
 

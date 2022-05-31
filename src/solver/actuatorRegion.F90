@@ -83,6 +83,7 @@ contains
       
     region%force = axisVec*thrust
     region%axisVec = axisVec
+    region%thrust = thrust
 
     allocate(region%blkPtr(0:nDom))
     region%blkPtr(0) = 0
@@ -148,7 +149,7 @@ contains
     ! Allocate sufficient space for the maximum possible number of cellIDs
     allocate(region%cellIDs(3, nCellsLocal(1)))
 
-    if (region%actType == 'simpleProp') then
+    if (region%actType == 'simpleprop') then
     ! Allocate sufficient space for the maximum possible number of cellIDs
     allocate(region%cellTangentials(3, nCellsLocal(1)))
     allocate(region%thrustVec(3, nCellsLocal(1)))
@@ -205,7 +206,7 @@ contains
                          region%nCellIDs = region%nCellIDs + 1
                          region%cellIDs(:, region%nCellIDs) = (/i, j, k/)
 
-                         if (region%actType == 'simpleProp') then
+                         if (region%actType == 'simpleprop') then
                          ! Compute cross product for tangential vector and normize
                          v1 = xCen - axis2
                          v2 = axisVec
@@ -293,7 +294,7 @@ contains
     region%cellIDs = tmp(:, 1:region%nCellIDs)
     deallocate(tmp)
 
-    if (region%actType == 'simpleProp') then
+    if (region%actType == 'simpleprop') then
     ! Resize the cellTangentials to the correct size now that we know the
     ! correct exact number.
     tmp2 => region%cellTangentials
@@ -343,7 +344,7 @@ contains
     call ECHK(ierr, __FILE__, __LINE__)
     write (*,*) "Total vol of actuator region is", region%volume
 
-    if (region%actType == 'simpleProp') then
+    if (region%actType == 'simpleprop') then
     write (*,*) "thrust sum is", thrustSum
     call mpi_allreduce(thrustSum, region%totalThrustSum, 1, adflow_real, &
          MPI_SUM, adflow_comm_world, ierr)

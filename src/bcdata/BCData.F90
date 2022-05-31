@@ -1479,8 +1479,12 @@ contains
              varName = char2str(bcDataNamesIn(iVar,:), maxCGNSNameLen)
 
              if (trim(varName) == "Thrust") then
-               actuatorRegions(iRegion)%force = actuatorRegions(iRegion)%axisVec* &
+              if (actuatorRegions(iRegion)%actType == 'uniform') then
+                  actuatorRegions(iRegion)%force = actuatorRegions(iRegion)%axisVec* &
                      bcDataIn(iVar)
+               else if (actuatorRegions(iRegion)%actType == 'simpleprop') then
+                  actuatorRegions(iRegion)%thrust = bcDataIn(iVar)
+               end if
              else if (trim(varName) == "Torque") then
                 actuatorRegions(iRegion)%torque = bcDataIn(iVar)
              else if (trim(varName) == "Heat") then
@@ -1577,10 +1581,15 @@ contains
              varName = char2str(bcDataNamesIn(iVar,:), maxCGNSNameLen)
 
              if (trim(varName) == "Thrust") then
-               actuatorRegions(iRegion)%force = actuatorRegions(iRegion)%axisVec* &
-                  bcDataIn(iVar)
-               actuatorRegionsd(iRegion)%force = actuatorRegions(iRegion)%axisVec* &
-                  bcDataInd(iVar)
+               if (actuatorRegions(iRegion)%actType == 'uniform') then
+                  actuatorRegions(iRegion)%force = actuatorRegions(iRegion)%axisVec* &
+                     bcDataIn(iVar)
+                  actuatorRegionsd(iRegion)%force = actuatorRegions(iRegion)%axisVec* &
+                     bcDataInd(iVar)
+               else if (actuatorRegions(iRegion)%actType == 'simpleprop') then
+                  actuatorRegions(iRegion)%thrust = bcDataIn(iVar)
+                  actuatorRegionsd(iRegion)%thrust = bcDataInd(iVar)
+               end if
              else if (trim(varName) == "Torque") then
                 actuatorRegions(iRegion)%torque = bcDataIn(iVar)
                 actuatorRegionsd(iRegion)%torque = bcDataInd(iVar)
@@ -1682,8 +1691,14 @@ contains
              varName = char2str(bcDataNamesIn(iVar,:), maxCGNSNameLen)
 
              if (trim(varName) == "Thrust") then
-                bcDataInd(ivar) = &
+               
+               if (actuatorRegions(iRegion)%actType == 'uniform') then
+                  bcDataInd(ivar) = &
                      sum(actuatorRegions(iRegion)%axisVec*actuatorRegionsd(iRegion)%force)
+               else if (actuatorRegions(iRegion)%actType == 'simpleprop') then
+                  bcDataInd(ivar) = actuatorRegionsd(iRegion)%thrust
+               end if
+
              else if (trim(varName) == "Torque") then
                 bcDataInd(ivar) = actuatorRegionsd(iRegion)%torque
              else if (trim(varName) == "Heat") then

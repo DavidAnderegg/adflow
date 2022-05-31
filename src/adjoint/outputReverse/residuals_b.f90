@@ -339,12 +339,12 @@ contains
   end subroutine residual_block
 !  differentiation of sourceterms_block in reverse (adjoint) mode (with options i4 dr8 r8 noisize):
 !   gradient     of useful results: uref pref *dw *w actuatorregions.force
-!                actuatorregions.heat plocal
+!                actuatorregions.thrust actuatorregions.heat plocal
 !   with respect to varying inputs: uref pref *dw *w actuatorregions.force
-!                actuatorregions.heat plocal
+!                actuatorregions.thrust actuatorregions.heat plocal
 !   rw status of diff variables: uref:incr pref:incr *dw:in-out
-!                *w:incr actuatorregions.force:incr actuatorregions.heat:incr
-!                plocal:in-out
+!                *w:incr actuatorregions.force:incr actuatorregions.thrust:incr
+!                actuatorregions.heat:incr plocal:in-out
 !   plus diff mem management of: dw:in w:in
   subroutine sourceterms_block_b(nn, res, iregion, plocal, plocald)
 ! apply the source terms for the given block. assume that the
@@ -368,12 +368,9 @@ contains
     real(kind=realtype) :: ftmpd(3), vxd, vyd, vzd, f_factd(3), q_factd&
 &   , qtmpd, redimd
     real(kind=realtype) :: thrustt(3), thrusttnorm
-    real(kind=realtype) :: thrusttd(3), thrusttnormd
-    intrinsic sqrt
     integer :: branch
     real(kind=realtype) :: temp0
     real(kind=realtype) :: tempd(3)
-    real(kind=realtype) :: tempd6
     real(kind=realtype) :: tempd5
     real(kind=realtype) :: tempd4
     real(kind=realtype) :: tempd3
@@ -423,13 +420,12 @@ contains
         i = actuatorregions(iregion)%cellids(1, ii)
         j = actuatorregions(iregion)%cellids(2, ii)
         k = actuatorregions(iregion)%cellids(3, ii)
-        thrustt = actuatorregions(iregion)%force
-        thrusttnorm = sqrt(thrustt(1)**2 + thrustt(2)**2 + thrustt(3)**2&
-&         )
+!thrustt = actuatorregions(iregion)%force
+!thrusttnorm = sqrt((thrustt(1)**2 + thrustt(2)**2 + thrustt(3)**2))
         ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)*&
-&         thrusttnorm/pref
+&         actuatorregions(iregion)%thrust/pref
         ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)*&
-&         thrusttnorm/pref
+&         actuatorregions(iregion)%thrust/pref
         vx = w(i, j, k, ivx)
         vy = w(i, j, k, ivy)
         vz = w(i, j, k, ivz)
@@ -445,13 +441,13 @@ contains
           ftmpd = ftmpd - dwd(i, j, k, imx:imz)
         else
           ftmpd = 0.0_8
-          tempd6 = redim*plocald
-          vxd = ftmp(1)*tempd6
-          ftmpd(1) = ftmpd(1) + vx*tempd6
-          vyd = ftmp(2)*tempd6
-          ftmpd(2) = ftmpd(2) + vy*tempd6
-          vzd = ftmp(3)*tempd6
-          ftmpd(3) = ftmpd(3) + vz*tempd6
+          tempd5 = redim*plocald
+          vxd = ftmp(1)*tempd5
+          ftmpd(1) = ftmpd(1) + vx*tempd5
+          vyd = ftmp(2)*tempd5
+          ftmpd(2) = ftmpd(2) + vy*tempd5
+          vzd = ftmp(3)*tempd5
+          ftmpd(3) = ftmpd(3) + vz*tempd5
           redimd = redimd + (vx*ftmp(1)+vy*ftmp(2)+vz*ftmp(3))*plocald
           qtmpd = 0.0_8
         end if
@@ -463,22 +459,10 @@ contains
         q_factd = q_factd + volref(i, j, k)*qtmpd
         tempd3 = sum(factor*actuatorregions(iregion)%swirlvec(:, ii)*&
 &         ftmpd)/pref
-        thrusttnormd = tempd4 + tempd3
-        prefd = prefd - thrusttnorm*tempd4/pref - thrusttnorm*tempd3/&
-&         pref
-        thrusttd = 0.0_8
-        if (thrustt(1)**2 + thrustt(2)**2 + thrustt(3)**2 .eq. 0.0_8) &
-&       then
-          tempd5 = 0.0
-        else
-          tempd5 = thrusttnormd/(2.0*sqrt(thrustt(1)**2+thrustt(2)**2+&
-&           thrustt(3)**2))
-        end if
-        thrusttd(1) = thrusttd(1) + 2*thrustt(1)*tempd5
-        thrusttd(2) = thrusttd(2) + 2*thrustt(2)*tempd5
-        thrusttd(3) = thrusttd(3) + 2*thrustt(3)*tempd5
-        actuatorregionsd(iregion)%force = actuatorregionsd(iregion)%&
-&         force + thrusttd
+        actuatorregionsd(iregion)%thrust = actuatorregionsd(iregion)%&
+&         thrust + tempd4 + tempd3
+        prefd = prefd - actuatorregions(iregion)%thrust*tempd4/pref - &
+&         actuatorregions(iregion)%thrust*tempd3/pref
       end do
     else
       q_factd = 0.0_8
@@ -568,7 +552,6 @@ contains
     real(kind=realtype) :: ftmp(3), vx, vy, vz, f_fact(3), q_fact, qtmp&
 &   , redim, factor, ostart, oend
     real(kind=realtype) :: thrustt(3), thrusttnorm
-    intrinsic sqrt
     redim = pref*uref
 ! compute the relaxation factor based on the ordersconverged
 ! how far we are into the ramp:
@@ -627,13 +610,12 @@ contains
         i = actuatorregions(iregion)%cellids(1, ii)
         j = actuatorregions(iregion)%cellids(2, ii)
         k = actuatorregions(iregion)%cellids(3, ii)
-        thrustt = actuatorregions(iregion)%force
-        thrusttnorm = sqrt(thrustt(1)**2 + thrustt(2)**2 + thrustt(3)**2&
-&         )
+!thrustt = actuatorregions(iregion)%force
+!thrusttnorm = sqrt((thrustt(1)**2 + thrustt(2)**2 + thrustt(3)**2))
         ftmp = factor*actuatorregions(iregion)%thrustvec(:, ii)*&
-&         thrusttnorm/pref
+&         actuatorregions(iregion)%thrust/pref
         ftmp = ftmp + factor*actuatorregions(iregion)%swirlvec(:, ii)*&
-&         thrusttnorm/pref
+&         actuatorregions(iregion)%thrust/pref
         qtmp = volref(i, j, k)*q_fact
         vx = w(i, j, k, ivx)
         vy = w(i, j, k, ivy)

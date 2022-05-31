@@ -633,12 +633,12 @@ class ADFLOW(AeroSolver):
         """Add an actuator zone with a uniform force distribution or add
         an actuator-disk zone representing a propeller. The zone is defined by
         the (closed) supplied surface in the plot3d file "fileName". The type
-        is set with the string "actType" as either 'uniform' or 'simpleProp'.
+        is set with the string "actType" as either 'uniform' or 'simpleprop'.
 
         For the uniform distribution (i.e., actType = 'uniform'):
         The specified thrust is applied uniformly over the specified zone.
 
-        For the propeller model (i.e., actType = 'simpleProp'):
+        For the propeller model (i.e., actType = 'simpleprop'):
         The radial distributions of the axial and tangential forces can be tuned
         using the parameters. For the distributions, the models used by Hoekstra
         in "A RANS-based analysis tool for ducted propeller systems in open water
@@ -656,7 +656,7 @@ class ADFLOW(AeroSolver):
 
         actType : str
            The type of force distribution.
-           Uniform ('uniform') or propeller ('simpleProp').
+           Uniform ('uniform') or propeller ('simpleprop').
 
         axis1 : numpy array, length 3
            The physical location of the start of the thrust or propeller axis (x,y,z).
@@ -771,8 +771,8 @@ class ADFLOW(AeroSolver):
         if relaxEnd is None and relaxStart is not None:
             raise Error("relaxEnd must be given is relaxStart is specified")
 
-        if actType != 'uniform' and actType != 'simpleProp':
-            raise Error("actType must be 'uniform' or 'simpleProp'")
+        if actType != 'uniform' and actType != 'simpleprop':
+            raise Error("actType must be 'uniform' or 'simpleprop'")
 
         #  Now continue to fortran were we setup the actual
         #  region.

@@ -20,6 +20,9 @@ module actuatorRegionData
      ! this is equal to torque * axisVec
      real(kind=realType) :: force(3)
      
+     ! total torque to be applied on this region
+     real(kind=realType) :: thrust
+
      ! total heat flux to be added on this regoin
      real(kind=realType) :: heat
 
