@@ -1,64 +1,63 @@
 module actuatorRegionData
-  use constants
+    use constants
 
-  type actuatorRegionType
+    type actuatorRegionType
 
-     character(len=maxStringLen) :: famName, actType
-     integer(kind=intType) :: famID
-     ! The block indexes of the cells included in this region
-     integer(kind=intType), dimension(:, :), pointer :: cellIDs
+        character(len=maxStringLen) :: famName, actType
+        integer(kind=intType) :: famID
+        ! The block indexes of the cells included in this region
+        integer(kind=intType), dimension(:, :), pointer :: cellIDs
 
-     ! The tangent unit-vectors of the cells included in this region
-     real(kind=realType), dimension(:, :), pointer :: cellTangentials
-     ! The radii of the cells included in this region
-     real(kind=realType), dimension(:), pointer :: cellRadii
+        ! The tangent unit-vectors of the cells included in this region
+        real(kind=realType), dimension(:, :), pointer :: cellTangentials
+        ! The radii of the cells included in this region
+        real(kind=realType), dimension(:), pointer :: cellRadii
 
-     ! The total number of cells included this proc has
-     integer(kind=intType) :: nCellIDs
+        ! The total number of cells included this proc has
+        integer(kind=intType) :: nCellIDs
 
-     ! the force vector to be applied on this region
-     ! this is equal to torque * axisVec
-     real(kind=realType) :: force(3)
-     
-     ! total torque to be applied on this region
-     real(kind=realType) :: thrust
+        ! the force vector to be applied on this region
+        ! this is equal to torque * axisVec
+        real(kind=realType) :: force(3)
 
-     ! total heat flux to be added on this regoin
-     real(kind=realType) :: heat
+        ! total torque to be applied on this region
+        real(kind=realType) :: thrust
 
-     ! total torque to be applied on this region
-     real(kind=realType) :: torque
+        ! total heat flux to be added on this regoin
+        real(kind=realType) :: heat
 
-     real(kind=realType) :: swirlFact
-     real(kind=realType) :: mDistribParam
-     real(kind=realType) :: nDistribParam
-     real(kind=realType) :: distribPDfactor
-     real(kind=realType) :: innerZeroThrustRadius
-     real(kind=realType) :: spinnerRadius
-     real(kind=realType) :: rootDragFactor
+        ! total torque to be applied on this region
+        real(kind=realType) :: torque
 
-     
-     real(kind=realType), dimension(3) :: axisVec
-     real(kind=realType), dimension(:, :), pointer :: thrustVec
-     real(kind=realType), dimension(:, :), pointer :: swirlVec
-     ! Volume is the total integrated volume of all cells (on all
-     ! procs) included in this region
-     real(kind=realType) :: volume
-     real(kind=realType) :: totalThrustSum
-     real(kind=realType) :: totalSwirlSum
+        real(kind=realType) :: swirlFact
+        real(kind=realType) :: mDistribParam
+        real(kind=realType) :: nDistribParam
+        real(kind=realType) :: distribPDfactor
+        real(kind=realType) :: innerZeroThrustRadius
+        real(kind=realType) :: spinnerRadius
+        real(kind=realType) :: rootDragFactor
 
-     integer(kind=intType), dimension(:), allocatable :: blkPtr
+        real(kind=realType), dimension(3) :: axisVec
+        real(kind=realType), dimension(:, :), pointer :: thrustVec
+        real(kind=realType), dimension(:, :), pointer :: swirlVec
+        ! Volume is the total integrated volume of all cells (on all
+        ! procs) included in this region
+        real(kind=realType) :: volume
+        real(kind=realType) :: totalThrustSum
+        real(kind=realType) :: totalSwirlSum
 
-     ! Set the defaults for solution relaxation
-     real(kind=realType) :: relaxStart = -one
-     real(kind=realType) :: relaxEnd = -one
-  end type actuatorRegionType
+        integer(kind=intType), dimension(:), allocatable :: blkPtr
 
-  integer(kind=intType), parameter :: nActuatorRegionsMax=10
-  type(actuatorRegionType), dimension(nActuatorRegionsMax), target :: actuatorRegions
-  integer(kind=intTYpe) :: nActuatorRegions=0
+        ! Set the defaults for solution relaxation
+        real(kind=realType) :: relaxStart = -one
+        real(kind=realType) :: relaxEnd = -one
+    end type actuatorRegionType
+
+    integer(kind=intType), parameter :: nActuatorRegionsMax = 10
+    type(actuatorRegionType), dimension(nActuatorRegionsMax), target :: actuatorRegions
+    integer(kind=intTYpe) :: nActuatorRegions = 0
 
 #ifndef USE_TAPENADE
-  type(actuatorRegionType), dimension(nActuatorRegionsMax), target :: actuatorRegionsd
+    type(actuatorRegionType), dimension(nActuatorRegionsMax), target :: actuatorRegionsd
 #endif
 end module actuatorRegionData
