@@ -1011,7 +1011,8 @@ contains
                                 print "(a)", "#                      Warning"
                                 print stringSpace, "# Symmetry boundary face", trim(cgnsDoms(i)%bocoInfo(j)%bocoName), &
                                     "of zone", trim(cgnsDoms(i)%zonename), "is not planar."
-                              write (*, stringSci5) "# Maximum deviation from the mean normal: ", real(fact), " degrees"
+                                write (*, stringSci5) "# Maximum deviation from the mean normal: ", &
+                                    real(fact), " degrees"
                                 print "(a)", "#"
 
                             end if
@@ -1364,7 +1365,8 @@ contains
                             write (*, "(2(A, I4), *(A))") "CGNS Block ", i, ", boundary condition ", j, ", of type ", &
                                 trim(BCTypeName(cgnsDoms(i)%bocoInfo(j)%BCTypeCGNS)), &
                                 " does not have a family. Based on the boundary condition type,", &
-                            " a name of: '", trim(defaultFamName(cgnsDoms(i)%bocoInfo(j)%BCTypeCGNS)), "' will be used."
+                                " a name of: '", trim(defaultFamName(cgnsDoms(i)%bocoInfo(j)%BCTypeCGNS)), &
+                                "' will be used."
                         end if
                         cgnsDoms(i)%bocoInfo(j)%wallBCName = trim(defaultFamName(cgnsDoms(i)%bocoInfo(j)%BCTypeCGNS))
                     end if
@@ -2719,7 +2721,7 @@ contains
         use communication
         use inputTimeSpectral
         use checkVolBlock
-        use inputIteration
+        use inputIteration, only: printWarnings, printNegativeVolumes
         use utils, only: setPointers, terminate, returnFail
         use commonFormats, only: stringSpace, stringInt1
         implicit none
@@ -3266,7 +3268,9 @@ contains
                 ! Negative volumes present on the fine grid level. Print a
                 ! list of the bad volumes and terminate executation.
 
-                call writeNegVolumes(checkVolDoms)
+                if (printNegativeVolumes) then
+                    call writeNegVolumes(checkVolDoms)
+                end if
 
                 call returnFail("metric", &
                                 "Negative volumes present in grid.")

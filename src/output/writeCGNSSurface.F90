@@ -57,7 +57,7 @@ contains
 
         if (myID == 0 .and. printIterations) then
             print "(a)", "#"
-            print "(a,a)", "# Writing surface solution file(s): ", trim(surfSolFileNames(1))
+            print "(a)", "# Writing surface solution file(s):"
         end if
 
         ! Allocate the memory for the fileIDs and the bases.
@@ -77,6 +77,9 @@ contains
             ! Loop over the number of surface solution files to write.
 
             solLoop: do nn = 1, nSurfSolToWrite
+
+                ! Print the filename to stdout
+                print "(a,4x,a)", "#", trim(surfSolFileNames(nn))
 
                 ! Open the cgns file for writing and check if it went okay.
                 ! Store the file index for later purposes.
@@ -1721,11 +1724,13 @@ contains
 
                     call cg_coord_partial_write_f(cgnsInd, cgnsBase, cgnsZone, realDouble, &
                                                   'CoordinateY', cumNodes + 1, cumNodes + nPtsProc(iProc + 1), &
-                                                 buffer(nPtsProc(iProc + 1) + 1:2 * nPtsProc(iProc + 1)), coordID, ierr)
+                                                  buffer(nPtsProc(iProc + 1) + &
+                                                         1:2 * nPtsProc(iProc + 1)), coordID, ierr)
 
                     call cg_coord_partial_write_f(cgnsInd, cgnsBase, cgnsZone, realDouble, &
                                                   'CoordinateZ', cumNodes + 1, cumNodes + nPtsProc(iProc + 1), &
-                                             buffer(2 * nPtsProc(iProc + 1) + 1:3 * nPtsProc(iProc + 1)), coordID, ierr)
+                                                  buffer(2 * nPtsProc(iProc + 1) + &
+                                                         1:3 * nPtsProc(iProc + 1)), coordID, ierr)
 
                     if (ierr /= CG_OK) &
                         call terminate("writeIsoSurface", &
@@ -1889,7 +1894,8 @@ contains
                     ! received from iProc
                     if (nPtsProc(iProc + 1) > 0) Then
                         call cg_field_partial_write_f(cgnsInd, cgnsBase, cgnsZone, solID, realDouble, &
-                                                  isoSurfSolNames(iVar), cumNodes + 1, cumNodes + nPtsProc(iProc + 1), &
+                                                      isoSurfSolNames(iVar), cumNodes + 1, &
+                                                      cumNodes + nPtsProc(iProc + 1), &
                                                       buffer, fieldID, ierr)
 
                         if (ierr /= CG_OK) &

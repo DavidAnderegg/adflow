@@ -76,6 +76,7 @@ module inputDiscretization
     integer(kind=intType) :: nonMatchTreatment
 
     real(kind=realType) :: vis2, vis4, vis2Coarse, adis
+    real(kind=realType) :: acousticScaleFactor
     real(kind=realType) :: kappaCoef
     logical :: lumpedDiss
     logical :: approxSA
@@ -283,7 +284,10 @@ module inputIteration
     logical :: freezeTurbSource
     logical :: printIterations
     logical :: printWarnings
+    logical :: printNegativeVolumes
     real(kind=realType), dimension(4) :: turbResScale
+    logical :: useDissContinuation
+    real(kind=realType) :: dissContMagnitude, dissContMidpoint, dissContSharpness
 
 end module inputIteration
 

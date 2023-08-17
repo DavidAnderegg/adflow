@@ -314,7 +314,7 @@ contains
 
             if (myID == 0 .and. printIterations) then
                 print "(a)", "#"
-                print "(a)", "# Writing slices file(s) ..."
+                print "(a)", "# Writing slices file(s): "
             end if
 
             do sps = 1, nTimeIntervalsSpectral
@@ -331,6 +331,8 @@ contains
                 file = 11
                 ! Open file on root proc:
                 if (myid == 0) then
+                    ! Print the filename to stdout
+                    print "(a,4x,a)", "#", trim(fname)
                     open (unit=file, file=trim(fname))
 
                     ! Write Header Information
@@ -443,7 +445,7 @@ contains
 
             if (myID == 0 .and. printIterations) then
                 print "(a)", "#"
-                print "(a)", "# Writing lift distribution file(s) ..."
+                print "(a)", "# Writing lift distribution file(s):"
             end if
 
             do sps = 1, nTimeIntervalsSpectral
@@ -460,6 +462,9 @@ contains
                 file = 11
                 ! Open file on root proc:
                 if (myid == 0) then
+                    ! Print the filename to stdout
+                    print "(a,4x,a)", "#", trim(fname)
+
                     open (unit=file, file=trim(fname))
                 end if
 
@@ -776,7 +781,7 @@ contains
         type(familyExchange), pointer :: exch
         if (myID == 0 .and. printIterations) then
             print "(a)", "#"
-            print "(a)", "# Writing tecplot surface file(s) ..."
+            print "(a)", "# Writing tecplot surface file(s):"
         end if
 
         ! Number of surface variables. Note that we *explictly*
@@ -805,6 +810,9 @@ contains
             ! Open file on root proc:
 
             if (myid == 0) then
+                ! Print the filename to stdout
+                print "(a,4x,a)", "#", trim(fname)
+
                 open (unit=fileID, file=trim(fname), form='UNFORMATTED', access='stream', status='replace')
 
                 ! Tecplot magic number
@@ -993,7 +1001,8 @@ contains
                 ! Gather values to the root proc.
                 do i = 1, iSize
                     call mpi_gatherv(nodalValues(:, i), sizeNode, &
-                                 adflow_real, vars(:, i), nodeSizes, nodeDisps, adflow_real, 0, adflow_comm_world, ierr)
+                                     adflow_real, vars(:, i), nodeSizes, nodeDisps, &
+                                     adflow_real, 0, adflow_comm_world, ierr)
                     call EChk(ierr, __FILE__, __LINE__)
                 end do
                 deallocate (nodalValues)
