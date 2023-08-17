@@ -22,50 +22,55 @@ baseDir = os.path.dirname(os.path.abspath(__file__))
 
 test_params = [
     {
+        "name": "uniform",
         "acttype": "uniform",
         "ref_file": "actuator_tests.json",
         "axis1": np.array([0, 0, 0]),
         "axis2": np.array([1, 0, 0]),
-        "propRadius":    0.2,
-        "mDistribParam": 1.0, 
+        "propRadius": 0.2,
+        "mDistribParam": 1.0,
         "nDistribParam": 0.5,
         "distribPDfactor": 0.5,
         "swirlFact": 0.0,
     },
-    {   "acttype": "simpleprop",
+    {
+        "name": "simpleprop_no_swirl",
+        "acttype": "simpleprop",
         "ref_file": "actuator_simpleprop_tests.json",
         "axis1": np.array([-0.38305, 0, 0.3]),
         "axis2": np.array([-0.2518, 0, 0.3]),
-        "propRadius":    0.2,
-        "mDistribParam": 1.0, 
+        "propRadius": 0.2,
+        "mDistribParam": 1.0,
         "nDistribParam": 0.5,
         "distribPDfactor": 0.5,
         "swirlFact": 0.0,
-
     },
-    {   "acttype": "simpleprop",
+    {
+        "name": "simpleprop_positive_swirl",
+        "acttype": "simpleprop",
         "ref_file": "actuator_simpleprop_tests.json",
         "axis1": np.array([-0.38305, 0, 0.3]),
         "axis2": np.array([-0.2518, 0, 0.3]),
-        "propRadius":    0.2,
-        "mDistribParam": 1.0, 
+        "propRadius": 0.2,
+        "mDistribParam": 1.0,
         "nDistribParam": 0.5,
         "distribPDfactor": 0.5,
         "swirlFact": 1.0,
-
     },
-    {   "acttype": "simpleprop",
+    {
+        "name": "simpleprop_negative_swirl",
+        "acttype": "simpleprop",
         "ref_file": "actuator_simpleprop_tests.json",
         "axis1": np.array([-0.38305, 0, 0.3]),
         "axis2": np.array([-0.2518, 0, 0.3]),
-        "propRadius":    0.2,
-        "mDistribParam": 1.0, 
+        "propRadius": 0.2,
+        "mDistribParam": 1.0,
         "nDistribParam": 0.5,
         "distribPDfactor": 0.5,
         "swirlFact": -1.0,
-
-    }
+    },
 ]
+
 
 @parameterized_class(test_params)
 class ActuatorBasicTests(reg_test_classes.RegTest):
@@ -74,9 +79,14 @@ class ActuatorBasicTests(reg_test_classes.RegTest):
     """
 
     N_PROCS = 2
-    ref_file = None
 
     def setUp(self):
+        if not hasattr(self, "name"):
+            # return immediately when the setup method is being called on the based class and NOT the
+            # classes created using parametrized
+            # this will happen when testing, but will hopefully be fixed down the line
+            return
+
         super().setUp()
 
         self.options = {
@@ -143,13 +153,13 @@ class ActuatorBasicTests(reg_test_classes.RegTest):
             self.axis1,
             self.axis2,
             "actuator_region",
-            actType = self.acttype,
+            actType=self.acttype,
             # we will set these individually in the tests below
             thrust=0.0,
             torque=0.0,
             heat=0.0,
             propRadius=self.propRadius,
-            mDistribParam=self.mDistribParam, 
+            mDistribParam=self.mDistribParam,
             nDistribParam=self.nDistribParam,
             distribPDfactor=self.distribPDfactor,
         )
@@ -584,6 +594,7 @@ class ActuatorBasicTests(reg_test_classes.RegTest):
             # compare the final products
             np.testing.assert_array_almost_equal(first, second, decimal=14)
 
+
 @parameterized_class(test_params)
 class ActuatorCmplxTests(reg_test_classes.CmplxRegTest):
     """
@@ -669,13 +680,13 @@ class ActuatorCmplxTests(reg_test_classes.CmplxRegTest):
             self.axis1,
             self.axis2,
             "actuator_region",
-            actType = self.acttype,
+            actType=self.acttype,
             # we will set these individually in the tests below
             thrust=0.0,
             torque=0.0,
             heat=0.0,
             propRadius=self.propRadius,
-            mDistribParam=self.mDistribParam, 
+            mDistribParam=self.mDistribParam,
             nDistribParam=self.nDistribParam,
             distribPDfactor=self.distribPDfactor,
         )

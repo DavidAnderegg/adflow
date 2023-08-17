@@ -874,13 +874,28 @@ class ADFLOW(AeroSolver):
 
         self.adflow.usersurfaceintegrations.addintegrationsurface(pts.T, conn.T, familyName, famID, isInflow)
 
-    def addActuatorRegion(self, fileName, axis1, axis2, familyName, actType = 'uniform', 
-                          thrust=0.0, torque=0.0, heat=0.0,
-                          swirlFact=0.0, mDistribParam=1.0, nDistribParam=0.5,
-                          distribPDfactor=0.5, innerZeroThrustRadius=0.0,
-                          propRadius=0.1, spinnerRadius=0.0,
-                          rootDragFactor=0.0, relaxStart=None, relaxEnd=None,
-                          coordXfer=None):
+    def addActuatorRegion(
+        self,
+        fileName,
+        axis1,
+        axis2,
+        familyName,
+        actType="uniform",
+        thrust=0.0,
+        torque=0.0,
+        heat=0.0,
+        swirlFact=0.0,
+        mDistribParam=1.0,
+        nDistribParam=0.5,
+        distribPDfactor=0.5,
+        innerZeroThrustRadius=0.0,
+        propRadius=0.1,
+        spinnerRadius=0.0,
+        rootDragFactor=0.0,
+        relaxStart=None,
+        relaxEnd=None,
+        coordXfer=None,
+    ):
         """
         Add an actuator disk zone defined by the supplied closed
         surface in the plot3d file "fileName". This surface defines the
@@ -926,7 +941,7 @@ class ADFLOW(AeroSolver):
            thrust, and also to define the propeller axis for the propeller model.
            The propeller axis is used to compute the radii of the cells in the
            actuator-disk zone and also to calculate the directions for axial and
-           tangential forces. 
+           tangential forces.
 
         familyName : str
            The name to be associated with the functions defined on this region.
@@ -1037,14 +1052,32 @@ class ADFLOW(AeroSolver):
         if relaxEnd is None and relaxStart is not None:
             raise Error("relaxEnd must be given is relaxStart is specified")
 
-        if actType != 'uniform' and actType != 'simpleprop':
+        if actType != "uniform" and actType != "simpleprop":
             raise Error("actType must be 'uniform' or 'simpleprop'")
 
         #  Now continue to fortran were we setup the actual region.
         self.adflow.actuatorregion.addactuatorregion(
-            pts.T, conn.T, axis1, axis2, familyName, famID,actType, thrust, torque, heat, swirlFact,
-            mDistribParam, nDistribParam, distribPDfactor, innerZeroThrustRadius,
-            propRadius, spinnerRadius, rootDragFactor, relaxStart, relaxEnd)
+            pts.T,
+            conn.T,
+            axis1,
+            axis2,
+            familyName,
+            famID,
+            actType,
+            thrust,
+            torque,
+            heat,
+            swirlFact,
+            mDistribParam,
+            nDistribParam,
+            distribPDfactor,
+            innerZeroThrustRadius,
+            propRadius,
+            spinnerRadius,
+            rootDragFactor,
+            relaxStart,
+            relaxEnd,
+        )
 
     def writeActuatorRegions(self, fileName, outputDir=None):
         """
