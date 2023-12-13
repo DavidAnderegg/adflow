@@ -13,6 +13,9 @@ module diffSizes
     integer(kind=intType) :: ISIZE3OFDrfflowdoms
     integer(kind=intType) :: ISIZE1OFDrfflowdoms_bcdata
 
+    !Differentiated code for actuator disks needs this. Probably not a final solution
+    integer(kind=intType), parameter :: ISIZE1OFtemp = 3
+
     ! These are the diff sizes reqruied for the reverse mode AD
     integer(kind=intType) :: ISIZE3OFDrfrlv, ISIZE2OFDrfrlv, ISIZE1OFDrfrlv
     integer(kind=intType) :: ISIZE4OFDrfw, ISIZE3OFDrfw, ISIZE2OFDrfw, ISIZE1OFDrfw

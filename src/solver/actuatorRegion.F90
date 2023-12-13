@@ -6,6 +6,37 @@ module actuatorRegion
     implicit none
 
 contains
+
+    subroutine computeActuatorRegionVolume(nn, iRegion)
+        use blockPointers, only: nDom, vol
+        implicit none
+
+        ! Inputs
+        integer(kind=intType), intent(in) :: nn, iRegion
+
+        ! Working
+        integer(kind=intType) :: iii
+        integer(kind=intType) :: i, j, k
+
+        ! Loop over the region for this block
+        do iii = actuatorRegions(iRegion)%blkPtr(nn - 1) + 1, actuatorRegions(iRegion)%blkPtr(nn)
+            i = actuatorRegions(iRegion)%cellIDs(1, iii)
+            j = actuatorRegions(iRegion)%cellIDs(2, iii)
+            k = actuatorRegions(iRegion)%cellIDs(3, iii)
+
+            ! Sum the volume of each cell within the region on this proc
+            actuatorRegions(iRegion)%volLocal = actuatorRegions(iRegion)%volLocal + vol(i, j, k)
+        end do
+
+    end subroutine computeActuatorRegionVolume
+
+    ! ----------------------------------------------------------------------
+    !                                                                      |
+    !                    No Tapenade Routine below this line               |
+    !                                                                      |
+    ! ----------------------------------------------------------------------
+
+#ifndef USE_TAPENADE
     subroutine addActuatorRegion(pts, conn, axis1, axis2, famName, famID, &
                                  actType, thrust, torque, heat, swirlFact, mDistribParam, nDistribParam, &
    distribPDfactor, innerZeroThrustRadius, propRadius, spinnerRadius, rootDragFactor, relaxStart, relaxEnd, nPts, nConn)
@@ -17,7 +48,7 @@ contains
         use adtLocalSearch, only: minDistanceTreeSearchSinglePoint
         use ADTUtils, only: stack
         use ADTData
-        use blockPointers, only: x, il, jl, kl, nDom, iBlank, vol, volRef
+        use blockPointers, only: x, il, jl, kl, nDom, iBlank, vol
         use adjointVars, only: nCellsLocal
         use utils, only: setPointers, EChk
         implicit none
@@ -240,7 +271,7 @@ contains
                                             fact = rootDragFactor / propRadius
                                             fact2 = rHat**mDistribParam * (one - rHat)**nDistribParam &
                                                     / (two * pi * region%cellRadii(region%nCellIDs))
-                                            Ftmp = volRef(i, j, k) * fact * fact2
+                                            Ftmp = fact * fact2
 
                                             !  thrustSum = thrustSum + Ftmp
 
@@ -257,16 +288,17 @@ contains
                                             fact = one / propRadius
                                             fact2 = rHat**mDistribParam * (one - rHat)**nDistribParam &
                                                     / (two * pi * region%cellRadii(region%nCellIDs))
-                                            Ftmp = volRef(i, j, k) * fact * fact2
+                                            Ftmp = fact * fact2
 
-                                            thrustSum = thrustSum + Ftmp
+                                            ! the volume is usually added in 'residualds.F90' to account for changing volumes, but
+                                            ! it is needed here to compute the total thrust..
+                                            thrustSum = thrustSum + Ftmp * vol(i, j, k)
 
                                             region%thrustVec(:, region%nCellIDs) = Ftmp * axisVec
 
                                             swirlFact2 = distribPDfactor / pi / region%cellRadii(region%nCellIDs) &
                                                          * propRadius * swirlFact
-                                            FTang = swirlFact2 * fact * fact2
-                                            Swtmp = volRef(i, j, k) * FTang
+                                            Swtmp = swirlFact2 * fact * fact2
 
                                             swirlSum = swirlSum + Swtmp
 
@@ -366,7 +398,6 @@ contains
         ! Final memory cleanup
         deallocate (stack, norm, frontLeaves, frontLeavesNew, BB)
         call destroySerialQuad(ADT)
-
     contains
 
         function checkInside()
@@ -721,6 +752,7 @@ contains
             end do regionLoop
         end do domainLoop
     end subroutine integrateActuatorRegions_b
-#endif
 
+#endif
+#endif
 end module actuatorRegion

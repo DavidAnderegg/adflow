@@ -45,6 +45,7 @@ module actuatorRegionData
         real(kind=realType) :: volume
         real(kind=realType) :: totalThrustSum
         real(kind=realType) :: totalSwirlSum
+        real(kind=realType) :: volLocal
 
         integer(kind=intType), dimension(:), allocatable :: blkPtr
 
