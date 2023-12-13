@@ -351,7 +351,7 @@ contains
         ! block pointers are already set.
         use constants
         use actuatorRegionData
-        use blockPointers, only: volRef, dw, w
+        use blockPointers, only: vol, dw, w
         use flowVarRefState, only: pRef, uRef, LRef
         use communication
         use iteration, only: ordersConverged
@@ -405,15 +405,15 @@ contains
                 j = actuatorRegions(iRegion)%cellIDs(2, ii)
                 k = actuatorRegions(iRegion)%cellIDs(3, ii)
 
-                ! This actually gets the force
-                FTmp = volRef(i, j, k) * F_fact
+            ! This actually gets the force
+            FTmp = vol(i, j, k) * F_fact
 
                 Vx = w(i, j, k, iVx)
                 Vy = w(i, j, k, iVy)
                 Vz = w(i, j, k, iVz)
 
-                ! this gets the heat addition rate
-                Qtmp = volRef(i, j, k) * Q_fact
+            ! this gets the heat addition rate
+            QTmp = vol(i, j, k) * Q_fact
 
                 if (res) then
                     ! Momentum residuals
@@ -442,10 +442,11 @@ contains
                 !thrustT = actuatorRegions(iRegion)%force
                 !thrustTnorm = sqrt((thrustT(1)**2 + thrustT(2)**2 + thrustT(3)**2))
 
-                Ftmp = factor * actuatorRegions(iRegion)%thrustVec(:, ii) * actuatorRegions(iRegion)%thrust / pRef
+                Ftmp = factor * actuatorRegions(iRegion)%thrustVec(:, ii) * vol(i, j, k) *&
+                    actuatorRegions(iRegion)%thrust / pRef
                 Ftmp = Ftmp + factor * actuatorRegions(iRegion)%swirlVec(:, ii) * actuatorRegions(iRegion)%thrust / pRef
 
-                Qtmp = volRef(i, j, k) * Q_fact
+                Qtmp = vol(i, j, k) * Q_fact
 
                 Vx = w(i, j, k, iVx)
                 Vy = w(i, j, k, iVy)
