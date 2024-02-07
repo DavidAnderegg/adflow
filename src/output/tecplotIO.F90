@@ -1890,6 +1890,8 @@ contains
         ! Working variables
         integer(kind=intType) :: i, j, i1, i2
         real(kind=realType), dimension(3) :: x1, x2, pT1, pT2, vT1, vT2, pF, vF, pF_elem, vF_elem
+        real(kind=realType), dimension(3) :: pF_normal, vF_normal
+        real(kind=realType) :: pF_magnitude, vF_magnitude, pF_proj_magnitude, vF_proj_magnitude
         real(kind=realType) :: len, dmax, dmin, dist, fact, M(3, 3), tmp(6)
         real(kind=realType) :: r(3), r_new(3), hyp, te(3), le(3), theta, w1, w2
         integer(kind=intType) :: bestPair(2), normal_ind, iProc, ierr, iSize
@@ -2077,6 +2079,39 @@ contains
             pF_elem = half * (pT1 + pT2) * len
             vF_elem = half * (vT1 + vT2) * len
 
+            ! these forces may be misaligned with the slice surface. rotate them.
+            ! To do this, we take out the component of the forces normal to the plane to get the force direction.
+            ! Then we scale the resulting vector to have its original length.
+            ! if we dont do this, lift integrations will not be accurate.
+            pF_magnitude = sqrt(pF_elem(1)**2 + pF_elem(2)**2 + pF_elem(3)**2)
+            vF_magnitude = sqrt(vF_elem(1)**2 + vF_elem(2)**2 + vF_elem(3)**2)
+
+            ! get the normal contribution to the plane
+            pF_normal = (pF_elem(1) * lslc%normal(1) + &
+                         pF_elem(2) * lslc%normal(2) + &
+                         pF_elem(3) * lslc%normal(3)) * pF_elem
+            vF_normal = (vF_elem(1) * lslc%normal(1) + &
+                         vF_elem(2) * lslc%normal(2) + &
+                         vF_elem(3) * lslc%normal(3)) * vF_elem
+
+            ! remove the normal contribution from the vector. This is the vector projected
+            ! onto the slicing plane
+            pF_elem(1) = pF_elem(1) - pF_normal(1)
+            pF_elem(2) = pF_elem(2) - pF_normal(2)
+            pF_elem(3) = pF_elem(3) - pF_normal(3)
+
+            vF_elem(1) = vF_elem(1) - vF_normal(1)
+            vF_elem(2) = vF_elem(2) - vF_normal(2)
+            vF_elem(3) = vF_elem(3) - vF_normal(3)
+
+            ! get the length of this projection
+            pF_proj_magnitude = sqrt(pF_elem(1)**2 + pF_elem(2)**2 + pF_elem(3)**2)
+            vF_proj_magnitude = sqrt(vF_elem(1)**2 + vF_elem(2)**2 + vF_elem(3)**2)
+
+            ! finally, scale the vectors to their old mag. divide by their new mag and mult by old mag.
+            pF_elem = pF_elem * pF_magnitude / pF_proj_magnitude
+            vF_elem = vF_elem * vF_magnitude / vF_proj_magnitude
+
             ! Integrate the pressure and viscous forces separately
             pF = pF + pF_elem
             vF = vF + vF_elem
@@ -2208,19 +2243,19 @@ contains
             end if
 
             if (normal_ind == 1) then
-                M(1, 1) = one; M(1, 2) = zero; M(1, 3) = zero; 
-                M(2, 1) = zero; M(2, 2) = one; M(2, 3) = zero; 
-                M(3, 1) = zero; M(3, 2) = zero; M(3, 3) = one; 
+                M(1, 1) = one; M(1, 2) = zero; M(1, 3) = zero;
+                M(2, 1) = zero; M(2, 2) = one; M(2, 3) = zero;
+                M(3, 1) = zero; M(3, 2) = zero; M(3, 3) = one;
             else if (normal_ind == 2) then
                 ! Y-rotation matrix
-                M(1, 1) = cos(-theta); M(1, 2) = zero; M(1, 3) = sin(-theta); 
-                M(2, 1) = zero; M(2, 2) = one; M(2, 3) = zero; 
-                M(3, 1) = -sin(-theta); M(3, 2) = zero; M(3, 3) = cos(-theta); 
+                M(1, 1) = cos(-theta); M(1, 2) = zero; M(1, 3) = sin(-theta);
+                M(2, 1) = zero; M(2, 2) = one; M(2, 3) = zero;
+                M(3, 1) = -sin(-theta); M(3, 2) = zero; M(3, 3) = cos(-theta);
             else
                 ! Z rotation Matrix
-                M(1, 1) = cos(theta); M(1, 2) = -sin(theta); M(1, 3) = zero; 
-                M(2, 1) = sin(theta); M(2, 2) = cos(theta); M(2, 3) = zero; 
-                M(3, 1) = zero; M(3, 2) = zero; M(3, 3) = one; 
+                M(1, 1) = cos(theta); M(1, 2) = -sin(theta); M(1, 3) = zero;
+                M(2, 1) = sin(theta); M(2, 2) = cos(theta); M(2, 3) = zero;
+                M(3, 1) = zero; M(3, 2) = zero; M(3, 3) = one;
             end if
 
             allocate (tempCoords(3, size(gSlc%vars, 2)))
