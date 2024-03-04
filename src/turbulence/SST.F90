@@ -858,8 +858,15 @@ contains
                     do i = iBeg, iEnd
 #endif
 
-                        t1 = sqrt(w(i, j, k, itu1)) &
-                             / (0.09_realType * w(i, j, k, itu2) * d2Wall(i, j, k))
+                        ! If the turbulent kinetic energy falls below 0, this sqrt produces a nan. This presumably only happens if
+                        ! the DADI (for turbulence) solver is used. The ANK solver should check and prevent this. Since t1 is later
+                        ! max-ed with t2, we just set it to 0 if the turbulent kinetic energy is below 0
+                        if (w(i, j, k, itu1) .gt. 0) then
+                            t1 = sqrt(w(i, j, k, itu1)) &
+                                 / (0.09_realType * w(i, j, k, itu2) * d2Wall(i, j, k))
+                        else
+                            t1 = 0
+                        end if
                         t2 = 500.0_realType * rlv(i, j, k) &
                              / (w(i, j, k, irho) * w(i, j, k, itu2) * d2Wall(i, j, k)**2)
                         t1 = max(t1, t2)
