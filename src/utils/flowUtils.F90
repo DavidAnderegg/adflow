@@ -1252,7 +1252,7 @@ contains
         !      Local variables.
         !
         integer(kind=intType) :: i, j, k, ii
-        real(kind=realType) :: muSuth, TSuth, SSuth, T, pp
+        real(kind=realType) :: muSuth, TSuth, SSuth, T, pp, correction
         logical :: correctForK
         integer(kind=intType) :: iBeg, iEnd, iSize, jBeg, jEnd, jSize, kBeg, kEnd, kSize
 
@@ -1306,7 +1306,12 @@ contains
                     do j = jBeg, jEnd
                         do i = iBeg, iEnd
 #endif
-                            pp = p(i, j, k) - twoThird * w(i, j, k, irho) * w(i, j, k, itu1)
+                            pp = p(i, j, k) 
+                            correction = twoThird * w(i, j, k, irho) * w(i, j, k, itu1)
+                            if (pp .gt. correction) then
+                                ! only subtract the correction when we dont produce a negative number
+                                pp = pp - correction
+                            end if
                             T = pp / (RGas * w(i, j, k, irho))
                             rlv(i, j, k) = muSuth * ((TSuth + SSuth) / (T + SSuth)) &
                                            * ((T / TSuth)**1.5_realType)
