@@ -1306,7 +1306,7 @@ contains
                     do j = jBeg, jEnd
                         do i = iBeg, iEnd
 #endif
-                            pp = p(i, j, k) 
+                            pp = p(i, j, k)
                             correction = twoThird * w(i, j, k, irho) * w(i, j, k, itu1)
                             if (pp .gt. correction) then
                                 ! only subtract the correction when we dont produce a negative number
