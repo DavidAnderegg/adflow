@@ -1165,6 +1165,7 @@ python module libadflow
          logical :: userotationsa
          logical :: useft2sa
          logical :: wallfunctions
+         logical :: use2003sst
          real(kind=realtype) :: mach
          real(kind=realtype) :: machcoef
          real(kind=realtype) :: machgrid
