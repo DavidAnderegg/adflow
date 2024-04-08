@@ -794,7 +794,7 @@ contains
                     flowDomsd(nn, level, sps)%w(0:ib, 0:jb, 0:kb, 1:nw), &
                     flowDomsd(nn, level, sps)%dw(0:ib, 0:jb, 0:kb, 1:nw), &
                     flowDomsd(nn, level, sps)%fw(0:ib, 0:jb, 0:kb, 1:nw), &
-                    flowDomsd(nn, level, sps)%scratch(0:ib, 0:jb, 0:kb, 5), &
+                    flowDomsd(nn, level, sps)%scratch(0:ib, 0:jb, 0:kb, 10), &
                     flowDomsd(nn, level, sps)%p(0:ib, 0:jb, 0:kb), &
                     flowDomsd(nn, level, sps)%gamma(0:ib, 0:jb, 0:kb), &
                     flowDomsd(nn, level, sps)%aa(0:ib, 0:jb, 0:kb), &
