@@ -103,6 +103,11 @@ contains
       case (komegawilcox, komegamodified, mentersst) 
         bcvarnames(offset+1) = cgnsturbk
         bcvarnames(offset+2) = cgnsturbomega
+      case (langtrymentersst) 
+        bcvarnames(offset+1) = cgnsturbk
+        bcvarnames(offset+2) = cgnsturbomega
+        bcvarnames(offset+3) = cgnstransitiongamma
+        bcvarnames(offset+2) = cgnstransitionrethetat
       case (ktau) 
         bcvarnames(offset+1) = cgnsturbk
         bcvarnames(offset+2) = cgnsturbtau
@@ -2037,6 +2042,7 @@ contains
 !       otherwise.
 !
     use constants
+    use variableconstants
     use flowvarrefstate, only : nt1, nt2, muref, murefd, pref, prefd, &
 &   rhoref, rhorefd, winf, winfd
     use inputphysics, only : equations, turbmodel
@@ -2065,13 +2071,15 @@ contains
     real(kind=realtype) :: tmpd
     real(kind=realtype) :: tmp0
     real(kind=realtype) :: tmpd0
-    real(kind=realtype) :: tempd
     real(kind=realtype) :: tmp1
     real(kind=realtype) :: tmpd1
+    real(kind=realtype) :: tempd
     real(kind=realtype) :: tmp2
     real(kind=realtype) :: tmpd2
     real(kind=realtype) :: tmp3
     real(kind=realtype) :: tmpd3
+    real(kind=realtype) :: tmp4
+    real(kind=realtype) :: tmpd4
     integer :: branch
     logical :: setbcvarturb
 ! initialize setbcvarturb to .true. and return immediately
@@ -2091,24 +2099,34 @@ contains
         call pushreal8(ref(itu2))
         ref(itu2) = tmp
         call pushcontrol3b(2)
-      case (ktau) 
+      case (langtrymentersst) 
         ref(itu1) = pref/rhoref
-        tmp0 = nuref/ref(itu1)
+        tmp0 = ref(itu1)/nuref
         call pushreal8(ref(itu2))
         ref(itu2) = tmp0
+        call pushreal8(ref(itransition1))
+        ref(itransition1) = 0
+        call pushreal8(ref(itransition2))
+        ref(itransition2) = 0
         call pushcontrol3b(3)
+      case (ktau) 
+        ref(itu1) = pref/rhoref
+        tmp1 = nuref/ref(itu1)
+        call pushreal8(ref(itu2))
+        ref(itu2) = tmp1
+        call pushcontrol3b(4)
       case (v2f) 
         ref(itu1) = pref/rhoref
-        tmp1 = ref(itu1)/nuref
+        tmp2 = ref(itu1)/nuref
         call pushreal8(ref(itu4))
-        ref(itu4) = tmp1
-        tmp2 = ref(itu1)*ref(itu4)
+        ref(itu4) = tmp2
+        tmp3 = ref(itu1)*ref(itu4)
         call pushreal8(ref(itu2))
-        ref(itu2) = tmp2
-        tmp3 = ref(itu1)
+        ref(itu2) = tmp3
+        tmp4 = ref(itu1)
         call pushreal8(ref(itu3))
-        ref(itu3) = tmp3
-        call pushcontrol3b(4)
+        ref(itu3) = tmp4
+        call pushcontrol3b(5)
       case default
         call pushcontrol3b(0)
       end select
@@ -2158,44 +2176,56 @@ turbloop:do nn=nt1,nt2
         call popinteger4(mm)
       end do
       call popcontrol3b(branch)
-      if (branch .lt. 2) then
+      if (branch .lt. 3) then
         if (branch .eq. 0) then
           nurefd = 0.0_8
-        else
+        else if (branch .eq. 1) then
           nurefd = refd(itu1)
+        else
+          call popreal8(ref(itu2))
+          tmpd = refd(itu2)
+          refd(itu2) = 0.0_8
+          refd(itu1) = refd(itu1) + tmpd/nuref
+          nurefd = -(ref(itu1)*tmpd/nuref**2)
+          prefd = prefd + refd(itu1)/rhoref
+          rhorefd = rhorefd - pref*refd(itu1)/rhoref**2
         end if
-      else if (branch .eq. 2) then
-        call popreal8(ref(itu2))
-        tmpd = refd(itu2)
-        refd(itu2) = 0.0_8
-        refd(itu1) = refd(itu1) + tmpd/nuref
-        nurefd = -(ref(itu1)*tmpd/nuref**2)
-        prefd = prefd + refd(itu1)/rhoref
-        rhorefd = rhorefd - pref*refd(itu1)/rhoref**2
       else if (branch .eq. 3) then
+        call popreal8(ref(itransition2))
+        refd(itransition2) = 0.0_8
+        call popreal8(ref(itransition1))
+        refd(itransition1) = 0.0_8
         call popreal8(ref(itu2))
         tmpd0 = refd(itu2)
         refd(itu2) = 0.0_8
-        tempd = tmpd0/ref(itu1)
+        refd(itu1) = refd(itu1) + tmpd0/nuref
+        nurefd = -(ref(itu1)*tmpd0/nuref**2)
+        prefd = prefd + refd(itu1)/rhoref
+        rhorefd = rhorefd - pref*refd(itu1)/rhoref**2
+      else if (branch .eq. 4) then
+        call popreal8(ref(itu2))
+        tmpd1 = refd(itu2)
+        refd(itu2) = 0.0_8
+        tempd = tmpd1/ref(itu1)
         nurefd = tempd
         refd(itu1) = refd(itu1) - nuref*tempd/ref(itu1)
         prefd = prefd + refd(itu1)/rhoref
         rhorefd = rhorefd - pref*refd(itu1)/rhoref**2
       else
         call popreal8(ref(itu3))
-        tmpd3 = refd(itu3)
+        tmpd4 = refd(itu3)
         refd(itu3) = 0.0_8
-        refd(itu1) = refd(itu1) + tmpd3
+        refd(itu1) = refd(itu1) + tmpd4
         call popreal8(ref(itu2))
-        tmpd2 = refd(itu2)
+        tmpd3 = refd(itu2)
         refd(itu2) = 0.0_8
-        refd(itu1) = refd(itu1) + ref(itu4)*tmpd2
-        refd(itu4) = refd(itu4) + ref(itu1)*tmpd2
+        refd(itu1) = refd(itu1) + ref(itu4)*tmpd3
+        refd(itu4) = refd(itu4) + ref(itu1)*tmpd3
         call popreal8(ref(itu4))
-        tmpd1 = refd(itu4)
+        tmpd2 = refd(itu4)
         refd(itu4) = 0.0_8
-        refd(itu1) = refd(itu1) + tmpd1/nuref
-        nurefd = -(ref(itu1)*tmpd1/nuref**2)
+        refd(itu1) = refd(itu1) + tmpd2/nuref
+        nurefd = -(ref(itu1)*tmpd2/nuref**2)
         prefd = prefd + refd(itu1)/rhoref
         rhorefd = rhorefd - pref*refd(itu1)/rhoref**2
       end if
@@ -2214,6 +2244,7 @@ turbloop:do nn=nt1,nt2
 !       otherwise.
 !
     use constants
+    use variableconstants
     use flowvarrefstate, only : nt1, nt2, muref, pref, rhoref, winf
     use inputphysics, only : equations, turbmodel
     use utils_b, only : terminate, siturb
@@ -2246,6 +2277,11 @@ turbloop:do nn=nt1,nt2
       case (komegawilcox, komegamodified, mentersst) 
         ref(itu1) = pref/rhoref
         ref(itu2) = ref(itu1)/nuref
+      case (langtrymentersst) 
+        ref(itu1) = pref/rhoref
+        ref(itu2) = ref(itu1)/nuref
+        ref(itransition1) = 0
+        ref(itransition2) = 0
       case (ktau) 
         ref(itu1) = pref/rhoref
         ref(itu2) = nuref/ref(itu1)

@@ -6117,6 +6117,12 @@ contains
                 case (cgnsL2resF)
                     write (*, "(a)", advance="no") "       Res fturb        |"
 
+                case (cgnsL2ResGamma)
+                    write (*, "(a)", advance="no") "     Res gamma trans    |"
+
+                case (cgnsL2ResRethetat)
+                    write (*, "(a)", advance="no") "   Res ReThetat trans   |"
+
                 case (cgnsCl)
                     write (*, "(a)", advance="no") "         C_lift         |"
 
@@ -6218,6 +6224,12 @@ contains
 
                 case (cgnsL2resF)
                     write (*, "(a)", advance="no") "           Res fturb             |"
+
+                case (cgnsL2ResGamma)
+                    write (*, "(a)", advance="no") "         Res gamma trans         |"
+
+                case (cgnsL2ResRethetat)
+                    write (*, "(a)", advance="no") "       Res ReThetat trans        |"
 
                 case (cgnsCl)
                     write (*, "(a)", advance="no") "                     C_lift                      |"

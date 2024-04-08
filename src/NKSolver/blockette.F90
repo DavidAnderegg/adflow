@@ -844,7 +844,7 @@ contains
             case (komegaWilcox, komegaModified)
                 call kw_block(.True.)
 
-            case (menterSST)
+            case (menterSST, langtryMenterSST)
                 call SST_block_residuals(.True.)
 
             case (ktau)

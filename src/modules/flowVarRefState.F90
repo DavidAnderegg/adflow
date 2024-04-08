@@ -63,10 +63,11 @@ module flowVarRefState
     ! rhoInf:   Nondimensional free stream density.
     ! uInf:     Nondimensional free stream velocity
     ! muInf:    Nondimensional free stream viscosity.
+    ! TuInf:    Nondimensional free stream CHANGE THIS.
     ! RGas:     Nondimensional gas constant.
     ! gammaInf: Free stream specific heat ratio.
 
-    real(kind=realType) :: rhoInf, uInf, pInf, pInfCorr
+    real(kind=realType) :: rhoInf, uInf, pInf, pInfCorr, TuInf
     real(kind=realType) :: RGas, muInf, gammaInf
 #ifdef USE_TAPENADE
     real(kind=realType), dimension(10) :: wInf
@@ -78,10 +79,10 @@ module flowVarRefState
     REAL(kind=realtype) :: prefd, rhorefd, trefd, uRefd, Hrefd
     REAL(kind=realtype) :: murefd, timerefd
     REAL(kind=realtype) :: pinfdimd, rhoinfdimd, tinfdimd
-    real(kind=realtype) :: mudimd, muinfdimd
+    real(kind=realtype) :: mudimd, muinfdimd, Tuinfdimd
     REAL(kind=realtype) :: pinfdimb, rhoinfdimb
     REAL(kind=realtype) :: rhoinfd, uinfd, pinfd, pinfcorrd
-    REAL(kind=realtype) :: rgasd, muinfd, gammainfd
+    REAL(kind=realtype) :: rgasd, muinfd, gammainfd, TuInfd
     real(kind=realType), dimension(:), allocatable :: wInfd, wInfb
 #endif
     ! viscous:   whether or not this is a viscous computation.

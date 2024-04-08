@@ -118,6 +118,12 @@ contains
             bcVarNames(offset + 1) = cgnsTurbK
             bcVarNames(offset + 2) = cgnsTurbOmega
 
+        case (langtryMenterSST)
+            bcVarNames(offset + 1) = cgnsTurbK
+            bcVarNames(offset + 2) = cgnsTurbOmega
+            bcVarNames(offset + 3) = cgnsTransitionGamma
+            bcVarNames(offset + 2) = cgnsTransitionReThetat
+
         case (ktau)
             bcVarNames(offset + 1) = cgnsTurbK
             bcVarNames(offset + 2) = cgnsTurbTau
@@ -1308,6 +1314,7 @@ contains
         !       otherwise.
         !
         use constants
+        use variableConstants
         use flowVarRefState, only: nt1, nt2, muRef, Pref, rhoRef, wInf
         use inputPhysics, only: equations, turbModel
         use utils, only: terminate, siTurb
@@ -1343,6 +1350,12 @@ contains
         case (komegaWilcox, komegaModified, menterSST)
             ref(itu1) = pRef / rhoRef
             ref(itu2) = ref(itu1) / nuRef
+
+        case (langtryMenterSST)
+            ref(itu1) = pRef / rhoRef
+            ref(itu2) = ref(itu1) / nuRef
+            ref(iTransition1) = 0
+            ref(iTransition2) = 0
 
         case (ktau)
             ref(itu1) = pRef / rhoRef

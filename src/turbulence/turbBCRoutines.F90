@@ -808,6 +808,7 @@ contains
         use flowVarRefState
         use inputPhysics
         use constants
+        use variableConstants
         use paramTurb
         implicit none
         !
@@ -877,7 +878,7 @@ contains
             end select
 
             !        ================================================================
-        case (komegaWilcox, komegaModified, menterSST)
+        case (komegaWilcox, komegaModified, menterSST, langtryMenterSST)
 
             ! K-omega type of models. K is zero on the wall and thus the
             ! halo value is the negative of the first internal cell.
@@ -1132,6 +1133,60 @@ contains
             end do
 #endif
         end select
+
+        select case (transitionModel)
+            
+            case (GammaRetheta)
+
+                select case (BCFaceID(nn))
+                case (iMin)
+                    do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
+                        do i = BCData(nn)%icBeg, BCData(nn)%icEnd
+                            bmti1(i, j, iTransition1, iTransition1) = one
+                            bmti1(i, j, iTransition2, iTransition2) = one
+                        end do
+                    end do
+                case (iMax)
+                    do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
+                        do i = BCData(nn)%icBeg, BCData(nn)%icEnd
+                            bmti2(i, j, iTransition1, iTransition1) = one
+                            bmti2(i, j, iTransition2, iTransition2) = one
+                        end do
+                    end do
+                case (jMin)
+                    do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
+                        do i = BCData(nn)%icBeg, BCData(nn)%icEnd
+                            bmtj1(i, j, iTransition1, iTransition1) = one
+                            bmtj1(i, j, iTransition2, iTransition2) = one
+                        end do
+                    end do
+                case (jMax)
+                    do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
+                        do i = BCData(nn)%icBeg, BCData(nn)%icEnd
+                            bmtj2(i, j, iTransition1, iTransition1) = one
+                            bmtj2(i, j, iTransition2, iTransition2) = one
+                        end do
+                    end do
+
+                case (kMin)
+                    do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
+                        do i = BCData(nn)%icBeg, BCData(nn)%icEnd
+                            bmtk1(i, j, iTransition1, iTransition1) = one
+                            bmtk1(i, j, iTransition2, iTransition2) = one
+                        end do
+                    end do
+
+                case (kMax)
+                    do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
+                        do i = BCData(nn)%icBeg, BCData(nn)%icEnd
+                            bmtk2(i, j, iTransition1, iTransition1) = one
+                            bmtk2(i, j, iTransition2, iTransition2) = one
+                        end do
+                    end do
+                end select
+
+        end select
+
     end subroutine bcTurbWall
 
     subroutine turb2ndHalo(nn)

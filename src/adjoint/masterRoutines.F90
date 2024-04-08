@@ -204,7 +204,7 @@ contains
                     case (komegaWilcox, komegaModified)
                         call kwSolve(.True.)
 
-                    case (menterSST)
+                    case (menterSST, langtryMenterSST)
                         call SST_block_residuals(.True.)
 
                     case (ktau)
@@ -562,7 +562,7 @@ contains
                     select case (turbModel)
                     case (spalartAllmaras)
                         call sa_block_residuals_d
-                    case (menterSST)
+                    case (menterSST, langtryMenterSST)
                         call sst_block_residuals_d
                     end select
                 end if

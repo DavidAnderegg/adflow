@@ -28,15 +28,17 @@ contains
         !         (Non-dimensionalized values used in actual computations)
         !
         use constants
+        use variableConstants
         use paramTurb
         use inputPhysics, only: equations, Mach, machCoef, &
                                 muSuthDim, TSuthDim, velDirFreeStream, &
-                                rGasDim, SSuthDim, eddyVisInfRatio, turbModel, turbIntensityInf
+                                rGasDim, SSuthDim, eddyVisInfRatio, turbModel, turbIntensityInf, &
+                                transitionModel
         use flowVarRefState, only: pInfDim, TinfDim, rhoInfDim, &
                                    muInfDim, &
                                    pRef, rhoRef, Tref, muRef, timeRef, uRef, hRef, &
                                    pInf, pInfCorr, rhoInf, uInf, rGas, muInf, gammaInf, wInf, &
-                                   nw, nwf, kPresent, wInf
+                                   nw, nwf, kPresent, wInf, TuInf
         use flowUtils, only: computeGamma, eTot
         use turbUtils, only: saNuKnownEddyRatio
         implicit none
@@ -137,7 +139,7 @@ contains
 
                 !=============================================================
 
-            case (komegaWilcox, komegaModified, menterSST)
+            case (komegaWilcox, komegaModified, menterSST, langtryMenterSST)
 
                 wInf(itu1) = 1.5_realType * uInf2 * turbIntensityInf**2
                 wInf(itu2) = wInf(itu1) / (eddyVisInfRatio * nuInf)
@@ -164,6 +166,21 @@ contains
                              / (eddyVisInfRatio * nuInf)
                 wInf(itu3) = 0.666666_realType * wInf(itu1)
                 wInf(itu4) = 0.0_realType
+
+            end select
+
+            select case (transitionModel)
+            
+            case (GammaRetheta)
+                TuInf = 500 * muInf / (rhoInf * UInf**2)
+
+                wInf(iTransition1) = 1.0
+
+                if (TuInf .gt. 1.3) then
+                    wInf(iTransition2)  = 331.50 * (TuInf - 0.5658)**(-0.671)
+                else
+                    wInf(iTransition2) = 1173.51 - 589.428*TuInf + 0.2196*TuInf**(-2)
+                end if
 
             end select
 

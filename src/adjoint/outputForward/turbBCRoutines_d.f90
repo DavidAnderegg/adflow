@@ -1173,6 +1173,7 @@ bocos:do nn=1,nbocos
     use flowvarrefstate
     use inputphysics
     use constants
+    use variableconstants
     use paramturb
     implicit none
 !
@@ -1250,7 +1251,7 @@ bocos:do nn=1,nbocos
         end do
       end select
 !        ================================================================
-    case (komegawilcox, komegamodified, mentersst) 
+    case (komegawilcox, komegamodified, mentersst, langtrymentersst) 
 ! k-omega type of models. k is zero on the wall and thus the
 ! halo value is the negative of the first internal cell.
 ! for omega the situation is a bit more complicated.
@@ -1550,6 +1551,53 @@ bocos:do nn=1,nbocos
       end select
 !        ================================================================
     end select
+    select case  (transitionmodel) 
+    case (gammaretheta) 
+      select case  (bcfaceid(nn)) 
+      case (imin) 
+        do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
+          do i=bcdata(nn)%icbeg,bcdata(nn)%icend
+            bmti1(i, j, itransition1, itransition1) = one
+            bmti1(i, j, itransition2, itransition2) = one
+          end do
+        end do
+      case (imax) 
+        do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
+          do i=bcdata(nn)%icbeg,bcdata(nn)%icend
+            bmti2(i, j, itransition1, itransition1) = one
+            bmti2(i, j, itransition2, itransition2) = one
+          end do
+        end do
+      case (jmin) 
+        do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
+          do i=bcdata(nn)%icbeg,bcdata(nn)%icend
+            bmtj1(i, j, itransition1, itransition1) = one
+            bmtj1(i, j, itransition2, itransition2) = one
+          end do
+        end do
+      case (jmax) 
+        do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
+          do i=bcdata(nn)%icbeg,bcdata(nn)%icend
+            bmtj2(i, j, itransition1, itransition1) = one
+            bmtj2(i, j, itransition2, itransition2) = one
+          end do
+        end do
+      case (kmin) 
+        do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
+          do i=bcdata(nn)%icbeg,bcdata(nn)%icend
+            bmtk1(i, j, itransition1, itransition1) = one
+            bmtk1(i, j, itransition2, itransition2) = one
+          end do
+        end do
+      case (kmax) 
+        do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
+          do i=bcdata(nn)%icbeg,bcdata(nn)%icend
+            bmtk2(i, j, itransition1, itransition1) = one
+            bmtk2(i, j, itransition2, itransition2) = one
+          end do
+        end do
+      end select
+    end select
   end subroutine bcturbwall_d
 
   subroutine bcturbwall(nn)
@@ -1564,6 +1612,7 @@ bocos:do nn=1,nbocos
     use flowvarrefstate
     use inputphysics
     use constants
+    use variableconstants
     use paramturb
     implicit none
 !
@@ -1638,7 +1687,7 @@ bocos:do nn=1,nbocos
         end do
       end select
 !        ================================================================
-    case (komegawilcox, komegamodified, mentersst) 
+    case (komegawilcox, komegamodified, mentersst, langtrymentersst) 
 ! k-omega type of models. k is zero on the wall and thus the
 ! halo value is the negative of the first internal cell.
 ! for omega the situation is a bit more complicated.
@@ -1898,6 +1947,53 @@ bocos:do nn=1,nbocos
         end do
       end select
 !        ================================================================
+    end select
+    select case  (transitionmodel) 
+    case (gammaretheta) 
+      select case  (bcfaceid(nn)) 
+      case (imin) 
+        do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
+          do i=bcdata(nn)%icbeg,bcdata(nn)%icend
+            bmti1(i, j, itransition1, itransition1) = one
+            bmti1(i, j, itransition2, itransition2) = one
+          end do
+        end do
+      case (imax) 
+        do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
+          do i=bcdata(nn)%icbeg,bcdata(nn)%icend
+            bmti2(i, j, itransition1, itransition1) = one
+            bmti2(i, j, itransition2, itransition2) = one
+          end do
+        end do
+      case (jmin) 
+        do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
+          do i=bcdata(nn)%icbeg,bcdata(nn)%icend
+            bmtj1(i, j, itransition1, itransition1) = one
+            bmtj1(i, j, itransition2, itransition2) = one
+          end do
+        end do
+      case (jmax) 
+        do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
+          do i=bcdata(nn)%icbeg,bcdata(nn)%icend
+            bmtj2(i, j, itransition1, itransition1) = one
+            bmtj2(i, j, itransition2, itransition2) = one
+          end do
+        end do
+      case (kmin) 
+        do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
+          do i=bcdata(nn)%icbeg,bcdata(nn)%icend
+            bmtk1(i, j, itransition1, itransition1) = one
+            bmtk1(i, j, itransition2, itransition2) = one
+          end do
+        end do
+      case (kmax) 
+        do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
+          do i=bcdata(nn)%icbeg,bcdata(nn)%icend
+            bmtk2(i, j, itransition1, itransition1) = one
+            bmtk2(i, j, itransition2, itransition2) = one
+          end do
+        end do
+      end select
     end select
   end subroutine bcturbwall
 

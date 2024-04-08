@@ -1000,6 +1000,8 @@ contains
 !  differentiation of strainnorm in reverse (adjoint) mode (with options noisize i4 dr8 r8):
 !   gradient     of useful results: *w *scratch *vol *si *sj *sk
 !   with respect to varying inputs: *w *scratch *vol *si *sj *sk
+!   rw status of diff variables: *w:incr *scratch:in-out *vol:incr
+!                *si:incr *sj:incr *sk:incr
 !   plus diff mem management of: w:in scratch:in vol:in si:in sj:in
 !                sk:in
   subroutine strainnorm_b(ibeg, iend, jbeg, jend, kbeg, kend)

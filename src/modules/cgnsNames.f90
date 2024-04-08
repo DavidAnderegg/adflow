@@ -50,6 +50,11 @@ module cgnsNames
         cgnsTurbF = "TurbulentScalarF"
 
     character(len=maxCGNSNameLen), parameter :: &
+        cgnsTransitionGamma = "TransitionGamma"
+    character(len=maxCGNSNameLen), parameter :: &
+        cgnsTransitionReThetat = "TransitionReThetat"
+
+    character(len=maxCGNSNameLen), parameter :: &
         cgnsVelX = "VelocityX"
     character(len=maxCGNSNameLen), parameter :: &
         cgnsVelY = "VelocityY"
@@ -225,6 +230,11 @@ module cgnsNames
         cgnsL2resV2 = "RSDTurbulentScalarV2RMS"
     character(len=maxCGNSNameLen), parameter :: &
         cgnsL2ResF = "RSDTurbulentScalarFRMS"
+    character(len=maxCGNSNameLen), parameter :: &
+        cgnsL2ResGamma = "RSDTransitionGammaRMS"
+    character(len=maxCGNSNameLen), parameter :: &
+        cgnsL2ResRethetat = "RSDTransitionReThetat"
+
 !
 !       Force and moment coefficients names.
 !

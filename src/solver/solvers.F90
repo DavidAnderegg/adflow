@@ -1242,6 +1242,7 @@ contains
         !       every mode is written.
         !
         use constants
+        use variableConstants
         use cgnsNames
         use block, only: nCellGlobal
         use blockPointers, only: nDom
@@ -1374,6 +1375,12 @@ contains
 
                     case (cgnsL2resF)
                         call sumResiduals(itu4, mm)
+
+                    case (cgnsL2ResGamma)
+                        call sumResiduals(iTransition1, mm)
+
+                    case (cgnsL2ResRethetat)
+                        call sumResiduals(iTransition2, mm)
 
                     case (cgnsCl)
                         monLoc(mm) = monLoc(mm) &

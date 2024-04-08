@@ -48,16 +48,23 @@ module constants
     ! Parameters to indicate the position in the work array dw for
     ! turbulence models.
 
-    integer, parameter :: idvt = 1  ! Tmp RHS storage; at max a
-    ! 2x2 subsystem is solved.
-    integer, parameter :: ivort = 3  ! Tmp vort storage
-    integer, parameter :: istrain = 3  ! Tmp strain storage
-    integer, parameter :: iprod = 3  ! Tmp prod storage
-    integer, parameter :: icd = 4  ! Tmp cross term storage
-    integer, parameter :: if1SST = 5  ! Tmp F1 (for SST) storage
-    integer, parameter :: isct = 4  ! Tmp time scale (for v2f) storage
-    integer, parameter :: iscl2 = 5  ! Tmp length scale (for v2f) storage
-    integer, parameter :: iqq = 6  ! Central jacobian storage
+    integer, parameter :: idvt = 1  ! Tmp RHS storage; at max a         used by SST
+    ! 2x2 subsystem is solved.                                          used by SST
+    integer, parameter :: iprod = 3  ! Tmp vort storage                 used by SST
+    integer, parameter :: iprodAlt = 6  ! Tmp vort storage              used by SST
+    integer, parameter :: icd = 4  ! Tmp cross term storage             used by SST
+    integer, parameter :: if1SST = 5  ! Tmp F1 (for SST) storage        used by SST
+    integer, parameter :: isct = 4  ! Tmp time scale (for v2f) storage      only used by v2f
+    integer, parameter :: iscl2 = 5  ! Tmp length scale (for v2f) storage   only used by v2f
+    integer, parameter :: iqq = 6  ! Central jacobian storage           not used at all
+    integer, parameter :: isTransition1 = 7  ! source term storage for transition model
+    integer, parameter :: isTransition2 = 8  ! source term storage for transition model
+    integer, parameter :: iStrain = 9  ! storage for strain rate magnitude
+    integer, parameter :: iVorticity = 10  ! storage for vorticity magnitude
+    ! 7                                                                 not used at all
+    ! 8                                                                 not used at all
+    ! 9                                                                 not used at all
+    ! 10                                                                not used at all
 
     ! Indices in the array of conservative flow residuals for the
     ! momentum variables.
@@ -129,7 +136,12 @@ module constants
         komegaModified = 5, &
         ktau = 6, &
         menterSST = 7, &
+        langtrymenterSST = 8, &
         v2f = 10
+
+    integer(kind=intType), parameter :: &
+        noTransitionModel = 0, & 
+        gammaretheta = 1
 
     integer(kind=intType), parameter :: &
         strain = 1, &
@@ -519,3 +531,16 @@ module constants
     integer(kind=intType), parameter :: MetricSkewness = 2
 
 end module constants
+
+module variableConstants
+    ! A variable Constant defeats the purpose of a constant. This module is here to somewhat retain 
+    ! backwards-compability
+
+    use precision
+
+    implicit none
+    save
+
+    integer(kind=intType) :: iTransition1 = -1
+    integer(kind=intType) :: iTransition2 = -1
+end module

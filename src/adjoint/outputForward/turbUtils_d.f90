@@ -1097,6 +1097,8 @@ contains
 !  differentiation of strainnorm in forward (tangent) mode (with options i4 dr8 r8):
 !   variations   of useful results: *scratch
 !   with respect to varying inputs: *w *scratch *vol *si *sj *sk
+!   rw status of diff variables: *w:in *scratch:in-out *vol:in
+!                *si:in *sj:in *sk:in
 !   plus diff mem management of: w:in scratch:in vol:in si:in sj:in
 !                sk:in
   subroutine strainnorm_d(ibeg, iend, jbeg, jend, kbeg, kend)

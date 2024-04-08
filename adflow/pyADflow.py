@@ -5534,7 +5534,7 @@ class ADFLOW(AeroSolver):
             "flowType": [str, ["external", "internal"]],
             "turbulenceModel": [
                 str,
-                ["SA", "SA-Edwards", "k-omega Wilcox", "k-omega modified", "k-tau", "Menter SST", "v2f"],
+                ["SA", "SA-Edwards", "k-omega Wilcox", "k-omega modified", "k-tau", "Menter SST", "Langtry Menter SST", "v2f"],
             ],
             "turbulenceOrder": [str, ["first order", "second order"]],
             "turbResScale": [(float, list, type(None)), None],
@@ -5912,6 +5912,7 @@ class ADFLOW(AeroSolver):
                 "k-omega modified": self.adflow.constants.komegamodified,
                 "k-tau": self.adflow.constants.ktau,
                 "menter sst": self.adflow.constants.mentersst,
+                "langtry menter sst": self.adflow.constants.langtrymentersst,
                 "v2f": self.adflow.constants.v2f,
                 "location": ["physics", "turbmodel"],
             },
@@ -6390,6 +6391,8 @@ class ADFLOW(AeroSolver):
                 self.setOption("turbresscale", 10000.0)
             elif turbModel == "Menter SST":
                 self.setOption("turbresscale", [1e3, 1e-6])
+            elif turbModel == "Langtry Menter SST":
+                self.setOption("turbresscale", [1e3, 1e-6, 1, 1])
             else:
                 raise Error(
                     "Turbulence model %-35s does not have default values specified for turbresscale. Specify turbresscale manually or update the python interface"

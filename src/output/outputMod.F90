@@ -319,6 +319,7 @@ contains
         !       used as much as possible.
         !
         use constants
+        use variableConstants
         use cgnsNames
         use inputPhysics
         use flowVarRefState
@@ -356,6 +357,12 @@ contains
             case (komegaWilcox, komegaModified, menterSST)
                 solNames(itu1) = cgnsTurbK
                 solNames(itu2) = cgnsTurbOmega
+
+            case (langtryMenterSST)
+                solNames(itu1) = cgnsTurbK
+                solNames(itu2) = cgnsTurbOmega
+                solNames(iTransition1) = cgnsTransitionGamma
+                solNames(iTransition2) = cgnsTransitionReThetat
 
             case (ktau)
                 solNames(itu1) = cgnsTurbK
