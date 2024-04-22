@@ -177,9 +177,9 @@ contains
         !       Advection and unsteady terms.
         !
         nn = itu3 - 1
-        call turbAdvection(2_intType, 1_intType, nn, qq)
+        call turbAdvection((/itu3/), (/idvt/), 2, qq)
 
-        call unsteadyTurbTerm(2_intType, 1_intType, nn, qq)
+        call unsteadyTurbTerm((/itu3/), (/idvt/), 2, qq)
         !
         !       Viscous terms in k-direction.
         !
@@ -1152,9 +1152,9 @@ contains
         !       Advection and unsteady terms.
         !
         nn = itu1 - 1
-        call turbAdvection(2_intType, 2_intType, nn, qq)
+        call turbAdvection((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
 
-        call unsteadyTurbTerm(2_intType, 2_intType, nn, qq)
+        call unsteadyTurbTerm((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
         !
         !       Viscous terms in k-direction.
         !

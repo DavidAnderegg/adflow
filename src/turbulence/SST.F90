@@ -49,13 +49,13 @@ contains
         ! Production Term
         select case (turbProd)
         case (strain)
-            call prodSmag2(2, il, 2, jl, 2, kl)
+            call prodSmag2(2, il, 2, jl, 2, kl, iprod)
 
         case (vorticity)
-            call prodWmag2(2, il, 2, jl, 2, kl)
+            call prodWmag2(2, il, 2, jl, 2, kl, iprod)
 
         case (katoLaunder)
-            call prodKatoLaunder(2, il, 2, jl, 2, kl)
+            call prodKatoLaunder(2, il, 2, jl, 2, kl, iprod)
         end select
 
         ! Source Terms
@@ -63,10 +63,10 @@ contains
 
         ! Advection Term
         nn = itu1 - 1
-        call turbAdvection(2_intType, 2_intType, nn, qq)
+        call turbAdvection((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
 
         ! Unsteady Term
-        call unsteadyTurbTerm(2_intType, 2_intType, nn, qq)
+        call unsteadyTurbTerm((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
 
         ! Viscous Terms
         call SSTViscous
@@ -97,18 +97,18 @@ contains
 
         select case (turbProd)
         case (strain)
-            call prodSmag2_d(2, il, 2, jl, 2, kl)
+            call prodSmag2_d(2, il, 2, jl, 2, kl, iprod)
 
         case (vorticity)
-            call prodWmag2_d(2, il, 2, jl, 2, kl)
+            call prodWmag2_d(2, il, 2, jl, 2, kl, iprod)
 
         case (katoLaunder)
-            call prodKatoLaunder_d(2, il, 2, jl, 2, kl)
+            call prodKatoLaunder_d(2, il, 2, jl, 2, kl, iprod)
         end select
 
         call SSTSource_d
-        call turbAdvection_d(2_intType, 2_intType, itu1 - 1, qq)
-        !call unsteadyTurbTerm_d(2_intType, 2_intType, itu1-1, qq)
+        call turbAdvection_d((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
+        !call unsteadyTurbTerm_d((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
         call SSTViscous_d
         call SSTResScale_d
 
@@ -129,30 +129,30 @@ contains
         ! the eddyviscosity.
         select case (turbProd)
         case (strain)
-            call prodSmag2(2, il, 2, jl, 2, kl)
+            call prodSmag2(2, il, 2, jl, 2, kl, iprod)
 
         case (vorticity)
-            call prodWmag2(2, il, 2, jl, 2, kl)
+            call prodWmag2(2, il, 2, jl, 2, kl, iprod)
 
         case (katoLaunder)
-            call prodKatoLaunder(2, il, 2, jl, 2, kl)
+            call prodKatoLaunder(2, il, 2, jl, 2, kl, iprod)
         end select
 
         call SSTResScale_b
         call SSTViscous_b
-        !call unsteadyTurbTerm_b(2_intType, 2_intType, itu1-1, qq)
-        call turbAdvection_b(2_intType, 2_intType, itu1 - 1, qq)
+        !call unsteadyTurbTerm_b((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
+        call turbAdvection_b((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
         call SSTSource_b
 
         select case (turbProd)
         case (strain)
-            call prodSmag2_b(2, il, 2, jl, 2, kl)
+            call prodSmag2_b(2, il, 2, jl, 2, kl, iprod)
 
         case (vorticity)
-            call prodWmag2_b(2, il, 2, jl, 2, kl)
+            call prodWmag2_b(2, il, 2, jl, 2, kl, iprod)
 
         case (katoLaunder)
-            call prodKatoLaunder_b(2, il, 2, jl, 2, kl)
+            call prodKatoLaunder_b(2, il, 2, jl, 2, kl, iprod)
         end select
 
         call f1SST_b
@@ -175,30 +175,30 @@ contains
         ! the eddyviscosity.
         select case (turbProd)
         case (strain)
-            call prodSmag2(2, il, 2, jl, 2, kl)
+            call prodSmag2(2, il, 2, jl, 2, kl, iprod)
 
         case (vorticity)
-            call prodWmag2(2, il, 2, jl, 2, kl)
+            call prodWmag2(2, il, 2, jl, 2, kl, iprod)
 
         case (katoLaunder)
-            call prodKatoLaunder(2, il, 2, jl, 2, kl)
+            call prodKatoLaunder(2, il, 2, jl, 2, kl, iprod)
         end select
 
         call SSTResScale_fast_b
         call SSTViscous_fast_b
-        !call unsteadyTurbTerm_fast_b(2_intType, 2_intType, itu1-1, qq)
-        call turbAdvection_fast_b(2_intType, 2_intType, itu1 - 1, qq)
+        !call unsteadyTurbTerm_fast_b((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
+        call turbAdvection_fast_b((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
         call SSTSource_fast_b
 
         select case (turbProd)
         case (strain)
-            call prodSmag2_fast_b(2, il, 2, jl, 2, kl)
+            call prodSmag2_fast_b(2, il, 2, jl, 2, kl, iprod)
 
         case (vorticity)
-            call prodWmag2_fast_b(2, il, 2, jl, 2, kl)
+            call prodWmag2_fast_b(2, il, 2, jl, 2, kl, iprod)
 
         case (katoLaunder)
-            call prodKatoLaunder_fast_b(2, il, 2, jl, 2, kl)
+            call prodKatoLaunder_fast_b(2, il, 2, jl, 2, kl, iprod)
         end select
 
         call f1SST_fast_b

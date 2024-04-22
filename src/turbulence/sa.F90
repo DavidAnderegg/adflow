@@ -52,10 +52,10 @@ contains
 
         ! Advection Term
         nn = itu1 - 1
-        call turbAdvection(1_intType, 1_intType, nn, qq)
+        call turbAdvection((/itu1/), (/idvt/), 1, qq)
 
         ! Unsteady Term
-        call unsteadyTurbTerm(1_intType, 1_intType, nn, qq)
+        call unsteadyTurbTerm((/itu1/), (/idvt/), 1, qq)
 
         ! Viscous Terms
         call saViscous
@@ -79,8 +79,8 @@ contains
         implicit none
 
         call saSource_d
-        call turbAdvection_d(1_intType, 1_intType, itu1 - 1, qq)
-        !!call unsteadyTurbTerm_d(1_intType, 1_intType, itu1-1, qq)
+        call turbAdvection_d((/itu1/), (/idvt/), 1, qq)
+        !!call unsteadyTurbTerm_d((/itu1/), (/idvt/), 1, qq)
         call saViscous_d
         call saResScale_d
 
@@ -96,8 +96,8 @@ contains
 
         call saResScale_b
         call saViscous_b
-        !call unsteadyTurbTerm_b(1_intType, 1_intType, itu1-1, qq)
-        call turbAdvection_b(1_intType, 1_intType, itu1 - 1, qq)
+        !call unsteadyTurbTerm_b((/itu1/), (/idvt/), 1, qq)
+        call turbAdvection_b((/itu1/), (/idvt/), 1, qq)
         ! turbAdvection_b zeros the faceid. This should be ok since
         ! it presumably is the last call in master using faceid and
         ! therefore should be the first call in master_b to use faceid
@@ -116,8 +116,8 @@ contains
 
         call saResScale_fast_b
         call saViscous_fast_b
-        !call unsteadyTurbTerm_b(1_intType, 1_intType, itu1-1, qq)
-        call turbAdvection_fast_b(1_intType, 1_intType, itu1 - 1, qq)
+        !call unsteadyTurbTerm_b((/itu1/), (/idvt/), 1, qq)
+        call turbAdvection_fast_b((/itu1/), (/idvt/), 1, qq)
         call saSource_fast_b
 
     end subroutine sa_block_residuals_fast_b

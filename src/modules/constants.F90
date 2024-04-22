@@ -56,7 +56,6 @@ module constants
     integer, parameter :: if1SST = 5  ! Tmp F1 (for SST) storage        used by SST
     integer, parameter :: isct = 4  ! Tmp time scale (for v2f) storage      only used by v2f
     integer, parameter :: iscl2 = 5  ! Tmp length scale (for v2f) storage   only used by v2f
-    integer, parameter :: iqq = 6  ! Central jacobian storage           not used at all
     integer, parameter :: isTransition1 = 7  ! source term storage for transition model
     integer, parameter :: isTransition2 = 8  ! source term storage for transition model
     integer, parameter :: iStrain = 9  ! storage for strain rate magnitude

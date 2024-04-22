@@ -179,13 +179,13 @@ contains
         !
         select case (turbProd)
         case (strain)
-            call prodSmag2(2, il, 2, jl, 2, kl)
+            call prodSmag2(2, il, 2, jl, 2, kl, iprod)
 
         case (vorticity)
-            call prodWmag2(2, il, 2, jl, 2, kl)
+            call prodWmag2(2, il, 2, jl, 2, kl, iprod)
 
         case (katoLaunder)
-            call prodKatoLaunder(2, il, 2, jl, 2, kl)
+            call prodKatoLaunder(2, il, 2, jl, 2, kl, iprod)
 
         end select
         !
@@ -236,9 +236,9 @@ contains
         !       Advection and unsteady terms.
         !
         nn = itu1 - 1
-        call turbAdvection(2_intType, 2_intType, nn, qq)
+        call turbAdvection((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
 
-        call unsteadyTurbTerm(2_intType, 2_intType, nn, qq)
+        call unsteadyTurbTerm((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
         !
         !       Viscous terms in k-direction.
         !

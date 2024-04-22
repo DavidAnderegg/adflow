@@ -10,7 +10,8 @@ contains
 !   with respect to varying inputs: *w *scratch
 !   rw status of diff variables: *w:incr *scratch:in-out
 !   plus diff mem management of: w:in scratch:in
-  subroutine prodkatolaunder_fast_b(ibeg, iend, jbeg, jend, kbeg, kend)
+  subroutine prodkatolaunder_fast_b(ibeg, iend, jbeg, jend, kbeg, kend, &
+&   scratchindex)
 !
 !       prodkatolaunder computes the turbulent production term using
 !       the kato-launder formulation.
@@ -27,7 +28,7 @@ contains
 !      subroutine arguments.
 !
     integer(kind=inttype), intent(in) :: ibeg, iend, jbeg, jend, kbeg, &
-&   kend
+&   kend, scratchindex
 !
 !      local variables.
 !
@@ -127,9 +128,10 @@ contains
       if (sijsij*oijoij .eq. 0.0_8) then
         tempd = 0.0_8
       else
-        tempd = two*scratchd(i, j, k, iprod)/(2.0*sqrt(sijsij*oijoij))
+        tempd = two*scratchd(i, j, k, scratchindex)/(2.0*sqrt(sijsij*&
+&         oijoij))
       end if
-      scratchd(i, j, k, iprod) = 0.0_8
+      scratchd(i, j, k, scratchindex) = 0.0_8
       sijsijd = oijoij*tempd
       oijoijd = sijsij*tempd
       tempd = two*oijoijd
@@ -203,7 +205,8 @@ contains
     end do
   end subroutine prodkatolaunder_fast_b
 
-  subroutine prodkatolaunder(ibeg, iend, jbeg, jend, kbeg, kend)
+  subroutine prodkatolaunder(ibeg, iend, jbeg, jend, kbeg, kend, &
+&   scratchindex)
 !
 !       prodkatolaunder computes the turbulent production term using
 !       the kato-launder formulation.
@@ -220,7 +223,7 @@ contains
 !      subroutine arguments.
 !
     integer(kind=inttype), intent(in) :: ibeg, iend, jbeg, jend, kbeg, &
-&   kend
+&   kend, scratchindex
 !
 !      local variables.
 !
@@ -312,7 +315,7 @@ contains
       sijsij = two*(qxy**2+qxz**2+qyz**2) + qxx**2 + qyy**2 + qzz**2
       oijoij = two*(oxy**2+oxz**2+oyz**2)
 ! compute the production term.
-      scratch(i, j, k, iprod) = two*sqrt(sijsij*oijoij)
+      scratch(i, j, k, scratchindex) = two*sqrt(sijsij*oijoij)
     end do
   end subroutine prodkatolaunder
 
@@ -321,7 +324,8 @@ contains
 !   with respect to varying inputs: *w *scratch
 !   rw status of diff variables: *w:incr *scratch:in-out
 !   plus diff mem management of: w:in scratch:in
-  subroutine prodsmag2_fast_b(ibeg, iend, jbeg, jend, kbeg, kend)
+  subroutine prodsmag2_fast_b(ibeg, iend, jbeg, jend, kbeg, kend, &
+&   scratchindex)
 !
 !       prodsmag2 computes the term:
 !              2*sij*sij - 2/3 div(u)**2 with  sij=0.5*(duidxj+dujdxi)
@@ -338,7 +342,7 @@ contains
 !      subroutine arguments.
 !
     integer(kind=inttype), intent(in) :: ibeg, iend, jbeg, jend, kbeg, &
-&   kend
+&   kend, scratchindex
 !
 !      local parameter
 !
@@ -422,9 +426,9 @@ contains
       syz = fact*(vvz+wwy)
 ! compute 2/3 * divergence of velocity squared
 ! store the square of strain as the production term.
-      tempd = two*scratchd(i, j, k, iprod)
-      div2d = -scratchd(i, j, k, iprod)
-      scratchd(i, j, k, iprod) = 0.0_8
+      tempd = two*scratchd(i, j, k, scratchindex)
+      div2d = -scratchd(i, j, k, scratchindex)
+      scratchd(i, j, k, scratchindex) = 0.0_8
       tempd0 = two*tempd
       sxxd = 2*sxx*tempd
       syyd = 2*syy*tempd
@@ -484,7 +488,7 @@ contains
     end do
   end subroutine prodsmag2_fast_b
 
-  subroutine prodsmag2(ibeg, iend, jbeg, jend, kbeg, kend)
+  subroutine prodsmag2(ibeg, iend, jbeg, jend, kbeg, kend, scratchindex)
 !
 !       prodsmag2 computes the term:
 !              2*sij*sij - 2/3 div(u)**2 with  sij=0.5*(duidxj+dujdxi)
@@ -501,7 +505,7 @@ contains
 !      subroutine arguments.
 !
     integer(kind=inttype), intent(in) :: ibeg, iend, jbeg, jend, kbeg, &
-&   kend
+&   kend, scratchindex
 !
 !      local parameter
 !
@@ -581,8 +585,8 @@ contains
 ! compute 2/3 * divergence of velocity squared
       div2 = f23*(sxx+syy+szz)**2
 ! store the square of strain as the production term.
-      scratch(i, j, k, iprod) = two*(two*(sxy**2+sxz**2+syz**2)+sxx**2+&
-&       syy**2+szz**2) - div2
+      scratch(i, j, k, scratchindex) = two*(two*(sxy**2+sxz**2+syz**2)+&
+&       sxx**2+syy**2+szz**2) - div2
     end do
   end subroutine prodsmag2
 
@@ -591,7 +595,8 @@ contains
 !   with respect to varying inputs: *w *scratch
 !   rw status of diff variables: *w:incr *scratch:in-out
 !   plus diff mem management of: w:in scratch:in
-  subroutine prodwmag2_fast_b(ibeg, iend, jbeg, jend, kbeg, kend)
+  subroutine prodwmag2_fast_b(ibeg, iend, jbeg, jend, kbeg, kend, &
+&   scratchindex)
 !
 !       prodwmag2 computes the term:
 !          2*oij*oij  with oij=0.5*(duidxj - dujdxi).
@@ -610,7 +615,7 @@ contains
 !      subroutine arguments.
 !
     integer(kind=inttype), intent(in) :: ibeg, iend, jbeg, jend, kbeg, &
-&   kend
+&   kend, scratchindex
 !
 !      local variables.
 !
@@ -675,10 +680,10 @@ contains
       vortz = fact*(vvx-uuy) - two*omegaz
 ! compute the magnitude squared of the vorticity.
 ! update of iprod to be consistent. ivort seems to be never used, and ivort = iprod anyway.
-      vortxd = 2*vortx*scratchd(i, j, k, iprod)
-      vortyd = 2*vorty*scratchd(i, j, k, iprod)
-      vortzd = 2*vortz*scratchd(i, j, k, iprod)
-      scratchd(i, j, k, iprod) = 0.0_8
+      vortxd = 2*vortx*scratchd(i, j, k, scratchindex)
+      vortyd = 2*vorty*scratchd(i, j, k, scratchindex)
+      vortzd = 2*vortz*scratchd(i, j, k, scratchindex)
+      scratchd(i, j, k, scratchindex) = 0.0_8
       vvxd = fact*vortzd
       uuyd = -(fact*vortzd)
       uuzd = fact*vortyd
@@ -724,7 +729,7 @@ contains
     end do
   end subroutine prodwmag2_fast_b
 
-  subroutine prodwmag2(ibeg, iend, jbeg, jend, kbeg, kend)
+  subroutine prodwmag2(ibeg, iend, jbeg, jend, kbeg, kend, scratchindex)
 !
 !       prodwmag2 computes the term:
 !          2*oij*oij  with oij=0.5*(duidxj - dujdxi).
@@ -743,7 +748,7 @@ contains
 !      subroutine arguments.
 !
     integer(kind=inttype), intent(in) :: ibeg, iend, jbeg, jend, kbeg, &
-&   kend
+&   kend, scratchindex
 !
 !      local variables.
 !
@@ -805,15 +810,16 @@ contains
       vorty = fact*(uuz-wwx) - two*omegay
       vortz = fact*(vvx-uuy) - two*omegaz
 ! compute the magnitude squared of the vorticity.
-      scratch(i, j, k, iprod) = vortx**2 + vorty**2 + vortz**2
+      scratch(i, j, k, scratchindex) = vortx**2 + vorty**2 + vortz**2
 ! update of iprod to be consistent. ivort seems to be never used, and ivort = iprod anyway.
     end do
   end subroutine prodwmag2
 
-  subroutine strainnorm(ibeg, iend, jbeg, jend, kbeg, kend)
+  subroutine strainnorm2(ibeg, iend, jbeg, jend, kbeg, kend, &
+&   scratchindex)
 !
 !       strainnorm computes the term:
-!              sqrt(2*sij*sij)  with  sij=0.5*(duidxj+dujdxi)
+!              2*sij*sij  with  sij=0.5*(duidxj+dujdxi)
 !       which is used for the eddy viscosity.
 !       it is assumed that the pointer prod, stored in turbmod, is
 !       already set to the correct entry.
@@ -827,7 +833,7 @@ contains
 !      subroutine arguments.
 !
     integer(kind=inttype), intent(in) :: ibeg, iend, jbeg, jend, kbeg, &
-&   kend
+&   kend, scratchindex
 !
 !      local variables.
 !
@@ -835,7 +841,6 @@ contains
     real(kind=realtype) :: uux, uuy, uuz, vvx, vvy, vvz, wwx, wwy, wwz
     real(kind=realtype) :: div2, fact, sxx, syy, szz, sxy, sxz, syz
     intrinsic mod
-    intrinsic sqrt
 ! loop over the cell centers of the given block. it may be more
 ! efficient to loop over the faces and to scatter the gradient,
 ! but in that case the gradients for u, v and w must be stored.
@@ -902,10 +907,10 @@ contains
       sxz = fact*(uuz+wwx)
       syz = fact*(vvz+wwy)
 ! store the square of strain as the production term.
-      scratch(i, j, k, iprod) = sqrt(two*(two*(sxy**2+sxz**2+syz**2)+sxx&
-&       **2+syy**2+szz**2))
+      scratch(i, j, k, scratchindex) = two*(two*(sxy**2+sxz**2+syz**2)+&
+&       sxx**2+syy**2+szz**2)
     end do
-  end subroutine strainnorm
+  end subroutine strainnorm2
 
   function sanuknowneddyratio(eddyratio, nulam)
 !
@@ -978,7 +983,7 @@ contains
  100 continue
   end function sanuknowneddyratio
 
-  subroutine unsteadyturbterm(madv, nadv, offset, qq)
+  subroutine unsteadyturbterm(windices, scratchindices, madv, qq)
 !
 !       unsteadyturbterm discretizes the time derivative of the
 !       turbulence transport equations and add it to the residual.
@@ -986,14 +991,13 @@ contains
 !       this generic routine can be used; both the discretization of
 !       the time derivative and its contribution to the central
 !       jacobian are computed by this routine.
-!       only nadv equations are treated, while the actual system has
-!       size madv. the reason is that some equations for some
-!       turbulence equations do not have a time derivative, e.g. the
-!       f equation in the v2-f model. the argument offset indicates
-!       the offset in the w vector where this subsystem starts. as a
-!       consequence it is assumed that the indices of the current
-!       subsystem are contiguous, e.g. if a 2*2 system is solved the
-!       last index in w is offset+1 and offset+2 respectively.
+!
+!       qq is an optional argument and is ignored in the code when it 
+!       is not given. madv is needed to tell the routine the size of 
+!       qq. if qq is not given, madv must have a dummy argument.
+!       windices(:) and scratchindices(:) tell the routine where to 
+!       store the computed terms. both arrays must have the same
+!       dimension
 !
     use blockpointers
     use flowvarrefstate
@@ -1007,14 +1011,23 @@ contains
 !
 !      subroutine arguments.
 !
-    integer(kind=inttype), intent(in) :: madv, nadv, offset
+    integer(kind=inttype), dimension(:), intent(in) :: windices, &
+&   scratchindices
+    integer(kind=inttype), intent(in) :: madv
     real(kind=realtype), dimension(2:il, 2:jl, 2:kl, madv, madv), &
-&   intent(inout) :: qq
+&   intent(inout), optional :: qq
 !
 !      local variables.
 !
-    integer(kind=inttype) :: i, j, k, ii, jj, nn
+    integer(kind=inttype) :: i, j, k, ii, nn, nadv
     real(kind=realtype) :: oneoverdt, tmp
+    logical :: qqpresent
+    intrinsic present
+    intrinsic size
+! figure out if qq is present
+    qqpresent = .false.
+    if (present(qq)) qqpresent = .true.
+    nadv = size(windices)
 ! determine the equation mode.
     select case  (equationmode) 
     case (steady) 
@@ -1033,8 +1046,6 @@ contains
         oneoverdt = timeref/deltat
 ! loop over the number of turbulent transport equations.
 nadvloopunsteady:do ii=1,nadv
-! store the index of the current turbulent variable in jj.
-          jj = ii + offset
 ! loop over the owned cells of this block to compute the
 ! time derivative.
           do k=2,kl
@@ -1043,19 +1054,20 @@ nadvloopunsteady:do ii=1,nadv
 ! initialize tmp to the value of the current
 ! level multiplied by the corresponding coefficient
 ! in the time integration scheme.
-                tmp = coeftime(0)*w(i, j, k, jj)
+                tmp = coeftime(0)*w(i, j, k, windices(ii))
 ! loop over the old time levels and add the
 ! corresponding contribution to tmp.
                 do nn=1,noldlevels
-                  tmp = tmp + coeftime(nn)*wold(nn, i, j, k, jj)
+                  tmp = tmp + coeftime(nn)*wold(nn, i, j, k, windices(ii&
+&                   ))
                 end do
 ! update the residual. note that in the turbulent
 ! routines the residual is defined with an opposite
 ! sign compared to the residual of the flow equations.
 ! therefore the time derivative must be substracted
 ! from dvt.
-                scratch(i, j, k, idvt+ii-1) = scratch(i, j, k, idvt+ii-1&
-&                 ) - oneoverdt*tmp
+                scratch(i, j, k, scratchindices(ii)) = scratch(i, j, k, &
+&                 scratchindices(ii)) - oneoverdt*tmp
 ! update the central jacobian.
                 qq(i, j, k, ii, ii) = qq(i, j, k, ii, ii) + coeftime(0)*&
 &                 oneoverdt
@@ -1074,8 +1086,6 @@ nadvloopunsteady:do ii=1,nadv
 ! time spectral method.
 ! loop over the number of turbulent transport equations.
 nadvloopspectral:do ii=1,nadv
-! store the index of the current turbulent variable in jj.
-        jj = ii + offset
 ! the time derivative has been computed earlier in
 ! unsteadyturbspectral and stored in entry jj of scratch.
 ! substract this value for all owned cells. it must be
@@ -1091,8 +1101,8 @@ nadvloopspectral:do ii=1,nadv
         do k=2,kl
           do j=2,jl
             do i=2,il
-              scratch(i, j, k, idvt+ii-1) = scratch(i, j, k, idvt+ii-1) &
-&               - dw(i, j, k, jj)
+              scratch(i, j, k, scratchindices(ii)) = scratch(i, j, k, &
+&               scratchindices(ii)) - dw(i, j, k, windices(ii))
               qq(i, j, k, ii, ii) = qq(i, j, k, ii, ii) + tmp
             end do
           end do
@@ -1343,9 +1353,9 @@ nadvloopspectral:do ii=1,nadv
 ! for it; for the actual eddy viscosity computation the vorticity
 ! itself is needed.
     if (use2003sst) then
-      call strainnorm(ibeg, iend, jbeg, jend, kbeg, kend)
+      call strainnorm2(ibeg, iend, jbeg, jend, kbeg, kend, iprodalt)
     else
-      call prodwmag2(ibeg, iend, jbeg, jend, kbeg, kend)
+      call prodwmag2(ibeg, iend, jbeg, jend, kbeg, kend, iprodalt)
     end if
 ! loop over the cells of this block and compute the eddy viscosity.
 ! most of the time, do not include halo's (ibeg=2...il,...)
@@ -1372,7 +1382,7 @@ nadvloopspectral:do ii=1,nadv
 ! and compute the eddy viscosity.
 ! same definition as in
 ! note that https://www.cfd-online.com/wiki/sst_k-omega_model utilizes the strain and not the vorticity
-      vortmag = sqrt(scratch(i, j, k, iprod))
+      vortmag = sqrt(scratch(i, j, k, iprodalt))
       if (rssta1*w(i, j, k, itu2) .lt. f2*vortmag) then
         max1 = f2*vortmag
       else
@@ -1387,7 +1397,7 @@ nadvloopspectral:do ii=1,nadv
 !   with respect to varying inputs: *w *scratch
 !   rw status of diff variables: *w:incr *scratch:in-out
 !   plus diff mem management of: w:in scratch:in
-  subroutine turbadvection_fast_b(madv, nadv, offset, qq)
+  subroutine turbadvection_fast_b(windices, scratchindices, madv, qq)
 !
 !       turbadvection discretizes the advection part of the turbulent
 !       transport equations. as the advection part is the same for all
@@ -1398,14 +1408,13 @@ nadvloopspectral:do ii=1,nadv
 !       discretization. when the discretization must be second order
 !       accurate, the fully upwind (kappa = -1) scheme in combination
 !       with the minmod limiter is used.
-!       only nadv equations are treated, while the actual system has
-!       size madv. the reason is that some equations for some
-!       turbulence equations do not have an advection part, e.g. the
-!       f equation in the v2-f model. the argument offset indicates
-!       the offset in the w vector where this subsystem starts. as a
-!       consequence it is assumed that the indices of the current
-!       subsystem are contiguous, e.g. if a 2*2 system is solved the
-!       last index in w is offset+1 and offset+2 respectively.
+!
+!       qq is an optional argument and is ignored in the code when it 
+!       is not given. madv is needed to tell the routine the size of 
+!       qq. if qq is not given, madv must have a dummy argument.
+!       windices(:) and scratchindices(:) tell the routine where to 
+!       store the computed terms. both arrays must have the same
+!       dimension
 !
     use constants
     use blockpointers, only : nx, ny, nz, il, jl, kl, vol, sfacei&
@@ -1418,18 +1427,22 @@ nadvloopspectral:do ii=1,nadv
 !
 !      subroutine arguments.
 !
-    integer(kind=inttype), intent(in) :: nadv, madv, offset
+    integer(kind=inttype), dimension(:), intent(in) :: windices, &
+&   scratchindices
+    integer(kind=inttype), intent(in) :: madv
     real(kind=realtype), dimension(2:il, 2:jl, 2:kl, madv, madv), &
-&   intent(inout) :: qq
+&   intent(inout), optional :: qq
 !
 !      local variables.
 !
-    integer(kind=inttype) :: i, j, k, ii, jj, kk, iii
+    integer(kind=inttype) :: i, j, k, ii, kk, iii, nadv
     real(kind=realtype) :: qs, voli, xa, ya, za
-    real(kind=realtype) :: uu, dwt, dwtm1, dwtp1, dwti, dwtj, dwtk
+    real(kind=realtype) :: uu, dwt, dwtm1, dwtp1, dwti, dwtj, dwtk, tmp
     real(kind=realtype) :: uud, dwtd, dwtm1d, dwtp1d, dwtid, dwtjd, &
 &   dwtkd
-    real(kind=realtype), dimension(madv) :: impl
+    logical :: qqpresent
+    intrinsic present
+    intrinsic size
     intrinsic mod
     intrinsic abs
     real(kind=realtype) :: abs0
@@ -1456,7 +1469,9 @@ nadvloopspectral:do ii=1,nadv
     real(kind=realtype) :: abs21
     real(kind=realtype) :: abs22
     real(kind=realtype) :: abs23
+! figure out if qq is present
     integer :: branch
+    nadv = size(windices)
 ! determine whether or not a second order discretization for the
 ! advective terms must be used.
     secondord = .false.
@@ -1486,17 +1501,16 @@ nadvloopspectral:do ii=1,nadv
         uud = 0.0_8
 !$bwd-of ii-loop 
         do 100 ii=1,nadv
-! set the value of jj such that it corresponds to the
-! turbulent entry in w.
-          jj = ii + offset
 ! check whether a first or a second order discretization
 ! must be used.
           if (secondord) then
 ! second order; store the three differences for the
 ! discretization of the derivative in i-direction.
-            dwtm1 = w(i-1, j, k, jj) - w(i-2, j, k, jj)
-            dwt = w(i, j, k, jj) - w(i-1, j, k, jj)
-            dwtp1 = w(i+1, j, k, jj) - w(i, j, k, jj)
+            dwtm1 = w(i-1, j, k, windices(ii)) - w(i-2, j, k, windices(&
+&             ii))
+            dwt = w(i, j, k, windices(ii)) - w(i-1, j, k, windices(ii))
+            dwtp1 = w(i+1, j, k, windices(ii)) - w(i, j, k, windices(ii)&
+&             )
 ! construct the derivative in this cell center. this is
 ! the first order upwind derivative with two nonlinear
 ! corrections.
@@ -1545,11 +1559,11 @@ nadvloopspectral:do ii=1,nadv
             end if
           else
 ! 1st order upwind scheme.
-            dwti = w(i, j, k, jj) - w(i-1, j, k, jj)
+            dwti = w(i, j, k, windices(ii)) - w(i-1, j, k, windices(ii))
             call pushcontrol2b(3)
           end if
-          uud = uud - dwti*scratchd(i, j, k, idvt+ii-1)
-          dwtid = -(uu*scratchd(i, j, k, idvt+ii-1))
+          uud = uud - dwti*scratchd(i, j, k, scratchindices(ii))
+          dwtid = -(uu*scratchd(i, j, k, scratchindices(ii)))
           call popcontrol2b(branch)
           if (branch .lt. 2) then
             if (branch .eq. 0) then
@@ -1563,8 +1577,10 @@ nadvloopspectral:do ii=1,nadv
             dwtd = 0.0_8
             dwtm1d = 0.0_8
           else
-            wd(i, j, k, jj) = wd(i, j, k, jj) + dwtid
-            wd(i-1, j, k, jj) = wd(i-1, j, k, jj) - dwtid
+            wd(i, j, k, windices(ii)) = wd(i, j, k, windices(ii)) + &
+&             dwtid
+            wd(i-1, j, k, windices(ii)) = wd(i-1, j, k, windices(ii)) - &
+&             dwtid
             goto 100
           end if
           call popcontrol2b(branch)
@@ -1577,26 +1593,29 @@ nadvloopspectral:do ii=1,nadv
             dwtp1d = 0.0_8
           end if
           dwtd = dwtd + dwtid
-          wd(i+1, j, k, jj) = wd(i+1, j, k, jj) + dwtp1d
-          wd(i, j, k, jj) = wd(i, j, k, jj) + dwtd - dwtp1d
-          wd(i-1, j, k, jj) = wd(i-1, j, k, jj) + dwtm1d - dwtd
-          wd(i-2, j, k, jj) = wd(i-2, j, k, jj) - dwtm1d
+          wd(i+1, j, k, windices(ii)) = wd(i+1, j, k, windices(ii)) + &
+&           dwtp1d
+          wd(i, j, k, windices(ii)) = wd(i, j, k, windices(ii)) + dwtd -&
+&           dwtp1d
+          wd(i-1, j, k, windices(ii)) = wd(i-1, j, k, windices(ii)) + &
+&           dwtm1d - dwtd
+          wd(i-2, j, k, windices(ii)) = wd(i-2, j, k, windices(ii)) - &
+&           dwtm1d
  100    continue
       else
         uud = 0.0_8
 !$bwd-of ii-loop 
         do 110 ii=1,nadv
-! set the value of jj such that it corresponds to the
-! turbulent entry in w.
-          jj = ii + offset
 ! check whether a first or a second order discretization
 ! must be used.
           if (secondord) then
 ! second order; store the three differences for the
 ! discretization of the derivative in i-direction.
-            dwtm1 = w(i, j, k, jj) - w(i-1, j, k, jj)
-            dwt = w(i+1, j, k, jj) - w(i, j, k, jj)
-            dwtp1 = w(i+2, j, k, jj) - w(i+1, j, k, jj)
+            dwtm1 = w(i, j, k, windices(ii)) - w(i-1, j, k, windices(ii)&
+&             )
+            dwt = w(i+1, j, k, windices(ii)) - w(i, j, k, windices(ii))
+            dwtp1 = w(i+2, j, k, windices(ii)) - w(i+1, j, k, windices(&
+&             ii))
 ! construct the derivative in this cell center. this is
 ! the first order upwind derivative with two nonlinear
 ! corrections.
@@ -1645,11 +1664,11 @@ nadvloopspectral:do ii=1,nadv
             end if
           else
 ! 1st order upwind scheme.
-            dwti = w(i+1, j, k, jj) - w(i, j, k, jj)
+            dwti = w(i+1, j, k, windices(ii)) - w(i, j, k, windices(ii))
             call pushcontrol2b(3)
           end if
-          uud = uud - dwti*scratchd(i, j, k, idvt+ii-1)
-          dwtid = -(uu*scratchd(i, j, k, idvt+ii-1))
+          uud = uud - dwti*scratchd(i, j, k, scratchindices(ii))
+          dwtid = -(uu*scratchd(i, j, k, scratchindices(ii)))
           call popcontrol2b(branch)
           if (branch .lt. 2) then
             if (branch .eq. 0) then
@@ -1663,8 +1682,10 @@ nadvloopspectral:do ii=1,nadv
             dwtd = 0.0_8
             dwtm1d = 0.0_8
           else
-            wd(i+1, j, k, jj) = wd(i+1, j, k, jj) + dwtid
-            wd(i, j, k, jj) = wd(i, j, k, jj) - dwtid
+            wd(i+1, j, k, windices(ii)) = wd(i+1, j, k, windices(ii)) + &
+&             dwtid
+            wd(i, j, k, windices(ii)) = wd(i, j, k, windices(ii)) - &
+&             dwtid
             goto 110
           end if
           call popcontrol2b(branch)
@@ -1677,10 +1698,14 @@ nadvloopspectral:do ii=1,nadv
             dwtp1d = 0.0_8
           end if
           dwtd = dwtd + dwtid
-          wd(i+2, j, k, jj) = wd(i+2, j, k, jj) + dwtp1d
-          wd(i+1, j, k, jj) = wd(i+1, j, k, jj) + dwtd - dwtp1d
-          wd(i, j, k, jj) = wd(i, j, k, jj) + dwtm1d - dwtd
-          wd(i-1, j, k, jj) = wd(i-1, j, k, jj) - dwtm1d
+          wd(i+2, j, k, windices(ii)) = wd(i+2, j, k, windices(ii)) + &
+&           dwtp1d
+          wd(i+1, j, k, windices(ii)) = wd(i+1, j, k, windices(ii)) + &
+&           dwtd - dwtp1d
+          wd(i, j, k, windices(ii)) = wd(i, j, k, windices(ii)) + dwtm1d&
+&           - dwtd
+          wd(i-1, j, k, windices(ii)) = wd(i-1, j, k, windices(ii)) - &
+&           dwtm1d
  110    continue
       end if
       wd(i, j, k, ivx) = wd(i, j, k, ivx) + xa*uud
@@ -1711,17 +1736,16 @@ nadvloopspectral:do ii=1,nadv
         uud = 0.0_8
 !$bwd-of ii-loop 
         do 120 ii=1,nadv
-! set the value of jj such that it corresponds to the
-! turbulent entry in w.
-          jj = ii + offset
 ! check whether a first or a second order discretization
 ! must be used.
           if (secondord) then
 ! second order; store the three differences for the
 ! discretization of the derivative in j-direction.
-            dwtm1 = w(i, j-1, k, jj) - w(i, j-2, k, jj)
-            dwt = w(i, j, k, jj) - w(i, j-1, k, jj)
-            dwtp1 = w(i, j+1, k, jj) - w(i, j, k, jj)
+            dwtm1 = w(i, j-1, k, windices(ii)) - w(i, j-2, k, windices(&
+&             ii))
+            dwt = w(i, j, k, windices(ii)) - w(i, j-1, k, windices(ii))
+            dwtp1 = w(i, j+1, k, windices(ii)) - w(i, j, k, windices(ii)&
+&             )
 ! construct the derivative in this cell center. this is
 ! the first order upwind derivative with two nonlinear
 ! corrections.
@@ -1770,11 +1794,11 @@ nadvloopspectral:do ii=1,nadv
             end if
           else
 ! 1st order upwind scheme.
-            dwtj = w(i, j, k, jj) - w(i, j-1, k, jj)
+            dwtj = w(i, j, k, windices(ii)) - w(i, j-1, k, windices(ii))
             call pushcontrol2b(3)
           end if
-          uud = uud - dwtj*scratchd(i, j, k, idvt+ii-1)
-          dwtjd = -(uu*scratchd(i, j, k, idvt+ii-1))
+          uud = uud - dwtj*scratchd(i, j, k, scratchindices(ii))
+          dwtjd = -(uu*scratchd(i, j, k, scratchindices(ii)))
           call popcontrol2b(branch)
           if (branch .lt. 2) then
             if (branch .eq. 0) then
@@ -1788,8 +1812,10 @@ nadvloopspectral:do ii=1,nadv
             dwtd = 0.0_8
             dwtm1d = 0.0_8
           else
-            wd(i, j, k, jj) = wd(i, j, k, jj) + dwtjd
-            wd(i, j-1, k, jj) = wd(i, j-1, k, jj) - dwtjd
+            wd(i, j, k, windices(ii)) = wd(i, j, k, windices(ii)) + &
+&             dwtjd
+            wd(i, j-1, k, windices(ii)) = wd(i, j-1, k, windices(ii)) - &
+&             dwtjd
             goto 120
           end if
           call popcontrol2b(branch)
@@ -1802,26 +1828,29 @@ nadvloopspectral:do ii=1,nadv
             dwtp1d = 0.0_8
           end if
           dwtd = dwtd + dwtjd
-          wd(i, j+1, k, jj) = wd(i, j+1, k, jj) + dwtp1d
-          wd(i, j, k, jj) = wd(i, j, k, jj) + dwtd - dwtp1d
-          wd(i, j-1, k, jj) = wd(i, j-1, k, jj) + dwtm1d - dwtd
-          wd(i, j-2, k, jj) = wd(i, j-2, k, jj) - dwtm1d
+          wd(i, j+1, k, windices(ii)) = wd(i, j+1, k, windices(ii)) + &
+&           dwtp1d
+          wd(i, j, k, windices(ii)) = wd(i, j, k, windices(ii)) + dwtd -&
+&           dwtp1d
+          wd(i, j-1, k, windices(ii)) = wd(i, j-1, k, windices(ii)) + &
+&           dwtm1d - dwtd
+          wd(i, j-2, k, windices(ii)) = wd(i, j-2, k, windices(ii)) - &
+&           dwtm1d
  120    continue
       else
         uud = 0.0_8
 !$bwd-of ii-loop 
         do 130 ii=1,nadv
-! set the value of jj such that it corresponds to the
-! turbulent entry in w.
-          jj = ii + offset
 ! check whether a first or a second order discretization
 ! must be used.
           if (secondord) then
 ! store the three differences for the discretization of
 ! the derivative in j-direction.
-            dwtm1 = w(i, j, k, jj) - w(i, j-1, k, jj)
-            dwt = w(i, j+1, k, jj) - w(i, j, k, jj)
-            dwtp1 = w(i, j+2, k, jj) - w(i, j+1, k, jj)
+            dwtm1 = w(i, j, k, windices(ii)) - w(i, j-1, k, windices(ii)&
+&             )
+            dwt = w(i, j+1, k, windices(ii)) - w(i, j, k, windices(ii))
+            dwtp1 = w(i, j+2, k, windices(ii)) - w(i, j+1, k, windices(&
+&             ii))
 ! construct the derivative in this cell center. this is
 ! the first order upwind derivative with two nonlinear
 ! corrections.
@@ -1870,11 +1899,11 @@ nadvloopspectral:do ii=1,nadv
             end if
           else
 ! 1st order upwind scheme.
-            dwtj = w(i, j+1, k, jj) - w(i, j, k, jj)
+            dwtj = w(i, j+1, k, windices(ii)) - w(i, j, k, windices(ii))
             call pushcontrol2b(3)
           end if
-          uud = uud - dwtj*scratchd(i, j, k, idvt+ii-1)
-          dwtjd = -(uu*scratchd(i, j, k, idvt+ii-1))
+          uud = uud - dwtj*scratchd(i, j, k, scratchindices(ii))
+          dwtjd = -(uu*scratchd(i, j, k, scratchindices(ii)))
           call popcontrol2b(branch)
           if (branch .lt. 2) then
             if (branch .eq. 0) then
@@ -1888,8 +1917,10 @@ nadvloopspectral:do ii=1,nadv
             dwtd = 0.0_8
             dwtm1d = 0.0_8
           else
-            wd(i, j+1, k, jj) = wd(i, j+1, k, jj) + dwtjd
-            wd(i, j, k, jj) = wd(i, j, k, jj) - dwtjd
+            wd(i, j+1, k, windices(ii)) = wd(i, j+1, k, windices(ii)) + &
+&             dwtjd
+            wd(i, j, k, windices(ii)) = wd(i, j, k, windices(ii)) - &
+&             dwtjd
             goto 130
           end if
           call popcontrol2b(branch)
@@ -1902,10 +1933,14 @@ nadvloopspectral:do ii=1,nadv
             dwtp1d = 0.0_8
           end if
           dwtd = dwtd + dwtjd
-          wd(i, j+2, k, jj) = wd(i, j+2, k, jj) + dwtp1d
-          wd(i, j+1, k, jj) = wd(i, j+1, k, jj) + dwtd - dwtp1d
-          wd(i, j, k, jj) = wd(i, j, k, jj) + dwtm1d - dwtd
-          wd(i, j-1, k, jj) = wd(i, j-1, k, jj) - dwtm1d
+          wd(i, j+2, k, windices(ii)) = wd(i, j+2, k, windices(ii)) + &
+&           dwtp1d
+          wd(i, j+1, k, windices(ii)) = wd(i, j+1, k, windices(ii)) + &
+&           dwtd - dwtp1d
+          wd(i, j, k, windices(ii)) = wd(i, j, k, windices(ii)) + dwtm1d&
+&           - dwtd
+          wd(i, j-1, k, windices(ii)) = wd(i, j-1, k, windices(ii)) - &
+&           dwtm1d
  130    continue
       end if
       wd(i, j, k, ivx) = wd(i, j, k, ivx) + xa*uud
@@ -1939,17 +1974,16 @@ nadvloopspectral:do ii=1,nadv
         uud = 0.0_8
 !$bwd-of ii-loop 
         do 140 ii=1,nadv
-! set the value of jj such that it corresponds to the
-! turbulent entry in w.
-          jj = ii + offset
 ! check whether a first or a second order discretization
 ! must be used.
           if (secondord) then
 ! second order; store the three differences for the
 ! discretization of the derivative in k-direction.
-            dwtm1 = w(i, j, k-1, jj) - w(i, j, k-2, jj)
-            dwt = w(i, j, k, jj) - w(i, j, k-1, jj)
-            dwtp1 = w(i, j, k+1, jj) - w(i, j, k, jj)
+            dwtm1 = w(i, j, k-1, windices(ii)) - w(i, j, k-2, windices(&
+&             ii))
+            dwt = w(i, j, k, windices(ii)) - w(i, j, k-1, windices(ii))
+            dwtp1 = w(i, j, k+1, windices(ii)) - w(i, j, k, windices(ii)&
+&             )
 ! construct the derivative in this cell center. this
 ! is the first order upwind derivative with two
 ! nonlinear corrections.
@@ -1998,11 +2032,11 @@ nadvloopspectral:do ii=1,nadv
             end if
           else
 ! 1st order upwind scheme.
-            dwtk = w(i, j, k, jj) - w(i, j, k-1, jj)
+            dwtk = w(i, j, k, windices(ii)) - w(i, j, k-1, windices(ii))
             call pushcontrol2b(3)
           end if
-          uud = uud - dwtk*scratchd(i, j, k, idvt+ii-1)
-          dwtkd = -(uu*scratchd(i, j, k, idvt+ii-1))
+          uud = uud - dwtk*scratchd(i, j, k, scratchindices(ii))
+          dwtkd = -(uu*scratchd(i, j, k, scratchindices(ii)))
           call popcontrol2b(branch)
           if (branch .lt. 2) then
             if (branch .eq. 0) then
@@ -2016,8 +2050,10 @@ nadvloopspectral:do ii=1,nadv
             dwtd = 0.0_8
             dwtm1d = 0.0_8
           else
-            wd(i, j, k, jj) = wd(i, j, k, jj) + dwtkd
-            wd(i, j, k-1, jj) = wd(i, j, k-1, jj) - dwtkd
+            wd(i, j, k, windices(ii)) = wd(i, j, k, windices(ii)) + &
+&             dwtkd
+            wd(i, j, k-1, windices(ii)) = wd(i, j, k-1, windices(ii)) - &
+&             dwtkd
             goto 140
           end if
           call popcontrol2b(branch)
@@ -2030,26 +2066,29 @@ nadvloopspectral:do ii=1,nadv
             dwtp1d = 0.0_8
           end if
           dwtd = dwtd + dwtkd
-          wd(i, j, k+1, jj) = wd(i, j, k+1, jj) + dwtp1d
-          wd(i, j, k, jj) = wd(i, j, k, jj) + dwtd - dwtp1d
-          wd(i, j, k-1, jj) = wd(i, j, k-1, jj) + dwtm1d - dwtd
-          wd(i, j, k-2, jj) = wd(i, j, k-2, jj) - dwtm1d
+          wd(i, j, k+1, windices(ii)) = wd(i, j, k+1, windices(ii)) + &
+&           dwtp1d
+          wd(i, j, k, windices(ii)) = wd(i, j, k, windices(ii)) + dwtd -&
+&           dwtp1d
+          wd(i, j, k-1, windices(ii)) = wd(i, j, k-1, windices(ii)) + &
+&           dwtm1d - dwtd
+          wd(i, j, k-2, windices(ii)) = wd(i, j, k-2, windices(ii)) - &
+&           dwtm1d
  140    continue
       else
         uud = 0.0_8
 !$bwd-of ii-loop 
         do 150 ii=1,nadv
-! set the value of jj such that it corresponds to the
-! turbulent entry in w.
-          jj = ii + offset
 ! check whether a first or a second order discretization
 ! must be used.
           if (secondord) then
 ! store the three differences for the discretization of
 ! the derivative in k-direction.
-            dwtm1 = w(i, j, k, jj) - w(i, j, k-1, jj)
-            dwt = w(i, j, k+1, jj) - w(i, j, k, jj)
-            dwtp1 = w(i, j, k+2, jj) - w(i, j, k+1, jj)
+            dwtm1 = w(i, j, k, windices(ii)) - w(i, j, k-1, windices(ii)&
+&             )
+            dwt = w(i, j, k+1, windices(ii)) - w(i, j, k, windices(ii))
+            dwtp1 = w(i, j, k+2, windices(ii)) - w(i, j, k+1, windices(&
+&             ii))
 ! construct the derivative in this cell center. this is
 ! the first order upwind derivative with two nonlinear
 ! corrections.
@@ -2098,11 +2137,11 @@ nadvloopspectral:do ii=1,nadv
             end if
           else
 ! 1st order upwind scheme.
-            dwtk = w(i, j, k+1, jj) - w(i, j, k, jj)
+            dwtk = w(i, j, k+1, windices(ii)) - w(i, j, k, windices(ii))
             call pushcontrol2b(3)
           end if
-          uud = uud - dwtk*scratchd(i, j, k, idvt+ii-1)
-          dwtkd = -(uu*scratchd(i, j, k, idvt+ii-1))
+          uud = uud - dwtk*scratchd(i, j, k, scratchindices(ii))
+          dwtkd = -(uu*scratchd(i, j, k, scratchindices(ii)))
           call popcontrol2b(branch)
           if (branch .lt. 2) then
             if (branch .eq. 0) then
@@ -2116,8 +2155,10 @@ nadvloopspectral:do ii=1,nadv
             dwtd = 0.0_8
             dwtm1d = 0.0_8
           else
-            wd(i, j, k+1, jj) = wd(i, j, k+1, jj) + dwtkd
-            wd(i, j, k, jj) = wd(i, j, k, jj) - dwtkd
+            wd(i, j, k+1, windices(ii)) = wd(i, j, k+1, windices(ii)) + &
+&             dwtkd
+            wd(i, j, k, windices(ii)) = wd(i, j, k, windices(ii)) - &
+&             dwtkd
             goto 150
           end if
           call popcontrol2b(branch)
@@ -2130,10 +2171,14 @@ nadvloopspectral:do ii=1,nadv
             dwtp1d = 0.0_8
           end if
           dwtd = dwtd + dwtkd
-          wd(i, j, k+2, jj) = wd(i, j, k+2, jj) + dwtp1d
-          wd(i, j, k+1, jj) = wd(i, j, k+1, jj) + dwtd - dwtp1d
-          wd(i, j, k, jj) = wd(i, j, k, jj) + dwtm1d - dwtd
-          wd(i, j, k-1, jj) = wd(i, j, k-1, jj) - dwtm1d
+          wd(i, j, k+2, windices(ii)) = wd(i, j, k+2, windices(ii)) + &
+&           dwtp1d
+          wd(i, j, k+1, windices(ii)) = wd(i, j, k+1, windices(ii)) + &
+&           dwtd - dwtp1d
+          wd(i, j, k, windices(ii)) = wd(i, j, k, windices(ii)) + dwtm1d&
+&           - dwtd
+          wd(i, j, k-1, windices(ii)) = wd(i, j, k-1, windices(ii)) - &
+&           dwtm1d
  150    continue
       end if
       wd(i, j, k, ivx) = wd(i, j, k, ivx) + xa*uud
@@ -2142,7 +2187,7 @@ nadvloopspectral:do ii=1,nadv
     end do
   end subroutine turbadvection_fast_b
 
-  subroutine turbadvection(madv, nadv, offset, qq)
+  subroutine turbadvection(windices, scratchindices, madv, qq)
 !
 !       turbadvection discretizes the advection part of the turbulent
 !       transport equations. as the advection part is the same for all
@@ -2153,14 +2198,13 @@ nadvloopspectral:do ii=1,nadv
 !       discretization. when the discretization must be second order
 !       accurate, the fully upwind (kappa = -1) scheme in combination
 !       with the minmod limiter is used.
-!       only nadv equations are treated, while the actual system has
-!       size madv. the reason is that some equations for some
-!       turbulence equations do not have an advection part, e.g. the
-!       f equation in the v2-f model. the argument offset indicates
-!       the offset in the w vector where this subsystem starts. as a
-!       consequence it is assumed that the indices of the current
-!       subsystem are contiguous, e.g. if a 2*2 system is solved the
-!       last index in w is offset+1 and offset+2 respectively.
+!
+!       qq is an optional argument and is ignored in the code when it 
+!       is not given. madv is needed to tell the routine the size of 
+!       qq. if qq is not given, madv must have a dummy argument.
+!       windices(:) and scratchindices(:) tell the routine where to 
+!       store the computed terms. both arrays must have the same
+!       dimension
 !
     use constants
     use blockpointers, only : nx, ny, nz, il, jl, kl, vol, sfacei&
@@ -2173,16 +2217,20 @@ nadvloopspectral:do ii=1,nadv
 !
 !      subroutine arguments.
 !
-    integer(kind=inttype), intent(in) :: nadv, madv, offset
+    integer(kind=inttype), dimension(:), intent(in) :: windices, &
+&   scratchindices
+    integer(kind=inttype), intent(in) :: madv
     real(kind=realtype), dimension(2:il, 2:jl, 2:kl, madv, madv), &
-&   intent(inout) :: qq
+&   intent(inout), optional :: qq
 !
 !      local variables.
 !
-    integer(kind=inttype) :: i, j, k, ii, jj, kk, iii
+    integer(kind=inttype) :: i, j, k, ii, kk, iii, nadv
     real(kind=realtype) :: qs, voli, xa, ya, za
-    real(kind=realtype) :: uu, dwt, dwtm1, dwtp1, dwti, dwtj, dwtk
-    real(kind=realtype), dimension(madv) :: impl
+    real(kind=realtype) :: uu, dwt, dwtm1, dwtp1, dwti, dwtj, dwtk, tmp
+    logical :: qqpresent
+    intrinsic present
+    intrinsic size
     intrinsic mod
     intrinsic abs
     real(kind=realtype) :: abs0
@@ -2209,6 +2257,10 @@ nadvloopspectral:do ii=1,nadv
     real(kind=realtype) :: abs21
     real(kind=realtype) :: abs22
     real(kind=realtype) :: abs23
+! figure out if qq is present
+    qqpresent = .false.
+    if (present(qq)) qqpresent = .true.
+    nadv = size(windices)
 ! determine whether or not a second order discretization for the
 ! advective terms must be used.
     secondord = .false.
@@ -2250,17 +2302,16 @@ nadvloopspectral:do ii=1,nadv
 ! velocity has a component in positive k-direction.
 ! loop over the number of advection equations.
         do ii=1,nadv
-! set the value of jj such that it corresponds to the
-! turbulent entry in w.
-          jj = ii + offset
 ! check whether a first or a second order discretization
 ! must be used.
           if (secondord) then
 ! second order; store the three differences for the
 ! discretization of the derivative in k-direction.
-            dwtm1 = w(i, j, k-1, jj) - w(i, j, k-2, jj)
-            dwt = w(i, j, k, jj) - w(i, j, k-1, jj)
-            dwtp1 = w(i, j, k+1, jj) - w(i, j, k, jj)
+            dwtm1 = w(i, j, k-1, windices(ii)) - w(i, j, k-2, windices(&
+&             ii))
+            dwt = w(i, j, k, windices(ii)) - w(i, j, k-1, windices(ii))
+            dwtp1 = w(i, j, k+1, windices(ii)) - w(i, j, k, windices(ii)&
+&             )
 ! construct the derivative in this cell center. this
 ! is the first order upwind derivative with two
 ! nonlinear corrections.
@@ -2301,31 +2352,30 @@ nadvloopspectral:do ii=1,nadv
             end if
           else
 ! 1st order upwind scheme.
-            dwtk = w(i, j, k, jj) - w(i, j, k-1, jj)
+            dwtk = w(i, j, k, windices(ii)) - w(i, j, k-1, windices(ii))
           end if
 ! update the residual. the convective term must be
 ! substracted, because it appears on the other side of
 ! the equation as the source and viscous terms.
 ! uu*dwtk = (v.dot.face_normal)*delta(nutilde)/delta(x)
-          scratch(i, j, k, idvt+ii-1) = scratch(i, j, k, idvt+ii-1) - uu&
-&           *dwtk
+          scratch(i, j, k, scratchindices(ii)) = scratch(i, j, k, &
+&           scratchindices(ii)) - uu*dwtk
         end do
       else
 !$ad ii-loop
 ! velocity has a component in negative k-direction.
 ! loop over the number of advection equations
         do ii=1,nadv
-! set the value of jj such that it corresponds to the
-! turbulent entry in w.
-          jj = ii + offset
 ! check whether a first or a second order discretization
 ! must be used.
           if (secondord) then
 ! store the three differences for the discretization of
 ! the derivative in k-direction.
-            dwtm1 = w(i, j, k, jj) - w(i, j, k-1, jj)
-            dwt = w(i, j, k+1, jj) - w(i, j, k, jj)
-            dwtp1 = w(i, j, k+2, jj) - w(i, j, k+1, jj)
+            dwtm1 = w(i, j, k, windices(ii)) - w(i, j, k-1, windices(ii)&
+&             )
+            dwt = w(i, j, k+1, windices(ii)) - w(i, j, k, windices(ii))
+            dwtp1 = w(i, j, k+2, windices(ii)) - w(i, j, k+1, windices(&
+&             ii))
 ! construct the derivative in this cell center. this is
 ! the first order upwind derivative with two nonlinear
 ! corrections.
@@ -2366,13 +2416,13 @@ nadvloopspectral:do ii=1,nadv
             end if
           else
 ! 1st order upwind scheme.
-            dwtk = w(i, j, k+1, jj) - w(i, j, k, jj)
+            dwtk = w(i, j, k+1, windices(ii)) - w(i, j, k, windices(ii))
           end if
 ! update the residual. the convective term must be
 ! substracted, because it appears on the other side
 ! of the equation as the source and viscous terms.
-          scratch(i, j, k, idvt+ii-1) = scratch(i, j, k, idvt+ii-1) - uu&
-&           *dwtk
+          scratch(i, j, k, scratchindices(ii)) = scratch(i, j, k, &
+&           scratchindices(ii)) - uu*dwtk
 ! update the central jacobian. first the term which is
 ! always present, i.e. -uu.
         end do
@@ -2413,17 +2463,16 @@ nadvloopspectral:do ii=1,nadv
 ! velocity has a component in positive j-direction.
 ! loop over the number of advection equations.
         do ii=1,nadv
-! set the value of jj such that it corresponds to the
-! turbulent entry in w.
-          jj = ii + offset
 ! check whether a first or a second order discretization
 ! must be used.
           if (secondord) then
 ! second order; store the three differences for the
 ! discretization of the derivative in j-direction.
-            dwtm1 = w(i, j-1, k, jj) - w(i, j-2, k, jj)
-            dwt = w(i, j, k, jj) - w(i, j-1, k, jj)
-            dwtp1 = w(i, j+1, k, jj) - w(i, j, k, jj)
+            dwtm1 = w(i, j-1, k, windices(ii)) - w(i, j-2, k, windices(&
+&             ii))
+            dwt = w(i, j, k, windices(ii)) - w(i, j-1, k, windices(ii))
+            dwtp1 = w(i, j+1, k, windices(ii)) - w(i, j, k, windices(ii)&
+&             )
 ! construct the derivative in this cell center. this is
 ! the first order upwind derivative with two nonlinear
 ! corrections.
@@ -2464,13 +2513,13 @@ nadvloopspectral:do ii=1,nadv
             end if
           else
 ! 1st order upwind scheme.
-            dwtj = w(i, j, k, jj) - w(i, j-1, k, jj)
+            dwtj = w(i, j, k, windices(ii)) - w(i, j-1, k, windices(ii))
           end if
 ! update the residual. the convective term must be
 ! substracted, because it appears on the other side of
 ! the equation as the source and viscous terms.
-          scratch(i, j, k, idvt+ii-1) = scratch(i, j, k, idvt+ii-1) - uu&
-&           *dwtj
+          scratch(i, j, k, scratchindices(ii)) = scratch(i, j, k, &
+&           scratchindices(ii)) - uu*dwtj
 ! update the central jacobian. first the term which is
 ! always present, i.e. uu.
         end do
@@ -2479,17 +2528,16 @@ nadvloopspectral:do ii=1,nadv
 ! velocity has a component in negative j-direction.
 ! loop over the number of advection equations.
         do ii=1,nadv
-! set the value of jj such that it corresponds to the
-! turbulent entry in w.
-          jj = ii + offset
 ! check whether a first or a second order discretization
 ! must be used.
           if (secondord) then
 ! store the three differences for the discretization of
 ! the derivative in j-direction.
-            dwtm1 = w(i, j, k, jj) - w(i, j-1, k, jj)
-            dwt = w(i, j+1, k, jj) - w(i, j, k, jj)
-            dwtp1 = w(i, j+2, k, jj) - w(i, j+1, k, jj)
+            dwtm1 = w(i, j, k, windices(ii)) - w(i, j-1, k, windices(ii)&
+&             )
+            dwt = w(i, j+1, k, windices(ii)) - w(i, j, k, windices(ii))
+            dwtp1 = w(i, j+2, k, windices(ii)) - w(i, j+1, k, windices(&
+&             ii))
 ! construct the derivative in this cell center. this is
 ! the first order upwind derivative with two nonlinear
 ! corrections.
@@ -2530,13 +2578,13 @@ nadvloopspectral:do ii=1,nadv
             end if
           else
 ! 1st order upwind scheme.
-            dwtj = w(i, j+1, k, jj) - w(i, j, k, jj)
+            dwtj = w(i, j+1, k, windices(ii)) - w(i, j, k, windices(ii))
           end if
 ! update the residual. the convective term must be
 ! substracted, because it appears on the other side
 ! of the equation as the source and viscous terms.
-          scratch(i, j, k, idvt+ii-1) = scratch(i, j, k, idvt+ii-1) - uu&
-&           *dwtj
+          scratch(i, j, k, scratchindices(ii)) = scratch(i, j, k, &
+&           scratchindices(ii)) - uu*dwtj
 ! update the central jacobian. first the term which is
 ! always present, i.e. -uu.
         end do
@@ -2577,17 +2625,16 @@ nadvloopspectral:do ii=1,nadv
 ! velocity has a component in positive i-direction.
 ! loop over the number of advection equations.
         do ii=1,nadv
-! set the value of jj such that it corresponds to the
-! turbulent entry in w.
-          jj = ii + offset
 ! check whether a first or a second order discretization
 ! must be used.
           if (secondord) then
 ! second order; store the three differences for the
 ! discretization of the derivative in i-direction.
-            dwtm1 = w(i-1, j, k, jj) - w(i-2, j, k, jj)
-            dwt = w(i, j, k, jj) - w(i-1, j, k, jj)
-            dwtp1 = w(i+1, j, k, jj) - w(i, j, k, jj)
+            dwtm1 = w(i-1, j, k, windices(ii)) - w(i-2, j, k, windices(&
+&             ii))
+            dwt = w(i, j, k, windices(ii)) - w(i-1, j, k, windices(ii))
+            dwtp1 = w(i+1, j, k, windices(ii)) - w(i, j, k, windices(ii)&
+&             )
 ! construct the derivative in this cell center. this is
 ! the first order upwind derivative with two nonlinear
 ! corrections.
@@ -2628,13 +2675,13 @@ nadvloopspectral:do ii=1,nadv
             end if
           else
 ! 1st order upwind scheme.
-            dwti = w(i, j, k, jj) - w(i-1, j, k, jj)
+            dwti = w(i, j, k, windices(ii)) - w(i-1, j, k, windices(ii))
           end if
 ! update the residual. the convective term must be
 ! substracted, because it appears on the other side of
 ! the equation as the source and viscous terms.
-          scratch(i, j, k, idvt+ii-1) = scratch(i, j, k, idvt+ii-1) - uu&
-&           *dwti
+          scratch(i, j, k, scratchindices(ii)) = scratch(i, j, k, &
+&           scratchindices(ii)) - uu*dwti
 ! update the central jacobian. first the term which is
 ! always present, i.e. uu.
         end do
@@ -2643,17 +2690,16 @@ nadvloopspectral:do ii=1,nadv
 ! velocity has a component in negative i-direction.
 ! loop over the number of advection equations.
         do ii=1,nadv
-! set the value of jj such that it corresponds to the
-! turbulent entry in w.
-          jj = ii + offset
 ! check whether a first or a second order discretization
 ! must be used.
           if (secondord) then
 ! second order; store the three differences for the
 ! discretization of the derivative in i-direction.
-            dwtm1 = w(i, j, k, jj) - w(i-1, j, k, jj)
-            dwt = w(i+1, j, k, jj) - w(i, j, k, jj)
-            dwtp1 = w(i+2, j, k, jj) - w(i+1, j, k, jj)
+            dwtm1 = w(i, j, k, windices(ii)) - w(i-1, j, k, windices(ii)&
+&             )
+            dwt = w(i+1, j, k, windices(ii)) - w(i, j, k, windices(ii))
+            dwtp1 = w(i+2, j, k, windices(ii)) - w(i+1, j, k, windices(&
+&             ii))
 ! construct the derivative in this cell center. this is
 ! the first order upwind derivative with two nonlinear
 ! corrections.
@@ -2694,13 +2740,13 @@ nadvloopspectral:do ii=1,nadv
             end if
           else
 ! 1st order upwind scheme.
-            dwti = w(i+1, j, k, jj) - w(i, j, k, jj)
+            dwti = w(i+1, j, k, windices(ii)) - w(i, j, k, windices(ii))
           end if
 ! update the residual. the convective term must be
 ! substracted, because it appears on the other side
 ! of the equation as the source and viscous terms.
-          scratch(i, j, k, idvt+ii-1) = scratch(i, j, k, idvt+ii-1) - uu&
-&           *dwti
+          scratch(i, j, k, scratchindices(ii)) = scratch(i, j, k, &
+&           scratchindices(ii)) - uu*dwti
 ! update the central jacobian. first the term which is
 ! always present, i.e. -uu.
         end do
