@@ -1011,7 +1011,6 @@ contains
 &           vortyd + 2*vortz*vortzd
           scratch(i, j, k, scratchindex) = vortx**2 + vorty**2 + vortz**&
 &           2
-! update of iprod to be consistent. ivort seems to be never used, and ivort = iprod anyway.
         end do
       end do
     end do
@@ -1094,7 +1093,6 @@ contains
 ! compute the magnitude squared of the vorticity.
           scratch(i, j, k, scratchindex) = vortx**2 + vorty**2 + vortz**&
 &           2
-! update of iprod to be consistent. ivort seems to be never used, and ivort = iprod anyway.
         end do
       end do
     end do

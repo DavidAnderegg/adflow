@@ -26,6 +26,7 @@ contains
 !
     use blockpointers
     use constants
+    use variableconstants
     use inputphysics
     use inputdiscretization, only : approxturb
     use paramturb
@@ -41,30 +42,61 @@ contains
     real(kind=realtype) :: rhoi, ss, spk, sdk
     real(kind=realtype) :: rhoid, ssd, spkd, sdkd
     real(kind=realtype) :: xm, ym, zm, xp, yp, zp, xa, ya, za
+    real(kind=realtype) :: re_w, u, f_wake, delta, r_t, re_s, f_theta_t
+    real(kind=realtype) :: re_wd, ud, f_waked, deltad, r_td, re_sd, &
+&   f_theta_td
+    real(kind=realtype) :: re_theta_c, f_reattach, gamma_sep, gamma_eff
+    real(kind=realtype) :: re_theta_cd, f_reattachd, gamma_sepd, &
+&   gamma_effd
     intrinsic sqrt
     intrinsic mod
     intrinsic min
+    intrinsic exp
+    intrinsic max
+    intrinsic sin
+    real(kind=realtype) :: x1
+    real(kind=realtype) :: x1d
+    real(kind=realtype) :: x2
+    real(kind=realtype) :: x2d
+    real(kind=realtype) :: x3
+    real(kind=realtype) :: x3d
+    real(kind=realtype) :: x4
+    real(kind=realtype) :: x4d
+    real(kind=realtype) :: min1
+    real(kind=realtype) :: min1d
+    real(kind=realtype) :: min2
+    real(kind=realtype) :: min2d
+    real(kind=realtype) :: max1
+    real(kind=realtype) :: max1d
     real(kind=realtype) :: temp
     real(kind=realtype) :: tempd
+    real(kind=realtype) :: temp0
+    real(kind=realtype) :: temp1
+    real(kind=realtype) :: temp2
+    real(kind=realtype) :: tempd0
+    real(kind=realtype) :: tempd1
+    real(kind=realtype) :: temp3
+    real(kind=realtype) :: tempd2
+    real(kind=realtype) :: temp4
+    real(kind=realtype) :: tempd3
     real(kind=realtype) :: tmp
     real(kind=realtype) :: tmpd
-    real(kind=realtype) :: temp0
-    real(kind=realtype) :: tempd0
-    real(kind=realtype) :: temp1
+    real(kind=realtype) :: tempd4
     real(kind=realtype) :: tmp0
     real(kind=realtype) :: tmpd0
-    real(kind=realtype) :: tempd1
     integer :: branch
     integer :: ii
 ! set model constants
     if (use2003sst) then
       rsstgam1 = 5.0_realtype/9.0_realtype
       rsstgam2 = 0.44_realtype
+      pklim = 20.0
     else
       rsstgam1 = rsstbeta1/rsstbetas - rsstsigw1*rsstk*rsstk/sqrt(&
 &       rsstbetas)
       rsstgam2 = rsstbeta2/rsstbetas - rsstsigw2*rsstk*rsstk/sqrt(&
 &       rsstbetas)
+      pklim = 20.0
     end if
 !$bwd-of ii-loop 
     do ii=0,nx*ny*nz-1
@@ -100,37 +132,233 @@ contains
         call pushcontrol1b(1)
         spk = spk
       end if
+      if (transitionmodel .eq. gammaretheta) then
+        re_w = w(i, j, k, irho)*w(i, j, k, itu2)*d2wall(i, j, k)**2/rlv(&
+&         i, j, k)
+        u = sqrt(w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, &
+&         ivz)**2)
+        f_wake = exp(-((re_w/100000.0)**2))
+! todo: pull out of scratch
+        r_t = w(i, j, k, irho)*w(i, j, k, itu1)/(rlv(i, j, k)*w(i, j, k&
+&         , itu2))
+! todo: pull out of scratch
+        re_s = w(i, j, k, irho)*sqrt(scratch(i, j, k, istrain))*d2wall(i&
+&         , j, k)**2/rev(i, j, k)
+        delta = 375.0*sqrt(scratch(i, j, k, ivorticity))*w(i, j, k, &
+&         itransition2)*d2wall(i, j, k)/(w(i, j, k, irho)*u)
+        x4 = f_wake*exp(-((d2wall(i, j, k)/delta)**4))
+        if (x4 .lt. 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2&
+&           -1))**2) then
+          x1 = 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1))&
+&           **2
+          call pushcontrol1b(0)
+        else
+          x1 = x4
+          call pushcontrol1b(1)
+        end if
+        if (x1 .gt. 1.0) then
+          f_theta_t = 1.0
+          call pushcontrol1b(0)
+        else
+          f_theta_t = x1
+          call pushcontrol1b(1)
+        end if
+! this comes from the smooth variant
+        re_theta_c = 0.67*w(i, j, k, itransition2) + 24.0*sin(w(i, j, k&
+&         , itransition2)/240.0+0.5) + 14.0
+        f_reattach = exp(-((r_t/20.0)**4))
+        if (0.0 .lt. re_s/3.235*re_theta_c - 1.0) then
+          max1 = re_s/3.235*re_theta_c - 1.0
+          call pushcontrol1b(0)
+        else
+          max1 = 0.0
+          call pushcontrol1b(1)
+        end if
+        x2 = rlms1*max1*f_reattach
+        if (x2 .gt. 2.0) then
+          min1 = 2.0
+          call pushcontrol1b(0)
+        else
+          min1 = x2
+          call pushcontrol1b(1)
+        end if
+        gamma_sep = min1*f_theta_t
+        if (w(i, j, k, itransition1) .lt. gamma_sep) then
+          gamma_eff = gamma_sep
+          call pushcontrol1b(0)
+        else
+          gamma_eff = w(i, j, k, itransition1)
+          call pushcontrol1b(1)
+        end if
+! if gamma_eff = 1, the original sst should come out
+        call pushreal8(spk)
+        spk = gamma_eff*spk
+        if (gamma_eff .lt. 0.1) then
+          x3 = 0.1
+          call pushcontrol1b(0)
+        else
+          x3 = gamma_eff
+          call pushcontrol1b(1)
+        end if
+        if (x3 .gt. 1.0) then
+          min2 = 1.0
+          call pushcontrol1b(0)
+        else
+          min2 = x3
+          call pushcontrol1b(1)
+        end if
+        call pushreal8(sdk)
+        sdk = min2*sdk
+        call pushcontrol1b(0)
+      else
+        call pushcontrol1b(1)
+      end if
+      call pushreal8(scratch(i, j, k, idvt))
       scratch(i, j, k, idvt) = spk - sdk
       if (use2003sst) then
         tmpd = scratchd(i, j, k, idvt+1)
         scratchd(i, j, k, idvt+1) = 0.0_8
-        temp1 = w(i, j, k, itu2)
-        tempd = tmpd/rev(i, j, k)
-        tempd0 = two*rsstsigw2*tmpd
-        rsstbetad = -(temp1**2*tmpd)
-        wd(i, j, k, itu2) = wd(i, j, k, itu2) - 2*temp1*rsstbeta*tmpd
-        t2d = scratch(i, j, k, icd)*tempd0
-        scratchd(i, j, k, icd) = scratchd(i, j, k, icd) + t2*tempd0
-        rsstgamd = spk*tempd
-        spkd = rsstgam*tempd
-        revd(i, j, k) = revd(i, j, k) - rsstgam*spk*tempd/rev(i, j, k)
+        temp2 = w(i, j, k, itu2)
+        tempd3 = tmpd/rev(i, j, k)
+        tempd4 = two*rsstsigw2*tmpd
+        rsstbetad = -(temp2**2*tmpd)
+        wd(i, j, k, itu2) = wd(i, j, k, itu2) - 2*temp2*rsstbeta*tmpd
+        t2d = scratch(i, j, k, icd)*tempd4
+        scratchd(i, j, k, icd) = scratchd(i, j, k, icd) + t2*tempd4
+        rsstgamd = spk*tempd3
+        spkd = rsstgam*tempd3
+        revd(i, j, k) = revd(i, j, k) - rsstgam*spk*tempd3/rev(i, j, k)
         ssd = 0.0_8
       else
         tmpd0 = scratchd(i, j, k, idvt+1)
         scratchd(i, j, k, idvt+1) = 0.0_8
-        temp0 = w(i, j, k, itu2)
+        temp3 = w(i, j, k, itu2)
         rsstgamd = ss*tmpd0
         ssd = rsstgam*tmpd0
-        tempd1 = two*rsstsigw2*tmpd0
-        rsstbetad = -(temp0**2*tmpd0)
-        wd(i, j, k, itu2) = wd(i, j, k, itu2) - 2*temp0*rsstbeta*tmpd0
-        t2d = scratch(i, j, k, icd)*tempd1
-        scratchd(i, j, k, icd) = scratchd(i, j, k, icd) + t2*tempd1
+        tempd3 = two*rsstsigw2*tmpd0
+        rsstbetad = -(temp3**2*tmpd0)
+        wd(i, j, k, itu2) = wd(i, j, k, itu2) - 2*temp3*rsstbeta*tmpd0
+        t2d = scratch(i, j, k, icd)*tempd3
+        scratchd(i, j, k, icd) = scratchd(i, j, k, icd) + t2*tempd3
         spkd = 0.0_8
       end if
+      call popreal8(scratch(i, j, k, idvt))
       spkd = spkd + scratchd(i, j, k, idvt)
       sdkd = -scratchd(i, j, k, idvt)
       scratchd(i, j, k, idvt) = 0.0_8
+      call popcontrol1b(branch)
+      if (branch .eq. 0) then
+        call popreal8(sdk)
+        min2d = sdk*sdkd
+        sdkd = min2*sdkd
+        call popcontrol1b(branch)
+        if (branch .eq. 0) then
+          x3d = 0.0_8
+        else
+          x3d = min2d
+        end if
+        call popcontrol1b(branch)
+        if (branch .eq. 0) then
+          gamma_effd = 0.0_8
+        else
+          gamma_effd = x3d
+        end if
+        call popreal8(spk)
+        gamma_effd = gamma_effd + spk*spkd
+        spkd = gamma_eff*spkd
+        call popcontrol1b(branch)
+        if (branch .eq. 0) then
+          gamma_sepd = gamma_effd
+        else
+          wd(i, j, k, itransition1) = wd(i, j, k, itransition1) + &
+&           gamma_effd
+          gamma_sepd = 0.0_8
+        end if
+        min1d = f_theta_t*gamma_sepd
+        f_theta_td = min1*gamma_sepd
+        call popcontrol1b(branch)
+        if (branch .eq. 0) then
+          x2d = 0.0_8
+        else
+          x2d = min1d
+        end if
+        max1d = f_reattach*rlms1*x2d
+        f_reattachd = max1*rlms1*x2d
+        call popcontrol1b(branch)
+        if (branch .eq. 0) then
+          re_sd = re_theta_c*max1d/3.235
+          re_theta_cd = re_s*max1d/3.235
+        else
+          re_theta_cd = 0.0_8
+          re_sd = 0.0_8
+        end if
+        r_td = -(4*r_t**3*exp(-((r_t/20.0)**4))*f_reattachd/20.0**4)
+        wd(i, j, k, itransition2) = wd(i, j, k, itransition2) + (cos(w(i&
+&         , j, k, itransition2)/240.0+0.5)*24.0/240.0+0.67)*re_theta_cd
+        call popcontrol1b(branch)
+        if (branch .eq. 0) then
+          x1d = 0.0_8
+        else
+          x1d = f_theta_td
+        end if
+        call popcontrol1b(branch)
+        if (branch .eq. 0) then
+          wd(i, j, k, itransition1) = wd(i, j, k, itransition1) - rlmce2&
+&           *2*(rlmce2*w(i, j, k, itransition1)-1.0)*x1d/(rlmce2-1)**2
+          x4d = 0.0_8
+        else
+          x4d = x1d
+        end if
+        temp4 = d2wall(i, j, k)/delta
+        temp3 = -(temp4**4)
+        f_waked = exp(temp3)*x4d
+        deltad = temp4**4*4*exp(temp3)*f_wake*x4d/delta
+        temp1 = w(i, j, k, irho)
+        temp0 = w(i, j, k, itransition2)/(temp1*u)
+        temp = scratch(i, j, k, ivorticity)
+        temp3 = sqrt(temp)
+        tempd0 = d2wall(i, j, k)*375.0*deltad
+        if (.not.temp .eq. 0.0_8) scratchd(i, j, k, ivorticity) = &
+&           scratchd(i, j, k, ivorticity) + temp0*tempd0/(2.0*temp3)
+        tempd2 = temp3*tempd0/(temp1*u)
+        wd(i, j, k, itransition2) = wd(i, j, k, itransition2) + tempd2
+        tempd3 = -(temp0*tempd2)
+        ud = temp1*tempd3
+        temp1 = scratch(i, j, k, istrain)
+        temp0 = sqrt(temp1)
+        temp = w(i, j, k, irho)/rev(i, j, k)
+        tempd0 = d2wall(i, j, k)**2*re_sd
+        tempd = temp0*tempd0/rev(i, j, k)
+        if (.not.temp1 .eq. 0.0_8) scratchd(i, j, k, istrain) = scratchd&
+&           (i, j, k, istrain) + temp*tempd0/(2.0*temp0)
+        revd(i, j, k) = revd(i, j, k) - temp*tempd
+        temp2 = rlv(i, j, k)*w(i, j, k, itu2)
+        temp0 = w(i, j, k, itu1)
+        temp = w(i, j, k, irho)
+        tempd1 = r_td/temp2
+        wd(i, j, k, irho) = wd(i, j, k, irho) + u*tempd3 + tempd + temp0&
+&         *tempd1
+        wd(i, j, k, itu1) = wd(i, j, k, itu1) + temp*tempd1
+        wd(i, j, k, itu2) = wd(i, j, k, itu2) - rlv(i, j, k)*temp*temp0*&
+&         tempd1/temp2
+        re_wd = -(2*re_w*exp(-((re_w/100000.0)**2))*f_waked/100000.0**2)
+        temp = w(i, j, k, ivz)
+        temp0 = w(i, j, k, ivy)
+        temp1 = w(i, j, k, ivx)
+        if (temp1**2 + temp0**2 + temp**2 .eq. 0.0_8) then
+          tempd0 = 0.0_8
+        else
+          tempd0 = ud/(2.0*sqrt(temp1**2+temp0**2+temp**2))
+        end if
+        wd(i, j, k, ivx) = wd(i, j, k, ivx) + 2*temp1*tempd0
+        wd(i, j, k, ivy) = wd(i, j, k, ivy) + 2*temp0*tempd0
+        wd(i, j, k, ivz) = wd(i, j, k, ivz) + 2*temp*tempd0
+        tempd = d2wall(i, j, k)**2*re_wd
+        wd(i, j, k, irho) = wd(i, j, k, irho) + w(i, j, k, itu2)*tempd/&
+&         rlv(i, j, k)
+        wd(i, j, k, itu2) = wd(i, j, k, itu2) + w(i, j, k, irho)*tempd/&
+&         rlv(i, j, k)
+      end if
       call popcontrol1b(branch)
       if (branch .eq. 0) then
         sdkd = sdkd + pklim*spkd
@@ -166,6 +394,7 @@ contains
 !
     use blockpointers
     use constants
+    use variableconstants
     use inputphysics
     use inputdiscretization, only : approxturb
     use paramturb
@@ -178,19 +407,33 @@ contains
     real(kind=realtype) :: rsstgam, rsstbeta
     real(kind=realtype) :: rhoi, ss, spk, sdk
     real(kind=realtype) :: xm, ym, zm, xp, yp, zp, xa, ya, za
+    real(kind=realtype) :: re_w, u, f_wake, delta, r_t, re_s, f_theta_t
+    real(kind=realtype) :: re_theta_c, f_reattach, gamma_sep, gamma_eff
     intrinsic sqrt
     intrinsic mod
     intrinsic min
+    intrinsic exp
+    intrinsic max
+    intrinsic sin
+    real(kind=realtype) :: x1
+    real(kind=realtype) :: x2
+    real(kind=realtype) :: x3
+    real(kind=realtype) :: x4
+    real(kind=realtype) :: min1
+    real(kind=realtype) :: min2
+    real(kind=realtype) :: max1
     integer :: ii
 ! set model constants
     if (use2003sst) then
       rsstgam1 = 5.0_realtype/9.0_realtype
       rsstgam2 = 0.44_realtype
+      pklim = 20.0
     else
       rsstgam1 = rsstbeta1/rsstbetas - rsstsigw1*rsstk*rsstk/sqrt(&
 &       rsstbetas)
       rsstgam2 = rsstbeta2/rsstbetas - rsstsigw2*rsstk*rsstk/sqrt(&
 &       rsstbetas)
+      pklim = 20.0
     end if
 !$ad ii-loop
 !       source terms.
@@ -227,6 +470,68 @@ contains
         spk = pklim*sdk
       else
         spk = spk
+      end if
+      if (transitionmodel .eq. gammaretheta) then
+        re_w = w(i, j, k, irho)*w(i, j, k, itu2)*d2wall(i, j, k)**2/rlv(&
+&         i, j, k)
+        u = sqrt(w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, &
+&         ivz)**2)
+        f_wake = exp(-((re_w/100000.0)**2))
+! todo: pull out of scratch
+        r_t = w(i, j, k, irho)*w(i, j, k, itu1)/(rlv(i, j, k)*w(i, j, k&
+&         , itu2))
+! todo: pull out of scratch
+        re_s = w(i, j, k, irho)*sqrt(scratch(i, j, k, istrain))*d2wall(i&
+&         , j, k)**2/rev(i, j, k)
+        delta = 375.0*sqrt(scratch(i, j, k, ivorticity))*w(i, j, k, &
+&         itransition2)*d2wall(i, j, k)/(w(i, j, k, irho)*u)
+        x4 = f_wake*exp(-((d2wall(i, j, k)/delta)**4))
+        if (x4 .lt. 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2&
+&           -1))**2) then
+          x1 = 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1))&
+&           **2
+        else
+          x1 = x4
+        end if
+        if (x1 .gt. 1.0) then
+          f_theta_t = 1.0
+        else
+          f_theta_t = x1
+        end if
+! this comes from the smooth variant
+        re_theta_c = 0.67*w(i, j, k, itransition2) + 24.0*sin(w(i, j, k&
+&         , itransition2)/240.0+0.5) + 14.0
+        f_reattach = exp(-((r_t/20.0)**4))
+        if (0.0 .lt. re_s/3.235*re_theta_c - 1.0) then
+          max1 = re_s/3.235*re_theta_c - 1.0
+        else
+          max1 = 0.0
+        end if
+        x2 = rlms1*max1*f_reattach
+        if (x2 .gt. 2.0) then
+          min1 = 2.0
+        else
+          min1 = x2
+        end if
+        gamma_sep = min1*f_theta_t
+        if (w(i, j, k, itransition1) .lt. gamma_sep) then
+          gamma_eff = gamma_sep
+        else
+          gamma_eff = w(i, j, k, itransition1)
+        end if
+! if gamma_eff = 1, the original sst should come out
+        spk = gamma_eff*spk
+        if (gamma_eff .lt. 0.1) then
+          x3 = 0.1
+        else
+          x3 = gamma_eff
+        end if
+        if (x3 .gt. 1.0) then
+          min2 = 1.0
+        else
+          min2 = x3
+        end if
+        sdk = min2*sdk
       end if
       scratch(i, j, k, idvt) = spk - sdk
       if (use2003sst) then
@@ -1296,7 +1601,7 @@ contains
     use inputtimespectral
     use iteration
     use paramturb, only : rsstsigw2
-    use inputphysics, only : use2003sst
+    use inputphysics, only : use2003sst, transitionmodel
     implicit none
 !
 !      local variables.
@@ -1305,13 +1610,14 @@ contains
     integer(kind=inttype) :: isize, ibeg, iend
     integer(kind=inttype) :: jsize, jbeg, jend
     integer(kind=inttype) :: ksize, kbeg, kend
-    real(kind=realtype) :: t1, t2, arg1, myeps
+    real(kind=realtype) :: t1, t2, arg1, myeps, f1, f3, ry
     real(kind=realtype) :: t1d, t2d, arg1d
     intrinsic mod
     intrinsic sqrt
     intrinsic max
     intrinsic min
     intrinsic tanh
+    intrinsic exp
     real(kind=realtype) :: max1
     real(kind=realtype) :: max1d
     real(kind=realtype) :: max2
@@ -1702,7 +2008,7 @@ bocos:do nn=1,nbocos
     use inputtimespectral
     use iteration
     use paramturb, only : rsstsigw2
-    use inputphysics, only : use2003sst
+    use inputphysics, only : use2003sst, transitionmodel
     implicit none
 !
 !      local variables.
@@ -1711,12 +2017,13 @@ bocos:do nn=1,nbocos
     integer(kind=inttype) :: isize, ibeg, iend
     integer(kind=inttype) :: jsize, jbeg, jend
     integer(kind=inttype) :: ksize, kbeg, kend
-    real(kind=realtype) :: t1, t2, arg1, myeps
+    real(kind=realtype) :: t1, t2, arg1, myeps, f1, f3, ry
     intrinsic mod
     intrinsic sqrt
     intrinsic max
     intrinsic min
     intrinsic tanh
+    intrinsic exp
     real(kind=realtype) :: max1
     real(kind=realtype) :: max2
     myeps = 1e-10_realtype/two/rsstsigw2
@@ -1786,6 +2093,17 @@ bocos:do nn=1,nbocos
         arg1 = t2
       else
         arg1 = t1
+      end if
+      f1 = tanh(arg1**4)
+      if (transitionmodel .eq. gammaretheta) then
+        ry = w(i, j, k, irho)*d2wall(i, j, k)*sqrt(w(i, j, k, itu1))/rlv&
+&         (i, j, k)
+        f3 = exp(-((ry/120.0)**8))
+        if (f1 .lt. f3) then
+          f1 = f3
+        else
+          f1 = f1
+        end if
       end if
       scratch(i, j, k, if1sst) = tanh(arg1**4)
     end do

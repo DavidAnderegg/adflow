@@ -26,6 +26,7 @@ contains
 !
     use blockpointers
     use constants
+    use variableconstants
     use inputphysics
     use inputdiscretization, only : approxturb
     use paramturb
@@ -41,21 +42,50 @@ contains
     real(kind=realtype) :: rhoi, ss, spk, sdk
     real(kind=realtype) :: rhoid, ssd, spkd, sdkd
     real(kind=realtype) :: xm, ym, zm, xp, yp, zp, xa, ya, za
+    real(kind=realtype) :: re_w, u, f_wake, delta, r_t, re_s, f_theta_t
+    real(kind=realtype) :: re_wd, ud, f_waked, deltad, r_td, re_sd, &
+&   f_theta_td
+    real(kind=realtype) :: re_theta_c, f_reattach, gamma_sep, gamma_eff
+    real(kind=realtype) :: re_theta, f_reattachd, gamma_sepd, &
+&   gamma_effd
     intrinsic sqrt
     intrinsic min
+    intrinsic exp
+    intrinsic max
+    intrinsic sin
+    real(kind=realtype) :: x1
+    real(kind=realtype) :: x1d
+    real(kind=realtype) :: x2
+    real(kind=realtype) :: x2d
+    real(kind=realtype) :: x3
+    real(kind=realtype) :: x3d
+    real(kind=realtype) :: x4
+    real(kind=realtype) :: x4d
+    real(kind=realtype) :: min1
+    real(kind=realtype) :: min1d
+    real(kind=realtype) :: min2
+    real(kind=realtype) :: min2d
+    real(kind=realtype) :: max1
+    real(kind=realtype) :: max1d
     real(kind=realtype) :: result1
+    real(kind=realtype) :: result1d
+    real(kind=realtype) :: arg1
+    real(kind=realtype) :: arg1d
     real(kind=realtype) :: temp
     real(kind=realtype) :: temp0
     real(kind=realtype) :: temp1
+    real(kind=realtype) :: temp2
 ! set model constants
     if (use2003sst) then
       rsstgam1 = 5.0_realtype/9.0_realtype
       rsstgam2 = 0.44_realtype
+      pklim = 20.0
     else
       result1 = sqrt(rsstbetas)
       rsstgam1 = rsstbeta1/rsstbetas - rsstsigw1*rsstk*rsstk/result1
       result1 = sqrt(rsstbetas)
       rsstgam2 = rsstbeta2/rsstbetas - rsstsigw2*rsstk*rsstk/result1
+      pklim = 20.0
     end if
 !       source terms.
 !       determine the source term and its derivative w.r.t. k and
@@ -106,26 +136,168 @@ contains
           else
             spk = spk
           end if
+          if (transitionmodel .eq. gammaretheta) then
+            temp0 = d2wall(i, j, k)*d2wall(i, j, k)
+            temp = w(i, j, k, itu2)
+            temp1 = w(i, j, k, irho)/rlv(i, j, k)
+            re_wd = temp0*(temp*wd(i, j, k, irho)/rlv(i, j, k)+temp1*wd(&
+&             i, j, k, itu2))
+            re_w = temp0*(temp1*temp)
+            temp1 = w(i, j, k, ivx)
+            temp0 = w(i, j, k, ivy)
+            temp = w(i, j, k, ivz)
+            arg1d = 2*temp1*wd(i, j, k, ivx) + 2*temp0*wd(i, j, k, ivy) &
+&             + 2*temp*wd(i, j, k, ivz)
+            arg1 = temp1*temp1 + temp0*temp0 + temp*temp
+            temp1 = sqrt(arg1)
+            if (arg1 .eq. 0.0_8) then
+              ud = 0.0_8
+            else
+              ud = arg1d/(2.0*temp1)
+            end if
+            u = temp1
+            arg1d = -(2*re_w*re_wd/100000.0**2)
+            arg1 = -((re_w/100000.0)**2)
+            f_waked = exp(arg1)*arg1d
+            f_wake = exp(arg1)
+! todo: pull out of scratch
+            temp1 = rlv(i, j, k)*w(i, j, k, itu2)
+            temp0 = w(i, j, k, itu1)
+            temp = w(i, j, k, irho)
+            temp2 = temp*temp0/temp1
+            r_td = (temp0*wd(i, j, k, irho)+temp*wd(i, j, k, itu1)-temp2&
+&             *rlv(i, j, k)*wd(i, j, k, itu2))/temp1
+            r_t = temp2
+! todo: pull out of scratch
+            temp2 = scratch(i, j, k, istrain)
+            temp1 = sqrt(temp2)
+            if (temp2 .eq. 0.0_8) then
+              result1d = 0.0_8
+            else
+              result1d = scratchd(i, j, k, istrain)/(2.0*temp1)
+            end if
+            result1 = temp1
+            temp2 = d2wall(i, j, k)*d2wall(i, j, k)
+            temp1 = result1/rev(i, j, k)
+            temp0 = w(i, j, k, irho)
+            re_sd = temp2*(temp1*wd(i, j, k, irho)+temp0*(result1d-temp1&
+&             *revd(i, j, k))/rev(i, j, k))
+            re_s = temp2*(temp0*temp1)
+            temp2 = scratch(i, j, k, ivorticity)
+            temp1 = sqrt(temp2)
+            if (temp2 .eq. 0.0_8) then
+              result1d = 0.0_8
+            else
+              result1d = scratchd(i, j, k, ivorticity)/(2.0*temp1)
+            end if
+            result1 = temp1
+            temp2 = 375.0*d2wall(i, j, k)
+            temp1 = w(i, j, k, irho)
+            temp0 = w(i, j, k, itransition2)
+            temp = result1*temp0/(temp1*u)
+            deltad = temp2*(temp0*result1d+result1*wd(i, j, k, &
+&             itransition2)-temp*(u*wd(i, j, k, irho)+temp1*ud))/(temp1*&
+&             u)
+            delta = temp2*temp
+            temp2 = d2wall(i, j, k)/delta
+            arg1d = 4*temp2**4*deltad/delta
+            arg1 = -(temp2**4)
+            temp2 = exp(arg1)
+            x4d = temp2*f_waked + f_wake*exp(arg1)*arg1d
+            x4 = f_wake*temp2
+            if (x4 .lt. 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(&
+&               rlmce2-1))**2) then
+              temp2 = (rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1)
+              x1d = -(2*temp2*rlmce2*wd(i, j, k, itransition1)/(rlmce2-1&
+&               ))
+              x1 = 1.0 - temp2*temp2
+            else
+              x1d = x4d
+              x1 = x4
+            end if
+            if (x1 .gt. 1.0) then
+              f_theta_t = 1.0
+              f_theta_td = 0.0_8
+            else
+              f_theta_td = x1d
+              f_theta_t = x1
+            end if
+! this comes from the smooth variant
+            arg1d = wd(i, j, k, itransition2)/240.0
+            arg1 = w(i, j, k, itransition2)/240.0 + 0.5
+            re_theta = 0.67*wd(i, j, k, itransition2) + 24.0*cos(arg1&
+&             )*arg1d
+            re_theta_c = 0.67*w(i, j, k, itransition2) + 24.0*sin(arg1) &
+&             + 14.0
+            arg1d = -(4*r_t**3*r_td/20.0**4)
+            arg1 = -((r_t/20.0)**4)
+            f_reattachd = exp(arg1)*arg1d
+            f_reattach = exp(arg1)
+            if (0.0 .lt. re_s/3.235*re_theta_c - 1.0) then
+              max1d = re_theta_c*re_sd/3.235 + re_s*re_theta/3.235
+              max1 = re_s/3.235*re_theta_c - 1.0
+            else
+              max1 = 0.0
+              max1d = 0.0_8
+            end if
+            x2d = rlms1*(f_reattach*max1d+max1*f_reattachd)
+            x2 = rlms1*max1*f_reattach
+            if (x2 .gt. 2.0) then
+              min1 = 2.0
+              min1d = 0.0_8
+            else
+              min1d = x2d
+              min1 = x2
+            end if
+            gamma_sepd = f_theta_t*min1d + min1*f_theta_td
+            gamma_sep = min1*f_theta_t
+            if (w(i, j, k, itransition1) .lt. gamma_sep) then
+              gamma_effd = gamma_sepd
+              gamma_eff = gamma_sep
+            else
+              gamma_effd = wd(i, j, k, itransition1)
+              gamma_eff = w(i, j, k, itransition1)
+            end if
+! if gamma_eff = 1, the original sst should come out
+            spkd = spk*gamma_effd + gamma_eff*spkd
+            spk = gamma_eff*spk
+            if (gamma_eff .lt. 0.1) then
+              x3 = 0.1
+              x3d = 0.0_8
+            else
+              x3d = gamma_effd
+              x3 = gamma_eff
+            end if
+            if (x3 .gt. 1.0) then
+              min2 = 1.0
+              min2d = 0.0_8
+            else
+              min2d = x3d
+              min2 = x3
+            end if
+            sdkd = sdk*min2d + min2*sdkd
+            sdk = min2*sdk
+          end if
           scratchd(i, j, k, idvt) = spkd - sdkd
           scratch(i, j, k, idvt) = spk - sdk
           if (use2003sst) then
-            temp0 = rsstgam*spk/rev(i, j, k)
-            temp = scratch(i, j, k, icd)
-            temp1 = w(i, j, k, itu2)
-            scratchd(i, j, k, idvt+1) = (spk*rsstgamd+rsstgam*spkd-temp0&
-&             *revd(i, j, k))/rev(i, j, k) + two*rsstsigw2*(temp*t2d+t2*&
-&             scratchd(i, j, k, icd)) - temp1**2*rsstbetad - rsstbeta*2*&
-&             temp1*wd(i, j, k, itu2)
-            scratch(i, j, k, idvt+1) = temp0 + two*rsstsigw2*(t2*temp) -&
-&             rsstbeta*(temp1*temp1)
-          else
+            temp2 = rsstgam*spk/rev(i, j, k)
             temp1 = scratch(i, j, k, icd)
             temp0 = w(i, j, k, itu2)
+            scratchd(i, j, k, idvt+1) = (spk*rsstgamd+rsstgam*spkd-temp2&
+&             *revd(i, j, k))/rev(i, j, k) + two*rsstsigw2*(temp1*t2d+t2&
+&             *scratchd(i, j, k, icd)) - temp0**2*rsstbetad - rsstbeta*2&
+&             *temp0*wd(i, j, k, itu2)
+            scratch(i, j, k, idvt+1) = temp2 + two*rsstsigw2*(t2*temp1) &
+&             - rsstbeta*(temp0*temp0)
+          else
+            temp2 = scratch(i, j, k, icd)
+            temp1 = w(i, j, k, itu2)
             scratchd(i, j, k, idvt+1) = ss*rsstgamd + rsstgam*ssd + two*&
-&             rsstsigw2*(temp1*t2d+t2*scratchd(i, j, k, icd)) - temp0**2&
-&             *rsstbetad - rsstbeta*2*temp0*wd(i, j, k, itu2)
+&             rsstsigw2*(temp2*t2d+t2*scratchd(i, j, k, icd)) - temp1**2&
+&             *rsstbetad - rsstbeta*2*temp1*wd(i, j, k, itu2)
             scratch(i, j, k, idvt+1) = rsstgam*ss + two*rsstsigw2*(t2*&
-&             temp1) - rsstbeta*(temp0*temp0)
+&             temp2) - rsstbeta*(temp1*temp1)
           end if
 ! compute the source term jacobian. note that only the
 ! destruction terms are linearized to increase the diagonal
@@ -145,6 +317,7 @@ contains
 !
     use blockpointers
     use constants
+    use variableconstants
     use inputphysics
     use inputdiscretization, only : approxturb
     use paramturb
@@ -157,18 +330,33 @@ contains
     real(kind=realtype) :: rsstgam, rsstbeta
     real(kind=realtype) :: rhoi, ss, spk, sdk
     real(kind=realtype) :: xm, ym, zm, xp, yp, zp, xa, ya, za
+    real(kind=realtype) :: re_w, u, f_wake, delta, r_t, re_s, f_theta_t
+    real(kind=realtype) :: re_theta_c, f_reattach, gamma_sep, gamma_eff
     intrinsic sqrt
     intrinsic min
+    intrinsic exp
+    intrinsic max
+    intrinsic sin
+    real(kind=realtype) :: x1
+    real(kind=realtype) :: x2
+    real(kind=realtype) :: x3
+    real(kind=realtype) :: x4
+    real(kind=realtype) :: min1
+    real(kind=realtype) :: min2
+    real(kind=realtype) :: max1
     real(kind=realtype) :: result1
+    real(kind=realtype) :: arg1
 ! set model constants
     if (use2003sst) then
       rsstgam1 = 5.0_realtype/9.0_realtype
       rsstgam2 = 0.44_realtype
+      pklim = 20.0
     else
       result1 = sqrt(rsstbetas)
       rsstgam1 = rsstbeta1/rsstbetas - rsstsigw1*rsstk*rsstk/result1
       result1 = sqrt(rsstbetas)
       rsstgam2 = rsstbeta2/rsstbetas - rsstsigw2*rsstk*rsstk/result1
+      pklim = 20.0
     end if
 !       source terms.
 !       determine the source term and its derivative w.r.t. k and
@@ -203,6 +391,75 @@ contains
             spk = pklim*sdk
           else
             spk = spk
+          end if
+          if (transitionmodel .eq. gammaretheta) then
+            re_w = w(i, j, k, irho)*w(i, j, k, itu2)*d2wall(i, j, k)**2/&
+&             rlv(i, j, k)
+            arg1 = w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, &
+&             ivz)**2
+            u = sqrt(arg1)
+            arg1 = -((re_w/100000.0)**2)
+            f_wake = exp(arg1)
+! todo: pull out of scratch
+            r_t = w(i, j, k, irho)*w(i, j, k, itu1)/(rlv(i, j, k)*w(i, j&
+&             , k, itu2))
+! todo: pull out of scratch
+            result1 = sqrt(scratch(i, j, k, istrain))
+            re_s = w(i, j, k, irho)*result1*d2wall(i, j, k)**2/rev(i, j&
+&             , k)
+            result1 = sqrt(scratch(i, j, k, ivorticity))
+            delta = 375.0*result1*w(i, j, k, itransition2)*d2wall(i, j, &
+&             k)/(w(i, j, k, irho)*u)
+            arg1 = -((d2wall(i, j, k)/delta)**4)
+            x4 = f_wake*exp(arg1)
+            if (x4 .lt. 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(&
+&               rlmce2-1))**2) then
+              x1 = 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-&
+&               1))**2
+            else
+              x1 = x4
+            end if
+            if (x1 .gt. 1.0) then
+              f_theta_t = 1.0
+            else
+              f_theta_t = x1
+            end if
+! this comes from the smooth variant
+            arg1 = w(i, j, k, itransition2)/240.0 + 0.5
+            re_theta_c = 0.67*w(i, j, k, itransition2) + 24.0*sin(arg1) &
+&             + 14.0
+            arg1 = -((r_t/20.0)**4)
+            f_reattach = exp(arg1)
+            if (0.0 .lt. re_s/3.235*re_theta_c - 1.0) then
+              max1 = re_s/3.235*re_theta_c - 1.0
+            else
+              max1 = 0.0
+            end if
+            x2 = rlms1*max1*f_reattach
+            if (x2 .gt. 2.0) then
+              min1 = 2.0
+            else
+              min1 = x2
+            end if
+            gamma_sep = min1*f_theta_t
+            if (w(i, j, k, itransition1) .lt. gamma_sep) then
+              gamma_eff = gamma_sep
+            else
+              gamma_eff = w(i, j, k, itransition1)
+            end if
+! if gamma_eff = 1, the original sst should come out
+            spk = gamma_eff*spk
+            if (gamma_eff .lt. 0.1) then
+              x3 = 0.1
+            else
+              x3 = gamma_eff
+            end if
+            if (x3 .gt. 1.0) then
+              min2 = 1.0
+            else
+              min2 = x3
+            end if
+            sdk = min2*sdk
           end if
           scratch(i, j, k, idvt) = spk - sdk
           if (use2003sst) then
@@ -1042,7 +1299,7 @@ contains
     use inputtimespectral
     use iteration
     use paramturb, only : rsstsigw2
-    use inputphysics, only : use2003sst
+    use inputphysics, only : use2003sst, transitionmodel
     implicit none
 !
 !      local variables.
@@ -1051,12 +1308,13 @@ contains
     integer(kind=inttype) :: isize, ibeg, iend
     integer(kind=inttype) :: jsize, jbeg, jend
     integer(kind=inttype) :: ksize, kbeg, kend
-    real(kind=realtype) :: t1, t2, arg1, myeps
+    real(kind=realtype) :: t1, t2, arg1, myeps, f1, f3, ry
     real(kind=realtype) :: t1d, t2d, arg1d
     intrinsic sqrt
     intrinsic max
     intrinsic min
     intrinsic tanh
+    intrinsic exp
     real(kind=realtype) :: max1
     real(kind=realtype) :: max1d
     real(kind=realtype) :: max2
@@ -1172,6 +1430,19 @@ contains
             arg1d = t1d
             arg1 = t1
           end if
+          arg10 = arg1**4
+          f1 = tanh(arg10)
+          if (transitionmodel .eq. gammaretheta) then
+            result1 = sqrt(w(i, j, k, itu1))
+            ry = w(i, j, k, irho)*d2wall(i, j, k)*result1/rlv(i, j, k)
+            arg10 = -((ry/120.0)**8)
+            f3 = exp(arg10)
+            if (f1 .lt. f3) then
+              f1 = f3
+            else
+              f1 = f1
+            end if
+          end if
           arg10d = 4*arg1**3*arg1d
           arg10 = arg1**4
           scratchd(i, j, k, if1sst) = (1.0-tanh(arg10)**2)*arg10d
@@ -1251,7 +1522,7 @@ bocos:do nn=1,nbocos
     use inputtimespectral
     use iteration
     use paramturb, only : rsstsigw2
-    use inputphysics, only : use2003sst
+    use inputphysics, only : use2003sst, transitionmodel
     implicit none
 !
 !      local variables.
@@ -1260,11 +1531,12 @@ bocos:do nn=1,nbocos
     integer(kind=inttype) :: isize, ibeg, iend
     integer(kind=inttype) :: jsize, jbeg, jend
     integer(kind=inttype) :: ksize, kbeg, kend
-    real(kind=realtype) :: t1, t2, arg1, myeps
+    real(kind=realtype) :: t1, t2, arg1, myeps, f1, f3, ry
     intrinsic sqrt
     intrinsic max
     intrinsic min
     intrinsic tanh
+    intrinsic exp
     real(kind=realtype) :: max1
     real(kind=realtype) :: max2
     real(kind=realtype) :: result1
@@ -1332,6 +1604,19 @@ bocos:do nn=1,nbocos
             arg1 = t2
           else
             arg1 = t1
+          end if
+          arg10 = arg1**4
+          f1 = tanh(arg10)
+          if (transitionmodel .eq. gammaretheta) then
+            result1 = sqrt(w(i, j, k, itu1))
+            ry = w(i, j, k, irho)*d2wall(i, j, k)*result1/rlv(i, j, k)
+            arg10 = -((ry/120.0)**8)
+            f3 = exp(arg10)
+            if (f1 .lt. f3) then
+              f1 = f3
+            else
+              f1 = f1
+            end if
           end if
           arg10 = arg1**4
           scratch(i, j, k, if1sst) = tanh(arg10)

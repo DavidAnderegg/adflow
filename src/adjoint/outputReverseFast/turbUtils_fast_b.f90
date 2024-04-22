@@ -679,7 +679,6 @@ contains
       vorty = fact*(uuz-wwx) - two*omegay
       vortz = fact*(vvx-uuy) - two*omegaz
 ! compute the magnitude squared of the vorticity.
-! update of iprod to be consistent. ivort seems to be never used, and ivort = iprod anyway.
       vortxd = 2*vortx*scratchd(i, j, k, scratchindex)
       vortyd = 2*vorty*scratchd(i, j, k, scratchindex)
       vortzd = 2*vortz*scratchd(i, j, k, scratchindex)
@@ -811,7 +810,6 @@ contains
       vortz = fact*(vvx-uuy) - two*omegaz
 ! compute the magnitude squared of the vorticity.
       scratch(i, j, k, scratchindex) = vortx**2 + vorty**2 + vortz**2
-! update of iprod to be consistent. ivort seems to be never used, and ivort = iprod anyway.
     end do
   end subroutine prodwmag2
 

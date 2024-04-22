@@ -18,14 +18,16 @@ contains
         ! modifying the hand-written forward and reverse routines.
         ! --------------------------------------------------------------
         use constants
+        use variableConstants
         use blockPointers, only: nDom, il, jl, kl, scratch, bmtj1, bmtj2, &
                                  bmti1, bmti2, bmtk1, bmtk2
         use inputTimeSpectral
-        use inputPhysics, only: turbProd
+        use inputPhysics, only: turbProd, transitionModel
         use iteration
-        use turbUtils, only: prodSmag2, prodWmag2, prodKatoLaunder, &
+        use turbUtils, only: prodSmag2, prodWmag2, prodKatoLaunder, strainNorm2, &
                              turbAdvection, unsteadyTurbTerm, kwCDTerm
 
+        use GammaRethetaModel, only: GammaRethetaSource, GammaRethetaViscous, GammaRethetaResScale
         implicit none
 
         !
@@ -37,14 +39,47 @@ contains
         !
         integer(kind=intType) :: nn
 
+        ! Alloc central jacobian memory
+        allocate (qq(2:il, 2:jl, 2:kl, 2, 2))
+
+        ! Advection and unsteady terms
+        select case (transitionModel) 
+        case (noTransitionModel)
+
+            call turbAdvection((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
+            call unsteadyTurbTerm((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
+
+
+        case (gammaRetheta)
+            call turbAdvection(&
+                (/itu1,itu2,iTransition1,iTransition2/), &
+                (/idvt,idvt+1,isTransition1,isTransition2/), &
+                1 &! dummy argument
+            )
+            call unsteadyTurbTerm(&
+                (/itu1,itu2,iTransition1,iTransition2/), &
+                (/idvt,idvt+1,isTransition1,isTransition2/), &
+                1 &! dummy argument
+            )
+        end select
+
+
+        ! run transition Model if desired
+        select case (transitionModel) 
+        case (gammaRetheta)
+            call strainNorm2(2, il, 2, jl, 2, kl, iStrain)
+            call prodWmag2(2, il, 2, jl, 2, kl, iVorticity)
+
+            call GammaRethetaSource
+            call GammaRethetaViscous
+            call GammaRethetaResScale
+        end select
+
         ! Compute the cross diffusion term.
         call kwCDterm
 
         ! Compute the blending function
         call f1SST
-
-        ! Alloc central jacobian memory
-        allocate (qq(2:il, 2:jl, 2:kl, 2, 2))
 
         ! Production Term
         select case (turbProd)
@@ -60,13 +95,6 @@ contains
 
         ! Source Terms
         call SSTSource
-
-        ! Advection Term
-        nn = itu1 - 1
-        call turbAdvection((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
-
-        ! Unsteady Term
-        call unsteadyTurbTerm((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
 
         ! Viscous Terms
         call SSTViscous
@@ -84,13 +112,41 @@ contains
 #ifndef USE_COMPLEX
     subroutine SST_block_residuals_d
         use constants
+        use variableConstants
         use blockPointers, only: il, jl, kl
-        use inputPhysics, only: turbProd
-        use turbutils_d, only: turbAdvection_d, kwCDterm_d, prodSmag2_d, &
+        use inputPhysics, only: turbProd, transitionModel
+        use turbutils_d, only: turbAdvection_d, kwCDterm_d, prodSmag2_d, strainNorm2_d, &
                                prodWmag2_d, prodKatolaunder_d
         use sst_d, only: SSTSource_d, SSTViscous_d, SSTResScale_d, f1SST_d, qq
+        use GammaRethetaModel_d, only: GammaRethetaSource_d, GammaRethetaViscous_d, GammaRethetaResScale_d
 
         implicit none
+
+
+        ! advection terms
+        select case(transitionModel)
+        case (noTransitionModel)
+             call turbAdvection_d((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
+            !call unsteadyTurbTerm_d((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
+
+        case (gammaRetheta)
+            call turbAdvection_d(&
+                (/itu1,itu2,iTransition1,iTransition2/), &
+                (/idvt,idvt+1,isTransition1,isTransition2/), &
+                1 &! dummy argument
+            )
+        end select
+
+        ! Run the transition model
+        select case (transitionModel) 
+        case (gammaRetheta)
+            call strainNorm2_d(2, il, 2, jl, 2, kl, iStrain)
+            call prodWmag2_d(2, il, 2, jl, 2, kl, iVorticity)
+
+            call GammaRethetaSource_d
+            call GammaRethetaViscous_d
+            call GammaRethetaResScale_d
+        end select
 
         call kwCDterm_d
         call f1SST_d
@@ -107,8 +163,6 @@ contains
         end select
 
         call SSTSource_d
-        call turbAdvection_d((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
-        !call unsteadyTurbTerm_d((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
         call SSTViscous_d
         call SSTResScale_d
 
@@ -216,6 +270,7 @@ contains
         !
         use blockPointers
         use constants
+        use variableConstants
         use inputPhysics
         use inputDiscretization, only: approxTurb
         use paramTurb
@@ -230,16 +285,21 @@ contains
         real(kind=realType) :: rhoi, ss, spk, sdk
         real(kind=realType) :: xm, ym, zm, xp, yp, zp, xa, ya, za
 
+        real(kind=realType) :: Re_w, U, F_wake, delta, R_t, Re_S, F_theta_t
+        real(kind=realType) :: Re_theta_c, F_reattach, gamma_sep, gamma_eff
+
         ! Set model constants
 
         if (use2003SST) then
             rSSTGam1 = 5.0_realType / 9.0_realType
             rSSTGam2 = 0.44_realType
+            pklim = 20.0
         else
             rSSTGam1 = rSSTBeta1 / rSSTBetas &
                        - rSSTSigw1 * rSSTK * rSSTK / sqrt(rSSTBetas)
             rSSTGam2 = rSSTBeta2 / rSSTBetas &
                        - rSSTSigw2 * rSSTK * rSSTK / sqrt(rSSTBetas)
+            pklim = 20.0
         end if
 
         !       Source terms.
@@ -286,6 +346,33 @@ contains
                         end if
                         sdk = rSSTBetas * w(i, j, k, itu1) * w(i, j, k, itu2)
                         spk = min(spk, pklim * sdk)
+
+                        if (transitionModel .eq. gammaRetheta) then
+
+                            Re_w = w(i, j, k, irho) * w(i, j, k, itu2) * d2wall(i, j, k)**2 / rlv(i, j, k)
+
+                            U = sqrt(w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, ivz)**2)
+                            F_wake = exp(-(Re_w/100000.0)**2)
+
+                            R_t = w(i, j, k, irho) * w(i, j, k, itu1) / (rlv(i, j, k) * w(i, j, k, itu2)) ! todo: pull out of scratch
+                            Re_S = w(i, j, k, irho) * sqrt(scratch(i, j, k, iStrain)) * d2wall(i, j, k)**2 / rev(i, j, k) ! todo: pull out of scratch
+
+                            delta = 375.0*sqrt(scratch(i, j, k, iVorticity))*w(i, j, k, iTransition2)*d2wall(i, j, k) / &
+                                (w(i, j, k, irho) * U)
+                            F_theta_t = min(max(F_wake*exp(-(d2wall(i, j, k)/delta)**4), & ! todo: pull out of scratch
+                                1.0 - ((rLMce2*w(i, j, k, iTransition1) - 1.0)/(rLMce2-1))**2), 1.0)
+
+                            Re_theta_c = 0.67*w(i, j, k, iTransition2) + 24.0*sin(w(i, j, k, iTransition2)/240.0 + 0.5) + 14.0 ! this comes from the smooth variant
+
+                            F_reattach = exp(-(R_t/20.0)**4)
+                            gamma_sep = min(rLMs1 * max(0.0, (Re_S/3.235*Re_theta_c) - 1.0)*F_reattach, 2.0)*F_theta_t
+                            gamma_eff = max(w(i, j, k, iTransition1), gamma_sep)
+
+                            ! if gamma_eff = 1, the original SST should come out
+
+                            spk = gamma_eff * spk
+                            sdk = min(max(gamma_eff, 0.1), 1.0)*sdk
+                        end if
 
                         scratch(i, j, k, idvt) = spk - sdk
                         if (use2003SST) then
@@ -799,7 +886,7 @@ contains
         use inputTimeSpectral
         use iteration
         use paramTurb, only: rSSTSigw2
-        use inputPhysics, only: use2003SST
+        use inputPhysics, only: use2003SST, transitionModel
         implicit none
         !
         !      Local variables.
@@ -809,7 +896,7 @@ contains
         integer(kind=intType) :: jSize, jBeg, jEnd
         integer(kind=intType) :: kSize, kBeg, kEnd
 
-        real(kind=realType) :: t1, t2, arg1, myeps
+        real(kind=realType) :: t1, t2, arg1, myeps, f1, f3, Ry
 
         myeps = 1e-10_realType / two / rSSTSigw2
 
@@ -880,6 +967,13 @@ contains
                         end if
 
                         arg1 = min(t1, t2)
+                        f1 = tanh(arg1**4)
+
+                        if (transitionModel .eq. gammaRetheta) then
+                            Ry = w(i, j, k, irho) * d2Wall(i, j, k) * sqrt(w(i, j, k, itu1)) / rlv(i, j, k)
+                            f3 = exp(-(Ry/120.0)**8)
+                            f1 = max(f1, f3)
+                        end if
                         scratch(i, j, k, if1SST) = tanh(arg1**4)
 
 #ifdef TAPENADE_REVERSE

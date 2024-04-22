@@ -195,9 +195,6 @@ turbutils%prodWmag2(w, vol, si, sj, sk, scratch, timeref) > \
 turbutils%strainNorm2(w, vol, si, sj, sk, scratch) > \
                    (w, vol, si, sj, sk, scratch) \
 \
-turbutils%vorticityNorm(w, vol, si, sj, sk, scratch, timeref) > \
-                   (w, vol, si, sj, sk, scratch, timeref) \
-\
 sa%saSource(w, rlv, vol, si, sj, sk, timeRef, d2wall) > \
            (w, rlv, vol, si, sj, sk, timeREf, scratch) \
 \

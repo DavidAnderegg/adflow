@@ -349,7 +349,6 @@ contains
                         ! Compute the magnitude squared of the vorticity.
 
                         scratch(i, j, k, scratchIndex) = vortx**2 + vorty**2 + vortz**2
-                        ! update of iProd to be consistent. iVort seems to be never used, and ivort = iprod anyway.
 #ifdef TAPENADE_REVERSE
                     end do
 #else
