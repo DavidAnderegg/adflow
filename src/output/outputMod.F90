@@ -732,6 +732,7 @@ contains
         !       already point to the correct block.
         !
         use constants
+        use variableConstants
         use blockPointers
         use cgnsGrid
         use cgnsNames
@@ -857,6 +858,24 @@ contains
                 do j = jBeg, jEnd
                     do i = iBeg, iEnd
                         wIO(i, j, k, 1) = w(i, j, k, itu4)
+                    end do
+                end do
+            end do
+
+        case (cgnsTransitionGamma)
+            do k = kBeg, kEnd
+                do j = jBeg, jEnd
+                    do i = iBeg, iEnd
+                        wIO(i, j, k, 1) = w(i, j, k, iTransition1)
+                    end do
+                end do
+            end do
+
+        case (cgnsTransitionReThetat)
+            do k = kBeg, kEnd
+                do j = jBeg, jEnd
+                    do i = iBeg, iEnd
+                        wIO(i, j, k, 1) = w(i, j, k, iTransition2)
                     end do
                 end do
             end do
