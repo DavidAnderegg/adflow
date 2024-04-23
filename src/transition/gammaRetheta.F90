@@ -149,7 +149,7 @@ contains
         real(kind=realType) :: Re_S, F_length1, F_length, F_onset1, F_onset, F_turb, P_gamma, E_gamma, P_thetat
         real(kind=realType) :: Re_omega, F_wake
 
-        real(kind=realType) :: rhoi
+        real(kind=realType) :: rhoi, vort
 
 
 #ifdef TAPENADE_REVERSE
@@ -165,6 +165,8 @@ contains
 #endif
                         rhoi = one / w(i, j, k, irho)
 
+                        vort = max(sqrt(scratch(i, j, k, iVorticity)), eps)
+
                         ! compute Re_thetat_eq
                         call solve_local_Re_thetat_eq(Re_thetat_eq, i, j, k)
                         
@@ -174,7 +176,7 @@ contains
                         Re_omega = (w(i, j, k, irho)*w(i, j, k, itu2)*d2wall(i, j, k)**2) / rlv(i, j, k)
                         F_wake = exp(-(Re_omega/1e5)**2)
 
-                        delta = 375.0*sqrt(scratch(i, j, k, iVorticity))*w(i, j, k, iTransition2)*d2wall(i, j, k) / &
+                        delta = 375.0*vort*w(i, j, k, iTransition2)*d2wall(i, j, k) / &
                                 (w(i, j, k, irho) * U)
                         F_theta_t = min(max(F_wake*exp(-(d2wall(i, j, k)/delta)**4), & ! todo: pull out of scratch
                                 1.0 - ((rLMce2*w(i, j, k, iTransition1) - 1.0)/(rLMce2-1))**2), 1.0)
@@ -200,7 +202,7 @@ contains
                         P_gamma = F_length * rLMca1 * w(i, j, k, irho) * sqrt(scratch(i, j, k, iStrain)) * &
                             sqrt(w(i, j, k, iTransition1)* F_onset)*(1.0 - rLMce1*w(i, j, k, iTransition1))
 
-                        E_gamma = rLMca2 * w(i, j, k, irho) * sqrt(scratch(i, j, k, iVorticity)) * w(i, j, k, iTransition1) * &
+                        E_gamma = rLMca2 * w(i, j, k, irho) * vort * w(i, j, k, iTransition1) * &
                             F_turb * (rLMce2 * w(i, j, k, iTransition1) - 1.0)
                             
                         P_thetat = rLMcthetat * w(i, j, k, irho) / T * (Re_thetat_eq - w(i, j, k, iTransition2)) * &

@@ -113,15 +113,17 @@ contains
     subroutine SST_block_residuals_d
         use constants
         use variableConstants
-        use blockPointers, only: il, jl, kl
+        use blockPointers!, only: il, jl, kl
         use inputPhysics, only: turbProd, transitionModel
         use turbutils_d, only: turbAdvection_d, kwCDterm_d, prodSmag2_d, strainNorm2_d, &
                                prodWmag2_d, prodKatolaunder_d
         use sst_d, only: SSTSource_d, SSTViscous_d, SSTResScale_d, f1SST_d, qq
         use GammaRethetaModel_d, only: GammaRethetaSource_d, GammaRethetaViscous_d, GammaRethetaResScale_d
 
-        implicit none
+        use turbUtils, only: prodSmag2, prodWmag2, prodKatoLaunder, strainNorm2
+        use genericisnan
 
+        implicit none
 
         ! advection terms
         select case(transitionModel)
@@ -287,6 +289,7 @@ contains
 
         real(kind=realType) :: Re_w, U, F_wake, delta, R_t, Re_S, F_theta_t
         real(kind=realType) :: Re_theta_c, F_reattach, gamma_sep, gamma_eff
+        real(kind=realType) :: vort
 
         ! Set model constants
 
@@ -349,6 +352,9 @@ contains
 
                         if (transitionModel .eq. gammaRetheta) then
 
+                            
+                            vort = max(sqrt(scratch(i, j, k, iVorticity)), eps)
+
                             Re_w = w(i, j, k, irho) * w(i, j, k, itu2) * d2wall(i, j, k)**2 / rlv(i, j, k)
 
                             U = sqrt(w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, ivz)**2)
@@ -357,7 +363,7 @@ contains
                             R_t = w(i, j, k, irho) * w(i, j, k, itu1) / (rlv(i, j, k) * w(i, j, k, itu2)) ! todo: pull out of scratch
                             Re_S = w(i, j, k, irho) * sqrt(scratch(i, j, k, iStrain)) * d2wall(i, j, k)**2 / rev(i, j, k) ! todo: pull out of scratch
 
-                            delta = 375.0*sqrt(scratch(i, j, k, iVorticity))*w(i, j, k, iTransition2)*d2wall(i, j, k) / &
+                            delta = 375.0*vort*w(i, j, k, iTransition2)*d2wall(i, j, k) / &
                                 (w(i, j, k, irho) * U)
                             F_theta_t = min(max(F_wake*exp(-(d2wall(i, j, k)/delta)**4), & ! todo: pull out of scratch
                                 1.0 - ((rLMce2*w(i, j, k, iTransition1) - 1.0)/(rLMce2-1))**2), 1.0)

@@ -193,7 +193,7 @@ turbutils%prodWmag2(w, vol, si, sj, sk, scratch, timeref) > \
                    (w, vol, si, sj, sk, scratch, timeref) \
 \
 turbutils%strainNorm2(w, vol, si, sj, sk, scratch) > \
-                   (w, vol, si, sj, sk, scratch) \
+                     (w, vol, si, sj, sk, scratch) \
 \
 sa%saSource(w, rlv, vol, si, sj, sk, timeRef, d2wall) > \
            (w, rlv, vol, si, sj, sk, timeREf, scratch) \
@@ -203,8 +203,8 @@ sa%saViscous(w, vol, si, sj, sk, rlv, scratch) > \
 \
 sa%saResScale(scratch, dw) > \
              (scratch, dw) \
-SST%SSTSource(w, scratch, rev) > \
-             (w, scratch, rev) \
+SST%SSTSource(w, scratch, rev, rlv, d2wall) > \
+             (w, scratch, rev, rlv, d2wall) \
 \
 SST%SSTViscous(w, vol, si, sj, sk, rlv, rev, scratch) > \
               (w, vol, si, sj, sk, rlv, rev, scratch) \
@@ -213,13 +213,13 @@ SST%SSTResScale(scratch, dw) > \
                (scratch, dw) \
 \
 SST%f1SST(w, scratch, d2wall, rlv) > \
-         (w, scratch, rlv) \
+         (w, scratch, d2wall, rlv) \
 \
-gammaRetheta%GammaRethetaSource(w, scratch, rev) > \
-             (w, scratch, rev) \
+gammaRetheta%GammaRethetaSource(w, scratch, rev, rlv, vol, si, sj, sk, d2wall) > \
+                               (w, scratch, rev, rlv, vol, si, sj, sk, d2wall) \
 \
 gammaRetheta%GammaRethetaViscous(w, vol, si, sj, sk, rlv, rev, scratch) > \
-              (w, vol, si, sj, sk, rlv, rev, scratch) \
+                                (w, vol, si, sj, sk, rlv, rev, scratch) \
 \
 gammaRetheta%GammaRethetaResScale(scratch, dw) > \
                (scratch, dw) \

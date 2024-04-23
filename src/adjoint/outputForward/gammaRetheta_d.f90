@@ -8,8 +8,9 @@ module gammarethetamodel_d
 contains
 !  differentiation of solve_local_re_thetat_eq in forward (tangent) mode (with options i4 dr8 r8):
 !   variations   of useful results: re_thetat_eq
-!   with respect to varying inputs: *w
-!   plus diff mem management of: w:in
+!   with respect to varying inputs: *w *rlv *vol *si *sj *sk
+!   plus diff mem management of: w:in rlv:in vol:in si:in sj:in
+!                sk:in
   subroutine solve_local_re_thetat_eq_d(re_thetat_eq, re_thetat_eqd, i, &
 &   j, k)
     use blockpointers
@@ -23,8 +24,8 @@ contains
 ! local variables
     real(kind=realtype) :: u, u_inv, fact, du_dx, du_dy, du_dz, du_ds, &
 &   tu, f1, f2, f3, f
-    real(kind=realtype) :: ud, u_invd, du_dxd, du_dyd, du_dzd, du_dsd, &
-&   tud, f1d, f2d, f3d, fd
+    real(kind=realtype) :: ud, u_invd, factd, du_dxd, du_dyd, du_dzd, &
+&   du_dsd, tud, f1d, f2d, f3d, fd
     real(kind=realtype) :: dudx, dudy, dudz, dvdx, dvdy, dvdz, dwdx, &
 &   dwdy, dwdz
     real(kind=realtype) :: dudxd, dudyd, dudzd, dvdxd, dvdyd, dvdzd, &
@@ -54,6 +55,13 @@ contains
     real(kind=realtype) :: temp2
     real(kind=realtype) :: temp3
     real(kind=realtype) :: temp4
+    real(kind=realtype) :: temp5
+    real(kind=realtype) :: temp6
+    real(kind=realtype) :: temp7
+    real(kind=realtype) :: temp8
+    real(kind=realtype) :: temp9
+    real(kind=realtype) :: temp10
+    real(kind=realtype) :: temp11
     temp = w(i, j, k, ivx)
     temp0 = w(i, j, k, ivy)
     temp1 = w(i, j, k, ivz)
@@ -73,160 +81,234 @@ contains
 ! of the fact that the surrounding normals sum up to zero,
 ! such that the cell i,j,k does not give a contribution.
 ! since the gradient is scaled by a factor of 2*vol, we need to account for that
-    fact = 1.0/(vol(i, j, k)*2.0)
+    temp1 = 1.0/(2.0*vol(i, j, k))
+    factd = -(temp1*vold(i, j, k)/vol(i, j, k))
+    fact = temp1
     temp1 = si(i, j, k, 1)
-    temp0 = si(i-1, j, k, 1)
-    temp = sj(i, j, k, 1)
-    temp2 = sk(i, j, k, 1)
-    temp3 = sj(i, j-1, k, 1)
-    temp4 = sk(i, j, k-1, 1)
-    dudxd = fact*(temp1*wd(i+1, j, k, ivx)-temp0*wd(i-1, j, k, ivx)+temp&
-&     *wd(i, j+1, k, ivx)+temp2*wd(i, j, k+1, ivx)-temp3*wd(i, j-1, k, &
-&     ivx)-temp4*wd(i, j, k-1, ivx))
-    dudx = fact*(temp1*w(i+1, j, k, ivx)-temp0*w(i-1, j, k, ivx)+temp*w(&
-&     i, j+1, k, ivx)+temp2*w(i, j, k+1, ivx)-temp3*w(i, j-1, k, ivx)-&
-&     temp4*w(i, j, k-1, ivx))
-    temp4 = si(i, j, k, 2)
-    temp3 = si(i-1, j, k, 2)
-    temp2 = sj(i, j, k, 2)
-    temp1 = sk(i, j, k, 2)
-    temp0 = sj(i, j-1, k, 2)
-    temp = sk(i, j, k-1, 2)
-    dudyd = fact*(temp4*wd(i+1, j, k, ivx)-temp3*wd(i-1, j, k, ivx)+&
-&     temp2*wd(i, j+1, k, ivx)+temp1*wd(i, j, k+1, ivx)-temp0*wd(i, j-1&
-&     , k, ivx)-temp*wd(i, j, k-1, ivx))
-    dudy = fact*(temp4*w(i+1, j, k, ivx)-temp3*w(i-1, j, k, ivx)+temp2*w&
-&     (i, j+1, k, ivx)+temp1*w(i, j, k+1, ivx)-temp0*w(i, j-1, k, ivx)-&
-&     temp*w(i, j, k-1, ivx))
-    temp4 = si(i, j, k, 3)
-    temp3 = si(i-1, j, k, 3)
-    temp2 = sj(i, j, k, 3)
-    temp1 = sk(i, j, k, 3)
-    temp0 = sj(i, j-1, k, 3)
-    temp = sk(i, j, k-1, 3)
-    dudzd = fact*(temp4*wd(i+1, j, k, ivx)-temp3*wd(i-1, j, k, ivx)+&
-&     temp2*wd(i, j+1, k, ivx)+temp1*wd(i, j, k+1, ivx)-temp0*wd(i, j-1&
-&     , k, ivx)-temp*wd(i, j, k-1, ivx))
-    dudz = fact*(temp4*w(i+1, j, k, ivx)-temp3*w(i-1, j, k, ivx)+temp2*w&
-&     (i, j+1, k, ivx)+temp1*w(i, j, k+1, ivx)-temp0*w(i, j-1, k, ivx)-&
-&     temp*w(i, j, k-1, ivx))
+    temp0 = w(i+1, j, k, ivx)
+    temp = si(i-1, j, k, 1)
+    temp2 = w(i-1, j, k, ivx)
+    temp3 = sj(i, j, k, 1)
+    temp4 = w(i, j+1, k, ivx)
+    temp5 = sk(i, j, k, 1)
+    temp6 = w(i, j, k+1, ivx)
+    temp7 = sj(i, j-1, k, 1)
+    temp8 = w(i, j-1, k, ivx)
+    temp9 = sk(i, j, k-1, 1)
+    temp10 = w(i, j, k-1, ivx)
+    temp11 = temp0*temp1 - temp2*temp + temp4*temp3 + temp6*temp5 - &
+&     temp8*temp7 - temp10*temp9
+    dudxd = fact*(temp1*wd(i+1, j, k, ivx)+temp0*sid(i, j, k, 1)-temp*wd&
+&     (i-1, j, k, ivx)-temp2*sid(i-1, j, k, 1)+temp3*wd(i, j+1, k, ivx)+&
+&     temp4*sjd(i, j, k, 1)+temp5*wd(i, j, k+1, ivx)+temp6*skd(i, j, k, &
+&     1)-temp7*wd(i, j-1, k, ivx)-temp8*sjd(i, j-1, k, 1)-temp9*wd(i, j&
+&     , k-1, ivx)-temp10*skd(i, j, k-1, 1)) + temp11*factd
+    dudx = temp11*fact
+    temp11 = si(i, j, k, 2)
+    temp10 = w(i+1, j, k, ivx)
+    temp9 = si(i-1, j, k, 2)
+    temp8 = w(i-1, j, k, ivx)
+    temp7 = sj(i, j, k, 2)
+    temp6 = w(i, j+1, k, ivx)
+    temp5 = sk(i, j, k, 2)
+    temp4 = w(i, j, k+1, ivx)
+    temp3 = sj(i, j-1, k, 2)
+    temp2 = w(i, j-1, k, ivx)
+    temp1 = sk(i, j, k-1, 2)
+    temp0 = w(i, j, k-1, ivx)
+    temp = temp10*temp11 - temp8*temp9 + temp6*temp7 + temp4*temp5 - &
+&     temp2*temp3 - temp0*temp1
+    dudyd = fact*(temp11*wd(i+1, j, k, ivx)+temp10*sid(i, j, k, 2)-temp9&
+&     *wd(i-1, j, k, ivx)-temp8*sid(i-1, j, k, 2)+temp7*wd(i, j+1, k, &
+&     ivx)+temp6*sjd(i, j, k, 2)+temp5*wd(i, j, k+1, ivx)+temp4*skd(i, j&
+&     , k, 2)-temp3*wd(i, j-1, k, ivx)-temp2*sjd(i, j-1, k, 2)-temp1*wd(&
+&     i, j, k-1, ivx)-temp0*skd(i, j, k-1, 2)) + temp*factd
+    dudy = temp*fact
+    temp11 = si(i, j, k, 3)
+    temp10 = w(i+1, j, k, ivx)
+    temp9 = si(i-1, j, k, 3)
+    temp8 = w(i-1, j, k, ivx)
+    temp7 = sj(i, j, k, 3)
+    temp6 = w(i, j+1, k, ivx)
+    temp5 = sk(i, j, k, 3)
+    temp4 = w(i, j, k+1, ivx)
+    temp3 = sj(i, j-1, k, 3)
+    temp2 = w(i, j-1, k, ivx)
+    temp1 = sk(i, j, k-1, 3)
+    temp0 = w(i, j, k-1, ivx)
+    temp = temp10*temp11 - temp8*temp9 + temp6*temp7 + temp4*temp5 - &
+&     temp2*temp3 - temp0*temp1
+    dudzd = fact*(temp11*wd(i+1, j, k, ivx)+temp10*sid(i, j, k, 3)-temp9&
+&     *wd(i-1, j, k, ivx)-temp8*sid(i-1, j, k, 3)+temp7*wd(i, j+1, k, &
+&     ivx)+temp6*sjd(i, j, k, 3)+temp5*wd(i, j, k+1, ivx)+temp4*skd(i, j&
+&     , k, 3)-temp3*wd(i, j-1, k, ivx)-temp2*sjd(i, j-1, k, 3)-temp1*wd(&
+&     i, j, k-1, ivx)-temp0*skd(i, j, k-1, 3)) + temp*factd
+    dudz = temp*fact
 ! idem for the gradient of v.
-    temp4 = si(i, j, k, 1)
-    temp3 = si(i-1, j, k, 1)
-    temp2 = sj(i, j, k, 1)
-    temp1 = sk(i, j, k, 1)
-    temp0 = sj(i, j-1, k, 1)
-    temp = sk(i, j, k-1, 1)
-    dvdxd = fact*(temp4*wd(i+1, j, k, ivy)-temp3*wd(i-1, j, k, ivy)+&
-&     temp2*wd(i, j+1, k, ivy)+temp1*wd(i, j, k+1, ivy)-temp0*wd(i, j-1&
-&     , k, ivy)-temp*wd(i, j, k-1, ivy))
-    dvdx = fact*(temp4*w(i+1, j, k, ivy)-temp3*w(i-1, j, k, ivy)+temp2*w&
-&     (i, j+1, k, ivy)+temp1*w(i, j, k+1, ivy)-temp0*w(i, j-1, k, ivy)-&
-&     temp*w(i, j, k-1, ivy))
-    temp4 = si(i, j, k, 2)
-    temp3 = si(i-1, j, k, 2)
-    temp2 = sj(i, j, k, 2)
-    temp1 = sk(i, j, k, 2)
-    temp0 = sj(i, j-1, k, 2)
-    temp = sk(i, j, k-1, 2)
-    dvdyd = fact*(temp4*wd(i+1, j, k, ivy)-temp3*wd(i-1, j, k, ivy)+&
-&     temp2*wd(i, j+1, k, ivy)+temp1*wd(i, j, k+1, ivy)-temp0*wd(i, j-1&
-&     , k, ivy)-temp*wd(i, j, k-1, ivy))
-    dvdy = fact*(temp4*w(i+1, j, k, ivy)-temp3*w(i-1, j, k, ivy)+temp2*w&
-&     (i, j+1, k, ivy)+temp1*w(i, j, k+1, ivy)-temp0*w(i, j-1, k, ivy)-&
-&     temp*w(i, j, k-1, ivy))
-    temp4 = si(i, j, k, 3)
-    temp3 = si(i-1, j, k, 3)
-    temp2 = sj(i, j, k, 3)
-    temp1 = sk(i, j, k, 3)
-    temp0 = sj(i, j-1, k, 3)
-    temp = sk(i, j, k-1, 3)
-    dvdzd = fact*(temp4*wd(i+1, j, k, ivy)-temp3*wd(i-1, j, k, ivy)+&
-&     temp2*wd(i, j+1, k, ivy)+temp1*wd(i, j, k+1, ivy)-temp0*wd(i, j-1&
-&     , k, ivy)-temp*wd(i, j, k-1, ivy))
-    dvdz = fact*(temp4*w(i+1, j, k, ivy)-temp3*w(i-1, j, k, ivy)+temp2*w&
-&     (i, j+1, k, ivy)+temp1*w(i, j, k+1, ivy)-temp0*w(i, j-1, k, ivy)-&
-&     temp*w(i, j, k-1, ivy))
+    temp11 = si(i, j, k, 1)
+    temp10 = w(i+1, j, k, ivy)
+    temp9 = si(i-1, j, k, 1)
+    temp8 = w(i-1, j, k, ivy)
+    temp7 = sj(i, j, k, 1)
+    temp6 = w(i, j+1, k, ivy)
+    temp5 = sk(i, j, k, 1)
+    temp4 = w(i, j, k+1, ivy)
+    temp3 = sj(i, j-1, k, 1)
+    temp2 = w(i, j-1, k, ivy)
+    temp1 = sk(i, j, k-1, 1)
+    temp0 = w(i, j, k-1, ivy)
+    temp = temp10*temp11 - temp8*temp9 + temp6*temp7 + temp4*temp5 - &
+&     temp2*temp3 - temp0*temp1
+    dvdxd = fact*(temp11*wd(i+1, j, k, ivy)+temp10*sid(i, j, k, 1)-temp9&
+&     *wd(i-1, j, k, ivy)-temp8*sid(i-1, j, k, 1)+temp7*wd(i, j+1, k, &
+&     ivy)+temp6*sjd(i, j, k, 1)+temp5*wd(i, j, k+1, ivy)+temp4*skd(i, j&
+&     , k, 1)-temp3*wd(i, j-1, k, ivy)-temp2*sjd(i, j-1, k, 1)-temp1*wd(&
+&     i, j, k-1, ivy)-temp0*skd(i, j, k-1, 1)) + temp*factd
+    dvdx = temp*fact
+    temp11 = si(i, j, k, 2)
+    temp10 = w(i+1, j, k, ivy)
+    temp9 = si(i-1, j, k, 2)
+    temp8 = w(i-1, j, k, ivy)
+    temp7 = sj(i, j, k, 2)
+    temp6 = w(i, j+1, k, ivy)
+    temp5 = sk(i, j, k, 2)
+    temp4 = w(i, j, k+1, ivy)
+    temp3 = sj(i, j-1, k, 2)
+    temp2 = w(i, j-1, k, ivy)
+    temp1 = sk(i, j, k-1, 2)
+    temp0 = w(i, j, k-1, ivy)
+    temp = temp10*temp11 - temp8*temp9 + temp6*temp7 + temp4*temp5 - &
+&     temp2*temp3 - temp0*temp1
+    dvdyd = fact*(temp11*wd(i+1, j, k, ivy)+temp10*sid(i, j, k, 2)-temp9&
+&     *wd(i-1, j, k, ivy)-temp8*sid(i-1, j, k, 2)+temp7*wd(i, j+1, k, &
+&     ivy)+temp6*sjd(i, j, k, 2)+temp5*wd(i, j, k+1, ivy)+temp4*skd(i, j&
+&     , k, 2)-temp3*wd(i, j-1, k, ivy)-temp2*sjd(i, j-1, k, 2)-temp1*wd(&
+&     i, j, k-1, ivy)-temp0*skd(i, j, k-1, 2)) + temp*factd
+    dvdy = temp*fact
+    temp11 = si(i, j, k, 3)
+    temp10 = w(i+1, j, k, ivy)
+    temp9 = si(i-1, j, k, 3)
+    temp8 = w(i-1, j, k, ivy)
+    temp7 = sj(i, j, k, 3)
+    temp6 = w(i, j+1, k, ivy)
+    temp5 = sk(i, j, k, 3)
+    temp4 = w(i, j, k+1, ivy)
+    temp3 = sj(i, j-1, k, 3)
+    temp2 = w(i, j-1, k, ivy)
+    temp1 = sk(i, j, k-1, 3)
+    temp0 = w(i, j, k-1, ivy)
+    temp = temp10*temp11 - temp8*temp9 + temp6*temp7 + temp4*temp5 - &
+&     temp2*temp3 - temp0*temp1
+    dvdzd = fact*(temp11*wd(i+1, j, k, ivy)+temp10*sid(i, j, k, 3)-temp9&
+&     *wd(i-1, j, k, ivy)-temp8*sid(i-1, j, k, 3)+temp7*wd(i, j+1, k, &
+&     ivy)+temp6*sjd(i, j, k, 3)+temp5*wd(i, j, k+1, ivy)+temp4*skd(i, j&
+&     , k, 3)-temp3*wd(i, j-1, k, ivy)-temp2*sjd(i, j-1, k, 3)-temp1*wd(&
+&     i, j, k-1, ivy)-temp0*skd(i, j, k-1, 3)) + temp*factd
+    dvdz = temp*fact
 ! and for the gradient of w.
-    temp4 = si(i, j, k, 1)
-    temp3 = si(i-1, j, k, 1)
-    temp2 = sj(i, j, k, 1)
-    temp1 = sk(i, j, k, 1)
-    temp0 = sj(i, j-1, k, 1)
-    temp = sk(i, j, k-1, 1)
-    dwdxd = fact*(temp4*wd(i+1, j, k, ivz)-temp3*wd(i-1, j, k, ivz)+&
-&     temp2*wd(i, j+1, k, ivz)+temp1*wd(i, j, k+1, ivz)-temp0*wd(i, j-1&
-&     , k, ivz)-temp*wd(i, j, k-1, ivz))
-    dwdx = fact*(temp4*w(i+1, j, k, ivz)-temp3*w(i-1, j, k, ivz)+temp2*w&
-&     (i, j+1, k, ivz)+temp1*w(i, j, k+1, ivz)-temp0*w(i, j-1, k, ivz)-&
-&     temp*w(i, j, k-1, ivz))
-    temp4 = si(i, j, k, 2)
-    temp3 = si(i-1, j, k, 2)
-    temp2 = sj(i, j, k, 2)
-    temp1 = sk(i, j, k, 2)
-    temp0 = sj(i, j-1, k, 2)
-    temp = sk(i, j, k-1, 2)
-    dwdyd = fact*(temp4*wd(i+1, j, k, ivz)-temp3*wd(i-1, j, k, ivz)+&
-&     temp2*wd(i, j+1, k, ivz)+temp1*wd(i, j, k+1, ivz)-temp0*wd(i, j-1&
-&     , k, ivz)-temp*wd(i, j, k-1, ivz))
-    dwdy = fact*(temp4*w(i+1, j, k, ivz)-temp3*w(i-1, j, k, ivz)+temp2*w&
-&     (i, j+1, k, ivz)+temp1*w(i, j, k+1, ivz)-temp0*w(i, j-1, k, ivz)-&
-&     temp*w(i, j, k-1, ivz))
-    temp4 = si(i, j, k, 3)
-    temp3 = si(i-1, j, k, 3)
-    temp2 = sj(i, j, k, 3)
-    temp1 = sk(i, j, k, 3)
-    temp0 = sj(i, j-1, k, 3)
-    temp = sk(i, j, k-1, 3)
-    dwdzd = fact*(temp4*wd(i+1, j, k, ivz)-temp3*wd(i-1, j, k, ivz)+&
-&     temp2*wd(i, j+1, k, ivz)+temp1*wd(i, j, k+1, ivz)-temp0*wd(i, j-1&
-&     , k, ivz)-temp*wd(i, j, k-1, ivz))
-    dwdz = fact*(temp4*w(i+1, j, k, ivz)-temp3*w(i-1, j, k, ivz)+temp2*w&
-&     (i, j+1, k, ivz)+temp1*w(i, j, k+1, ivz)-temp0*w(i, j-1, k, ivz)-&
-&     temp*w(i, j, k-1, ivz))
-    temp4 = w(i, j, k, ivz)
-    temp3 = w(i, j, k, ivy)
-    temp2 = w(i, j, k, ivx)
-    temp1 = temp2*dudx + temp3*dudy + temp4*dudz
-    du_dxd = temp1*u_invd + u_inv*(dudx*wd(i, j, k, ivx)+temp2*dudxd+&
-&     dudy*wd(i, j, k, ivy)+temp3*dudyd+dudz*wd(i, j, k, ivz)+temp4*&
+    temp11 = si(i, j, k, 1)
+    temp10 = w(i+1, j, k, ivz)
+    temp9 = si(i-1, j, k, 1)
+    temp8 = w(i-1, j, k, ivz)
+    temp7 = sj(i, j, k, 1)
+    temp6 = w(i, j+1, k, ivz)
+    temp5 = sk(i, j, k, 1)
+    temp4 = w(i, j, k+1, ivz)
+    temp3 = sj(i, j-1, k, 1)
+    temp2 = w(i, j-1, k, ivz)
+    temp1 = sk(i, j, k-1, 1)
+    temp0 = w(i, j, k-1, ivz)
+    temp = temp10*temp11 - temp8*temp9 + temp6*temp7 + temp4*temp5 - &
+&     temp2*temp3 - temp0*temp1
+    dwdxd = fact*(temp11*wd(i+1, j, k, ivz)+temp10*sid(i, j, k, 1)-temp9&
+&     *wd(i-1, j, k, ivz)-temp8*sid(i-1, j, k, 1)+temp7*wd(i, j+1, k, &
+&     ivz)+temp6*sjd(i, j, k, 1)+temp5*wd(i, j, k+1, ivz)+temp4*skd(i, j&
+&     , k, 1)-temp3*wd(i, j-1, k, ivz)-temp2*sjd(i, j-1, k, 1)-temp1*wd(&
+&     i, j, k-1, ivz)-temp0*skd(i, j, k-1, 1)) + temp*factd
+    dwdx = temp*fact
+    temp11 = si(i, j, k, 2)
+    temp10 = w(i+1, j, k, ivz)
+    temp9 = si(i-1, j, k, 2)
+    temp8 = w(i-1, j, k, ivz)
+    temp7 = sj(i, j, k, 2)
+    temp6 = w(i, j+1, k, ivz)
+    temp5 = sk(i, j, k, 2)
+    temp4 = w(i, j, k+1, ivz)
+    temp3 = sj(i, j-1, k, 2)
+    temp2 = w(i, j-1, k, ivz)
+    temp1 = sk(i, j, k-1, 2)
+    temp0 = w(i, j, k-1, ivz)
+    temp = temp10*temp11 - temp8*temp9 + temp6*temp7 + temp4*temp5 - &
+&     temp2*temp3 - temp0*temp1
+    dwdyd = fact*(temp11*wd(i+1, j, k, ivz)+temp10*sid(i, j, k, 2)-temp9&
+&     *wd(i-1, j, k, ivz)-temp8*sid(i-1, j, k, 2)+temp7*wd(i, j+1, k, &
+&     ivz)+temp6*sjd(i, j, k, 2)+temp5*wd(i, j, k+1, ivz)+temp4*skd(i, j&
+&     , k, 2)-temp3*wd(i, j-1, k, ivz)-temp2*sjd(i, j-1, k, 2)-temp1*wd(&
+&     i, j, k-1, ivz)-temp0*skd(i, j, k-1, 2)) + temp*factd
+    dwdy = temp*fact
+    temp11 = si(i, j, k, 3)
+    temp10 = w(i+1, j, k, ivz)
+    temp9 = si(i-1, j, k, 3)
+    temp8 = w(i-1, j, k, ivz)
+    temp7 = sj(i, j, k, 3)
+    temp6 = w(i, j+1, k, ivz)
+    temp5 = sk(i, j, k, 3)
+    temp4 = w(i, j, k+1, ivz)
+    temp3 = sj(i, j-1, k, 3)
+    temp2 = w(i, j-1, k, ivz)
+    temp1 = sk(i, j, k-1, 3)
+    temp0 = w(i, j, k-1, ivz)
+    temp = temp10*temp11 - temp8*temp9 + temp6*temp7 + temp4*temp5 - &
+&     temp2*temp3 - temp0*temp1
+    dwdzd = fact*(temp11*wd(i+1, j, k, ivz)+temp10*sid(i, j, k, 3)-temp9&
+&     *wd(i-1, j, k, ivz)-temp8*sid(i-1, j, k, 3)+temp7*wd(i, j+1, k, &
+&     ivz)+temp6*sjd(i, j, k, 3)+temp5*wd(i, j, k+1, ivz)+temp4*skd(i, j&
+&     , k, 3)-temp3*wd(i, j-1, k, ivz)-temp2*sjd(i, j-1, k, 3)-temp1*wd(&
+&     i, j, k-1, ivz)-temp0*skd(i, j, k-1, 3)) + temp*factd
+    dwdz = temp*fact
+    temp11 = w(i, j, k, ivz)
+    temp10 = w(i, j, k, ivy)
+    temp9 = w(i, j, k, ivx)
+    temp8 = temp9*dudx + temp10*dudy + temp11*dudz
+    du_dxd = temp8*u_invd + u_inv*(dudx*wd(i, j, k, ivx)+temp9*dudxd+&
+&     dudy*wd(i, j, k, ivy)+temp10*dudyd+dudz*wd(i, j, k, ivz)+temp11*&
 &     dudzd)
-    du_dx = u_inv*temp1
-    temp4 = w(i, j, k, ivz)
-    temp3 = w(i, j, k, ivy)
-    temp2 = w(i, j, k, ivx)
-    temp1 = temp2*dvdx + temp3*dvdy + temp4*dvdz
-    du_dyd = temp1*u_invd + u_inv*(dvdx*wd(i, j, k, ivx)+temp2*dvdxd+&
-&     dvdy*wd(i, j, k, ivy)+temp3*dvdyd+dvdz*wd(i, j, k, ivz)+temp4*&
+    du_dx = u_inv*temp8
+    temp11 = w(i, j, k, ivz)
+    temp10 = w(i, j, k, ivy)
+    temp9 = w(i, j, k, ivx)
+    temp8 = temp9*dvdx + temp10*dvdy + temp11*dvdz
+    du_dyd = temp8*u_invd + u_inv*(dvdx*wd(i, j, k, ivx)+temp9*dvdxd+&
+&     dvdy*wd(i, j, k, ivy)+temp10*dvdyd+dvdz*wd(i, j, k, ivz)+temp11*&
 &     dvdzd)
-    du_dy = u_inv*temp1
-    temp4 = w(i, j, k, ivz)
-    temp3 = w(i, j, k, ivy)
-    temp2 = w(i, j, k, ivx)
-    temp1 = temp2*dwdx + temp3*dwdy + temp4*dwdz
-    du_dzd = temp1*u_invd + u_inv*(dwdx*wd(i, j, k, ivx)+temp2*dwdxd+&
-&     dwdy*wd(i, j, k, ivy)+temp3*dwdyd+dwdz*wd(i, j, k, ivz)+temp4*&
+    du_dy = u_inv*temp8
+    temp11 = w(i, j, k, ivz)
+    temp10 = w(i, j, k, ivy)
+    temp9 = w(i, j, k, ivx)
+    temp8 = temp9*dwdx + temp10*dwdy + temp11*dwdz
+    du_dzd = temp8*u_invd + u_inv*(dwdx*wd(i, j, k, ivx)+temp9*dwdxd+&
+&     dwdy*wd(i, j, k, ivy)+temp10*dwdyd+dwdz*wd(i, j, k, ivz)+temp11*&
 &     dwdzd)
-    du_dz = u_inv*temp1
-    temp4 = du_dx/u
-    temp3 = w(i, j, k, ivx)
-    temp2 = du_dy/u
-    temp1 = w(i, j, k, ivy)
-    temp0 = du_dz/u
-    temp = w(i, j, k, ivz)
-    du_dsd = temp4*wd(i, j, k, ivx) + temp3*(du_dxd-temp4*ud)/u + temp2*&
-&     wd(i, j, k, ivy) + temp1*(du_dyd-temp2*ud)/u + temp0*wd(i, j, k, &
-&     ivz) + temp*(du_dzd-temp0*ud)/u
-    du_ds = temp3*temp4 + temp1*temp2 + temp*temp0
+    du_dz = u_inv*temp8
+    temp11 = du_dx/u
+    temp10 = w(i, j, k, ivx)
+    temp9 = du_dy/u
+    temp8 = w(i, j, k, ivy)
+    temp7 = du_dz/u
+    temp6 = w(i, j, k, ivz)
+    du_dsd = temp11*wd(i, j, k, ivx) + temp10*(du_dxd-temp11*ud)/u + &
+&     temp9*wd(i, j, k, ivy) + temp8*(du_dyd-temp9*ud)/u + temp7*wd(i, j&
+&     , k, ivz) + temp6*(du_dzd-temp7*ud)/u
+    du_ds = temp10*temp11 + temp8*temp9 + temp6*temp7
     arg1d = 2*wd(i, j, k, itu1)/3
     arg1 = 2*w(i, j, k, itu1)/3
-    temp4 = sqrt(arg1)
+    temp11 = sqrt(arg1)
     if (arg1 .eq. 0.0_8) then
       result1d = 0.0_8
     else
-      result1d = arg1d/(2.0*temp4)
+      result1d = arg1d/(2.0*temp11)
     end if
-    result1 = temp4
+    result1 = temp11
     tud = 100.0*(result1d-result1*ud/u)/u
     tu = 100.0*result1/u
     if (tu .lt. 0.027) then
@@ -243,11 +325,11 @@ contains
     residum_oldd = 0.0_8
     thetatd = 0.0_8
     do n=1,10
-      temp4 = thetat*thetat*du_ds
-      temp3 = w(i, j, k, irho)/rlv(i, j, k)
-      lambdad = temp4*wd(i, j, k, irho)/rlv(i, j, k) + temp3*(du_ds*2*&
-&       thetat*thetatd+thetat**2*du_dsd)
-      lambda = temp3*temp4
+      temp11 = thetat*thetat*du_ds
+      temp10 = w(i, j, k, irho)/rlv(i, j, k)
+      lambdad = temp11*(wd(i, j, k, irho)-temp10*rlvd(i, j, k))/rlv(i, j&
+&       , k) + temp10*(du_ds*2*thetat*thetatd+thetat**2*du_dsd)
+      lambda = temp10*temp11
       if (lambda .gt. 0.1) then
         x1 = 0.1
         x1d = 0.0_8
@@ -263,11 +345,11 @@ contains
         lambda = x1
       end if
 ! compute f function
-      temp4 = exp(-(tu/0.5))
-      temp3 = -exp(-(35.0*lambda)) + 1.0
-      f1d = 0.275*(temp4*exp(-(35.0*lambda))*35.0*lambdad-temp3*exp(-(tu&
-&       /0.5))*tud/0.5)
-      f1 = 0.275*(temp3*temp4) + 1.0
+      temp11 = exp(-(tu/0.5))
+      temp10 = -exp(-(35.0*lambda)) + 1.0
+      f1d = 0.275*(temp11*exp(-(35.0*lambda))*35.0*lambdad-temp10*exp(-(&
+&       tu/0.5))*tud/0.5)
+      f1 = 0.275*(temp10*temp11) + 1.0
       if (f1 .lt. 1.0) then
         f2 = 1.0
         f2d = 0.0_8
@@ -277,12 +359,12 @@ contains
       end if
       arg1d = -((tu/1.5)**0.5*tud)
       arg1 = -((tu/1.5)**1.5)
-      temp4 = exp(arg1)
-      temp3 = -(12.986*lambda) - 123.66*(lambda*lambda) - 405.689*(&
+      temp11 = exp(arg1)
+      temp10 = -(12.986*lambda) - 123.66*(lambda*lambda) - 405.689*(&
 &       lambda*lambda*lambda)
-      f3d = -(temp3*exp(arg1)*arg1d-temp4*(123.66*2*lambda+405.689*3*&
+      f3d = -(temp10*exp(arg1)*arg1d-temp11*(123.66*2*lambda+405.689*3*&
 &       lambda**2+12.986)*lambdad)
-      f3 = 1.0 - temp3*temp4
+      f3 = 1.0 - temp10*temp11
       if (f2 .gt. f3) then
         fd = f3d
         f = f3
@@ -291,21 +373,21 @@ contains
         f = f2
       end if
       if (tu .gt. 1.3) then
-        temp4 = (tu-0.5658)**(-0.671)
-        re_thetat_eq_1d = 331.50*(temp4*fd-f*0.671*(tu-0.5658)**(-1.671)&
-&         *tud)
-        re_thetat_eq_1 = 331.50*(temp4*f)
+        temp11 = (tu-0.5658)**(-0.671)
+        re_thetat_eq_1d = 331.50*(temp11*fd-f*0.671*(tu-0.5658)**(-1.671&
+&         )*tud)
+        re_thetat_eq_1 = 331.50*(temp11*f)
       else
-        temp4 = 0.2196/(tu*tu)
-        re_thetat_eq_1d = (temp4-589.428*tu+1173.51)*fd - f*(temp4*2/tu+&
-&         589.428)*tud
-        re_thetat_eq_1 = (temp4-589.428*tu+1173.51)*f
+        temp11 = 0.2196/(tu*tu)
+        re_thetat_eq_1d = (temp11-589.428*tu+1173.51)*fd - f*(temp11*2/&
+&         tu+589.428)*tud
+        re_thetat_eq_1 = (temp11-589.428*tu+1173.51)*f
       end if
-      temp4 = u*thetat/rlv(i, j, k)
-      temp3 = w(i, j, k, irho)
-      re_thetat_eq_2d = temp4*wd(i, j, k, irho) + temp3*(thetat*ud+u*&
-&       thetatd)/rlv(i, j, k)
-      re_thetat_eq_2 = temp3*temp4
+      temp11 = u*thetat/rlv(i, j, k)
+      temp10 = w(i, j, k, irho)
+      re_thetat_eq_2d = temp11*wd(i, j, k, irho) + temp10*(thetat*ud+u*&
+&       thetatd-temp11*rlvd(i, j, k))/rlv(i, j, k)
+      re_thetat_eq_2 = temp10*temp11
 ! residum which should go to 0
       residumd = re_thetat_eq_1d - re_thetat_eq_2d
       residum = re_thetat_eq_1 - re_thetat_eq_2
@@ -328,12 +410,12 @@ contains
 ! differentiate it)
         if (abs0 .ge. 1e-9) then
 ! compute next step (secant method)
-          temp4 = (thetat_old*residum-thetat*residum_old)/(residum-&
+          temp11 = (thetat_old*residum-thetat*residum_old)/(residum-&
 &           residum_old)
           thetat_newd = (residum*thetat_oldd+thetat_old*residumd-&
-&           residum_old*thetatd-thetat*residum_oldd-temp4*(residumd-&
+&           residum_old*thetatd-thetat*residum_oldd-temp11*(residumd-&
 &           residum_oldd))/(residum-residum_old)
-          thetat_new = temp4
+          thetat_new = temp11
 ! save values for next iteration
           residum_oldd = residumd
           residum_old = residum
@@ -513,9 +595,12 @@ contains
 
 !  differentiation of gammarethetasource in forward (tangent) mode (with options i4 dr8 r8):
 !   variations   of useful results: *scratch
-!   with respect to varying inputs: *rev *w *scratch
-!   rw status of diff variables: *rev:in *w:in *scratch:in-out
-!   plus diff mem management of: rev:in w:in scratch:in
+!   with respect to varying inputs: *rev *w *rlv *scratch *vol
+!                *d2wall *si *sj *sk
+!   rw status of diff variables: *rev:in *w:in *rlv:in *scratch:in-out
+!                *vol:in *d2wall:in *si:in *sj:in *sk:in
+!   plus diff mem management of: rev:in w:in rlv:in scratch:in
+!                vol:in d2wall:in si:in sj:in sk:in
   subroutine gammarethetasource_d()
     use blockpointers
     use constants
@@ -533,11 +618,11 @@ contains
 &   f_onsetd, f_turbd, p_gammad, e_gammad, p_thetatd
     real(kind=realtype) :: re_omega, f_wake
     real(kind=realtype) :: re_omegad, f_waked
-    real(kind=realtype) :: rhoi
-    real(kind=realtype) :: rhoid
+    real(kind=realtype) :: rhoi, vort
+    real(kind=realtype) :: rhoid, vortd
     intrinsic sqrt
-    intrinsic exp
     intrinsic max
+    intrinsic exp
     intrinsic min
     intrinsic sin
     intrinsic tanh
@@ -545,6 +630,8 @@ contains
     real(kind=realtype) :: x1d
     real(kind=realtype) :: x2
     real(kind=realtype) :: x2d
+    real(kind=realtype) :: x3
+    real(kind=realtype) :: x3d
     real(kind=realtype) :: arg1
     real(kind=realtype) :: arg1d
     real(kind=realtype) :: result1
@@ -555,6 +642,7 @@ contains
     real(kind=realtype) :: temp0
     real(kind=realtype) :: temp1
     real(kind=realtype) :: temp2
+    real(kind=realtype) :: temp3
     real(kind=realtype) :: tempd
     do k=2,kl
       do j=2,jl
@@ -562,15 +650,30 @@ contains
           temp = one/w(i, j, k, irho)
           rhoid = -(temp*wd(i, j, k, irho)/w(i, j, k, irho))
           rhoi = temp
+          temp = scratch(i, j, k, ivorticity)
+          temp0 = sqrt(temp)
+          if (temp .eq. 0.0_8) then
+            x1d = 0.0_8
+          else
+            x1d = scratchd(i, j, k, ivorticity)/(2.0*temp0)
+          end if
+          x1 = temp0
+          if (x1 .lt. eps) then
+            vort = eps
+            vortd = 0.0_8
+          else
+            vortd = x1d
+            vort = x1
+          end if
 ! compute re_thetat_eq
           call solve_local_re_thetat_eq_d(re_thetat_eq, re_thetat_eqd, i&
 &                                   , j, k)
-          temp = w(i, j, k, ivx)
-          temp0 = w(i, j, k, ivy)
+          temp0 = w(i, j, k, ivx)
+          temp = w(i, j, k, ivy)
           temp1 = w(i, j, k, ivz)
-          u2d = 2*temp*wd(i, j, k, ivx) + 2*temp0*wd(i, j, k, ivy) + 2*&
+          u2d = 2*temp0*wd(i, j, k, ivx) + 2*temp*wd(i, j, k, ivy) + 2*&
 &           temp1*wd(i, j, k, ivz)
-          u2 = temp*temp + temp0*temp0 + temp1*temp1
+          u2 = temp0*temp0 + temp*temp + temp1*temp1
           temp1 = sqrt(u2)
           if (u2 .eq. 0.0_8) then
             ud = 0.0_8
@@ -578,65 +681,62 @@ contains
             ud = u2d/(2.0*temp1)
           end if
           u = temp1
-          temp1 = d2wall(i, j, k)*d2wall(i, j, k)
+          temp1 = d2wall(i, j, k)
           temp0 = w(i, j, k, itu2)
-          temp = w(i, j, k, irho)/rlv(i, j, k)
-          re_omegad = temp1*(temp0*wd(i, j, k, irho)/rlv(i, j, k)+temp*&
-&           wd(i, j, k, itu2))
-          re_omega = temp1*(temp*temp0)
+          temp = temp0*(temp1*temp1)
+          temp2 = w(i, j, k, irho)/rlv(i, j, k)
+          re_omegad = temp*(wd(i, j, k, irho)-temp2*rlvd(i, j, k))/rlv(i&
+&           , j, k) + temp2*(temp1**2*wd(i, j, k, itu2)+temp0*2*temp1*&
+&           d2walld(i, j, k))
+          re_omega = temp2*temp
           arg1d = -(2*re_omega*re_omegad/1e5**2)
           arg1 = -((re_omega/1e5)**2)
           f_waked = exp(arg1)*arg1d
           f_wake = exp(arg1)
-          temp1 = scratch(i, j, k, ivorticity)
-          temp0 = sqrt(temp1)
-          if (temp1 .eq. 0.0_8) then
-            result1d = 0.0_8
-          else
-            result1d = scratchd(i, j, k, ivorticity)/(2.0*temp0)
-          end if
-          result1 = temp0
-          temp1 = 375.0*d2wall(i, j, k)
-          temp0 = w(i, j, k, irho)
-          temp = w(i, j, k, itransition2)
-          temp2 = result1*temp/(temp0*u)
-          deltad = temp1*(temp*result1d+result1*wd(i, j, k, itransition2&
-&           )-temp2*(u*wd(i, j, k, irho)+temp0*ud))/(temp0*u)
-          delta = temp1*temp2
+          temp2 = w(i, j, k, irho)
+          temp1 = d2wall(i, j, k)
+          temp0 = w(i, j, k, itransition2)
+          temp = temp0*vort*temp1/(temp2*u)
+          deltad = 375.0*(vort*temp1*wd(i, j, k, itransition2)+temp0*(&
+&           temp1*vortd+vort*d2walld(i, j, k))-temp*(u*wd(i, j, k, irho)&
+&           +temp2*ud))/(temp2*u)
+          delta = 375.0*temp
           temp2 = d2wall(i, j, k)/delta
-          arg1d = 4*temp2**4*deltad/delta
+          arg1d = -(4*temp2**3*(d2walld(i, j, k)-temp2*deltad)/delta)
           arg1 = -(temp2**4)
           temp2 = exp(arg1)
-          x2d = temp2*f_waked + f_wake*exp(arg1)*arg1d
-          x2 = f_wake*temp2
-          if (x2 .lt. 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(&
+          x3d = temp2*f_waked + f_wake*exp(arg1)*arg1d
+          x3 = f_wake*temp2
+          if (x3 .lt. 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(&
 &             rlmce2-1))**2) then
             temp2 = (rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1)
-            x1d = -(2*temp2*rlmce2*wd(i, j, k, itransition1)/(rlmce2-1))
-            x1 = 1.0 - temp2*temp2
+            x2d = -(2*temp2*rlmce2*wd(i, j, k, itransition1)/(rlmce2-1))
+            x2 = 1.0 - temp2*temp2
           else
-            x1d = x2d
-            x1 = x2
+            x2d = x3d
+            x2 = x3
           end if
-          if (x1 .gt. 1.0) then
+          if (x2 .gt. 1.0) then
             f_theta_t = 1.0
             f_theta_td = 0.0_8
           else
-            f_theta_td = x1d
-            f_theta_t = x1
+            f_theta_td = x2d
+            f_theta_t = x2
           end if
           temp2 = w(i, j, k, irho)
-          temp1 = 500.0*rlv(i, j, k)/(temp2*u2)
-          td = -(temp1*(u2*wd(i, j, k, irho)+temp2*u2d)/(temp2*u2))
-          t = temp1
+          temp1 = rlv(i, j, k)/(temp2*u2)
+          td = 500.0*(rlvd(i, j, k)-temp1*(u2*wd(i, j, k, irho)+temp2*&
+&           u2d))/(temp2*u2)
+          t = 500.0*temp1
 ! todo: save this in scratch
-          temp2 = rlv(i, j, k)*w(i, j, k, itu2)
-          temp1 = w(i, j, k, itu1)
-          temp0 = w(i, j, k, irho)
-          temp = temp0*temp1/temp2
-          r_td = (temp1*wd(i, j, k, irho)+temp0*wd(i, j, k, itu1)-temp*&
-&           rlv(i, j, k)*wd(i, j, k, itu2))/temp2
-          r_t = temp
+          temp2 = w(i, j, k, itu2)
+          temp1 = rlv(i, j, k)*temp2
+          temp0 = w(i, j, k, itu1)
+          temp = w(i, j, k, irho)
+          temp3 = temp*temp0/temp1
+          r_td = (temp0*wd(i, j, k, irho)+temp*wd(i, j, k, itu1)-temp3*(&
+&           temp2*rlvd(i, j, k)+rlv(i, j, k)*wd(i, j, k, itu2)))/temp1
+          r_t = temp3
 ! todo: save this in scratch
           arg1d = wd(i, j, k, itransition2)/240.0
           arg1 = w(i, j, k, itransition2)/240.0 + 0.5
@@ -645,101 +745,95 @@ contains
           re_theta_c = 0.67*w(i, j, k, itransition2) + 24.0*sin(arg1) + &
 &           14.0
 ! todo: save this in scratch
-          temp2 = scratch(i, j, k, istrain)
-          temp1 = sqrt(temp2)
-          if (temp2 .eq. 0.0_8) then
+          temp3 = scratch(i, j, k, istrain)
+          temp2 = sqrt(temp3)
+          if (temp3 .eq. 0.0_8) then
             result1d = 0.0_8
           else
-            result1d = scratchd(i, j, k, istrain)/(2.0*temp1)
+            result1d = scratchd(i, j, k, istrain)/(2.0*temp2)
           end if
-          result1 = temp1
-          temp2 = d2wall(i, j, k)*d2wall(i, j, k)
-          temp1 = result1/rev(i, j, k)
-          temp0 = w(i, j, k, irho)
-          re_sd = temp2*(temp1*wd(i, j, k, irho)+temp0*(result1d-temp1*&
-&           revd(i, j, k))/rev(i, j, k))
-          re_s = temp2*(temp0*temp1)
-          temp2 = -(0.03*(w(i, j, k, itransition2)-460.0))
-          f_length1d = -(exp(temp2)*0.03*wd(i, j, k, itransition2))
-          f_length1 = exp(temp2)
-          temp2 = (f_length1+1)**(1.0/6)
-          temp1 = (30000.0*(w(i, j, k, itransition2)-596.0)+43.5)/temp2
+          result1 = temp2
+          temp3 = result1/rev(i, j, k)
+          temp2 = d2wall(i, j, k)
+          temp1 = w(i, j, k, irho)
+          temp0 = temp1*(temp2*temp2)
+          re_sd = temp3*(temp2**2*wd(i, j, k, irho)+temp1*2*temp2*&
+&           d2walld(i, j, k)) + temp0*(result1d-temp3*revd(i, j, k))/rev&
+&           (i, j, k)
+          re_s = temp0*temp3
+          temp3 = -(0.03*(w(i, j, k, itransition2)-460.0))
+          f_length1d = -(exp(temp3)*0.03*wd(i, j, k, itransition2))
+          f_length1 = exp(temp3)
+          temp3 = (f_length1+1)**(1.0/6)
+          temp2 = (30000.0*(w(i, j, k, itransition2)-596.0)+43.5)/temp3
           if (f_length1 + 1 .le. 0.0_8 .and. (1.0/6 .eq. 0.0_8 .or. 1.0/&
 &             6 .ne. int(1.0/6))) then
             tempd = 0.0_8
           else
             tempd = (f_length1+1)**(1.0/6-1)*f_length1d/6
           end if
-          f_lengthd = -((30000.0*wd(i, j, k, itransition2)-temp1*tempd)/&
-&           temp2)
-          f_length = 44.0 - temp1
+          f_lengthd = -((30000.0*wd(i, j, k, itransition2)-temp2*tempd)/&
+&           temp3)
+          f_length = 44.0 - temp2
 ! continue here
-          temp2 = re_s/(2.6*re_theta_c)
-          arg1d = (re_sd-temp2*2.6*re_theta)/(2.6*re_theta_c)
-          arg1 = temp2
-          temp2 = sqrt(arg1)
+          temp3 = re_s/(2.6*re_theta_c)
+          arg1d = (re_sd-temp3*2.6*re_theta)/(2.6*re_theta_c)
+          arg1 = temp3
+          temp3 = sqrt(arg1)
           if (arg1 .eq. 0.0_8) then
             f_onset1d = 0.0_8
           else
-            f_onset1d = arg1d/(2.0*temp2)
+            f_onset1d = arg1d/(2.0*temp3)
           end if
-          f_onset1 = temp2
+          f_onset1 = temp3
           f_onsetd = (1.0-tanh(6.0*(f_onset1-1.35))**2)*6.0*f_onset1d/&
 &           2.0
           f_onset = (tanh(6.0*(f_onset1-1.35))+1.0)/2.0
-          temp2 = exp(-r_t)
-          f_turbd = -(temp2*f_onsetd) - (1-f_onset)*exp(-r_t)*r_td
-          f_turb = (1-f_onset)*temp2
+          temp3 = exp(-r_t)
+          f_turbd = -(temp3*f_onsetd) - (1-f_onset)*exp(-r_t)*r_td
+          f_turb = (1-f_onset)*temp3
 ! since we need to divide by rho, rho does not appear here anymore
-          temp2 = scratch(i, j, k, istrain)
-          temp1 = sqrt(temp2)
-          if (temp2 .eq. 0.0_8) then
+          temp3 = scratch(i, j, k, istrain)
+          temp2 = sqrt(temp3)
+          if (temp3 .eq. 0.0_8) then
             result1d = 0.0_8
           else
-            result1d = scratchd(i, j, k, istrain)/(2.0*temp1)
+            result1d = scratchd(i, j, k, istrain)/(2.0*temp2)
           end if
-          result1 = temp1
-          temp2 = w(i, j, k, itransition1)
-          arg1d = f_onset*wd(i, j, k, itransition1) + temp2*f_onsetd
-          arg1 = temp2*f_onset
-          temp2 = sqrt(arg1)
+          result1 = temp2
+          temp3 = w(i, j, k, itransition1)
+          arg1d = f_onset*wd(i, j, k, itransition1) + temp3*f_onsetd
+          arg1 = temp3*f_onset
+          temp3 = sqrt(arg1)
           if (arg1 .eq. 0.0_8) then
             result2d = 0.0_8
           else
-            result2d = arg1d/(2.0*temp2)
+            result2d = arg1d/(2.0*temp3)
           end if
-          result2 = temp2
-          temp2 = -(rlmce1*w(i, j, k, itransition1)) + 1.0
-          temp1 = f_length*result1*result2
-          temp0 = w(i, j, k, irho)
-          temp = temp0*temp1
-          p_gammad = rlmca1*(temp2*(temp1*wd(i, j, k, irho)+temp0*(&
+          result2 = temp3
+          temp3 = -(rlmce1*w(i, j, k, itransition1)) + 1.0
+          temp2 = f_length*result1*result2
+          temp1 = w(i, j, k, irho)
+          temp0 = temp1*temp2
+          p_gammad = rlmca1*(temp3*(temp2*wd(i, j, k, irho)+temp1*(&
 &           result2*(result1*f_lengthd+f_length*result1d)+f_length*&
-&           result1*result2d))-temp*rlmce1*wd(i, j, k, itransition1))
-          p_gamma = rlmca1*(temp*temp2)
-          temp2 = scratch(i, j, k, ivorticity)
-          temp1 = sqrt(temp2)
-          if (temp2 .eq. 0.0_8) then
-            result1d = 0.0_8
-          else
-            result1d = scratchd(i, j, k, ivorticity)/(2.0*temp1)
-          end if
-          result1 = temp1
-          temp2 = rlmce2*w(i, j, k, itransition1) - 1.0
-          temp1 = w(i, j, k, itransition1)
-          temp0 = w(i, j, k, irho)
-          temp = temp0*result1*f_turb
-          e_gammad = rlmca2*(temp1*temp2*(result1*f_turb*wd(i, j, k, &
-&           irho)+temp0*(f_turb*result1d+result1*f_turbd))+temp*(temp2+&
-&           temp1*rlmce2)*wd(i, j, k, itransition1))
-          e_gamma = rlmca2*(temp*(temp1*temp2))
-          temp2 = re_thetat_eq - w(i, j, k, itransition2)
-          temp1 = (-f_theta_t+1.0)/t
-          temp0 = w(i, j, k, irho)
-          p_thetatd = rlmcthetat*(temp2*(temp1*wd(i, j, k, irho)+temp0*(&
-&           -f_theta_td-temp1*td)/t)+temp0*temp1*(re_thetat_eqd-wd(i, j&
+&           result1*result2d))-temp0*rlmce1*wd(i, j, k, itransition1))
+          p_gamma = rlmca1*(temp0*temp3)
+          temp3 = rlmce2*w(i, j, k, itransition1) - 1.0
+          temp2 = w(i, j, k, itransition1)
+          temp1 = w(i, j, k, irho)
+          temp0 = temp1*vort*f_turb
+          e_gammad = rlmca2*(temp2*temp3*(vort*f_turb*wd(i, j, k, irho)+&
+&           temp1*(f_turb*vortd+vort*f_turbd))+temp0*(temp3+temp2*rlmce2&
+&           )*wd(i, j, k, itransition1))
+          e_gamma = rlmca2*(temp0*(temp2*temp3))
+          temp3 = re_thetat_eq - w(i, j, k, itransition2)
+          temp2 = (-f_theta_t+1.0)/t
+          temp1 = w(i, j, k, irho)
+          p_thetatd = rlmcthetat*(temp3*(temp2*wd(i, j, k, irho)+temp1*(&
+&           -f_theta_td-temp2*td)/t)+temp1*temp2*(re_thetat_eqd-wd(i, j&
 &           , k, itransition2)))
-          p_thetat = rlmcthetat*(temp0*temp1*temp2)
+          p_thetat = rlmcthetat*(temp1*temp2*temp3)
           scratchd(i, j, k, istransition1) = rhoi*(p_gammad-e_gammad) + &
 &           (p_gamma-e_gamma)*rhoid
           scratch(i, j, k, istransition1) = (p_gamma-e_gamma)*rhoi
@@ -764,15 +858,16 @@ contains
     real(kind=realtype) :: re_s, f_length1, f_length, f_onset1, f_onset&
 &   , f_turb, p_gamma, e_gamma, p_thetat
     real(kind=realtype) :: re_omega, f_wake
-    real(kind=realtype) :: rhoi
+    real(kind=realtype) :: rhoi, vort
     intrinsic sqrt
-    intrinsic exp
     intrinsic max
+    intrinsic exp
     intrinsic min
     intrinsic sin
     intrinsic tanh
     real(kind=realtype) :: x1
     real(kind=realtype) :: x2
+    real(kind=realtype) :: x3
     real(kind=realtype) :: arg1
     real(kind=realtype) :: result1
     real(kind=realtype) :: result2
@@ -780,6 +875,12 @@ contains
       do j=2,jl
         do i=2,il
           rhoi = one/w(i, j, k, irho)
+          x1 = sqrt(scratch(i, j, k, ivorticity))
+          if (x1 .lt. eps) then
+            vort = eps
+          else
+            vort = x1
+          end if
 ! compute re_thetat_eq
           call solve_local_re_thetat_eq(re_thetat_eq, i, j, k)
           u2 = w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, ivz)&
@@ -789,22 +890,21 @@ contains
 &           2/rlv(i, j, k)
           arg1 = -((re_omega/1e5)**2)
           f_wake = exp(arg1)
-          result1 = sqrt(scratch(i, j, k, ivorticity))
-          delta = 375.0*result1*w(i, j, k, itransition2)*d2wall(i, j, k)&
-&           /(w(i, j, k, irho)*u)
+          delta = 375.0*vort*w(i, j, k, itransition2)*d2wall(i, j, k)/(w&
+&           (i, j, k, irho)*u)
           arg1 = -((d2wall(i, j, k)/delta)**4)
-          x2 = f_wake*exp(arg1)
-          if (x2 .lt. 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(&
+          x3 = f_wake*exp(arg1)
+          if (x3 .lt. 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(&
 &             rlmce2-1))**2) then
-            x1 = 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1)&
+            x2 = 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1)&
 &             )**2
           else
-            x1 = x2
+            x2 = x3
           end if
-          if (x1 .gt. 1.0) then
+          if (x2 .gt. 1.0) then
             f_theta_t = 1.0
           else
-            f_theta_t = x1
+            f_theta_t = x2
           end if
           t = 500.0*rlv(i, j, k)/(w(i, j, k, irho)*u2)
 ! todo: save this in scratch
@@ -832,9 +932,8 @@ contains
           result2 = sqrt(arg1)
           p_gamma = f_length*rlmca1*w(i, j, k, irho)*result1*result2*(&
 &           1.0-rlmce1*w(i, j, k, itransition1))
-          result1 = sqrt(scratch(i, j, k, ivorticity))
-          e_gamma = rlmca2*w(i, j, k, irho)*result1*w(i, j, k, &
-&           itransition1)*f_turb*(rlmce2*w(i, j, k, itransition1)-1.0)
+          e_gamma = rlmca2*w(i, j, k, irho)*vort*w(i, j, k, itransition1&
+&           )*f_turb*(rlmce2*w(i, j, k, itransition1)-1.0)
           p_thetat = rlmcthetat*w(i, j, k, irho)/t*(re_thetat_eq-w(i, j&
 &           , k, itransition2))*(1.0-f_theta_t)
           scratch(i, j, k, istransition1) = (p_gamma-e_gamma)*rhoi
