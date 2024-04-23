@@ -6,435 +6,6 @@ module gammarethetamodel_d
   implicit none
 
 contains
-!  differentiation of solve_local_re_thetat_eq in forward (tangent) mode (with options i4 dr8 r8):
-!   variations   of useful results: re_thetat_eq
-!   with respect to varying inputs: *w *rlv *vol *si *sj *sk
-!   plus diff mem management of: w:in rlv:in vol:in si:in sj:in
-!                sk:in
-  subroutine solve_local_re_thetat_eq_d(re_thetat_eq, re_thetat_eqd, i, &
-&   j, k)
-    use blockpointers
-    use constants
-    use paramturb
-    implicit none
-! input/output variables
-    integer(kind=inttype), intent(in) :: i, j, k
-    real(kind=realtype), intent(out) :: re_thetat_eq
-    real(kind=realtype), intent(out) :: re_thetat_eqd
-! local variables
-    real(kind=realtype) :: u, u_inv, fact, du_dx, du_dy, du_dz, du_ds, &
-&   tu, f1, f2, f3, f
-    real(kind=realtype) :: ud, u_invd, factd, du_dxd, du_dyd, du_dzd, &
-&   du_dsd, tud, f1d, f2d, f3d, fd
-    real(kind=realtype) :: dudx, dudy, dudz, dvdx, dvdy, dvdz, dwdx, &
-&   dwdy, dwdz
-    real(kind=realtype) :: dudxd, dudyd, dudzd, dvdxd, dvdyd, dvdzd, &
-&   dwdxd, dwdyd, dwdzd
-    real(kind=realtype) :: lambda, thetat, residum, thetat_old, &
-&   residum_old, thetat_new
-    real(kind=realtype) :: lambdad, thetatd, residumd, thetat_oldd, &
-&   residum_oldd, thetat_newd
-    real(kind=realtype) :: re_thetat_eq_1, re_thetat_eq_2
-    real(kind=realtype) :: re_thetat_eq_1d, re_thetat_eq_2d
-    integer(kind=inttype) :: n
-    intrinsic sqrt
-    intrinsic max
-    intrinsic min
-    intrinsic exp
-    intrinsic abs
-    real(kind=realtype) :: x1
-    real(kind=realtype) :: x1d
-    real(kind=realtype) :: abs0
-    real(kind=realtype) :: arg1
-    real(kind=realtype) :: arg1d
-    real(kind=realtype) :: result1
-    real(kind=realtype) :: result1d
-    real(kind=realtype) :: temp
-    real(kind=realtype) :: temp0
-    real(kind=realtype) :: temp1
-    real(kind=realtype) :: temp2
-    real(kind=realtype) :: temp3
-    real(kind=realtype) :: temp4
-    real(kind=realtype) :: temp5
-    real(kind=realtype) :: temp6
-    real(kind=realtype) :: temp7
-    real(kind=realtype) :: temp8
-    real(kind=realtype) :: temp9
-    real(kind=realtype) :: temp10
-    real(kind=realtype) :: temp11
-    temp = w(i, j, k, ivx)
-    temp0 = w(i, j, k, ivy)
-    temp1 = w(i, j, k, ivz)
-    arg1d = 2*temp*wd(i, j, k, ivx) + 2*temp0*wd(i, j, k, ivy) + 2*temp1&
-&     *wd(i, j, k, ivz)
-    arg1 = temp*temp + temp0*temp0 + temp1*temp1
-    temp1 = sqrt(arg1)
-    if (arg1 .eq. 0.0_8) then
-      ud = 0.0_8
-    else
-      ud = arg1d/(2.0*temp1)
-    end if
-    u = temp1
-    u_invd = -(ud/u**2)
-    u_inv = 1.0/u
-! compute the gradient of u in the cell center. use is made
-! of the fact that the surrounding normals sum up to zero,
-! such that the cell i,j,k does not give a contribution.
-! since the gradient is scaled by a factor of 2*vol, we need to account for that
-    temp1 = 1.0/(2.0*vol(i, j, k))
-    factd = -(temp1*vold(i, j, k)/vol(i, j, k))
-    fact = temp1
-    temp1 = si(i, j, k, 1)
-    temp0 = w(i+1, j, k, ivx)
-    temp = si(i-1, j, k, 1)
-    temp2 = w(i-1, j, k, ivx)
-    temp3 = sj(i, j, k, 1)
-    temp4 = w(i, j+1, k, ivx)
-    temp5 = sk(i, j, k, 1)
-    temp6 = w(i, j, k+1, ivx)
-    temp7 = sj(i, j-1, k, 1)
-    temp8 = w(i, j-1, k, ivx)
-    temp9 = sk(i, j, k-1, 1)
-    temp10 = w(i, j, k-1, ivx)
-    temp11 = temp0*temp1 - temp2*temp + temp4*temp3 + temp6*temp5 - &
-&     temp8*temp7 - temp10*temp9
-    dudxd = fact*(temp1*wd(i+1, j, k, ivx)+temp0*sid(i, j, k, 1)-temp*wd&
-&     (i-1, j, k, ivx)-temp2*sid(i-1, j, k, 1)+temp3*wd(i, j+1, k, ivx)+&
-&     temp4*sjd(i, j, k, 1)+temp5*wd(i, j, k+1, ivx)+temp6*skd(i, j, k, &
-&     1)-temp7*wd(i, j-1, k, ivx)-temp8*sjd(i, j-1, k, 1)-temp9*wd(i, j&
-&     , k-1, ivx)-temp10*skd(i, j, k-1, 1)) + temp11*factd
-    dudx = temp11*fact
-    temp11 = si(i, j, k, 2)
-    temp10 = w(i+1, j, k, ivx)
-    temp9 = si(i-1, j, k, 2)
-    temp8 = w(i-1, j, k, ivx)
-    temp7 = sj(i, j, k, 2)
-    temp6 = w(i, j+1, k, ivx)
-    temp5 = sk(i, j, k, 2)
-    temp4 = w(i, j, k+1, ivx)
-    temp3 = sj(i, j-1, k, 2)
-    temp2 = w(i, j-1, k, ivx)
-    temp1 = sk(i, j, k-1, 2)
-    temp0 = w(i, j, k-1, ivx)
-    temp = temp10*temp11 - temp8*temp9 + temp6*temp7 + temp4*temp5 - &
-&     temp2*temp3 - temp0*temp1
-    dudyd = fact*(temp11*wd(i+1, j, k, ivx)+temp10*sid(i, j, k, 2)-temp9&
-&     *wd(i-1, j, k, ivx)-temp8*sid(i-1, j, k, 2)+temp7*wd(i, j+1, k, &
-&     ivx)+temp6*sjd(i, j, k, 2)+temp5*wd(i, j, k+1, ivx)+temp4*skd(i, j&
-&     , k, 2)-temp3*wd(i, j-1, k, ivx)-temp2*sjd(i, j-1, k, 2)-temp1*wd(&
-&     i, j, k-1, ivx)-temp0*skd(i, j, k-1, 2)) + temp*factd
-    dudy = temp*fact
-    temp11 = si(i, j, k, 3)
-    temp10 = w(i+1, j, k, ivx)
-    temp9 = si(i-1, j, k, 3)
-    temp8 = w(i-1, j, k, ivx)
-    temp7 = sj(i, j, k, 3)
-    temp6 = w(i, j+1, k, ivx)
-    temp5 = sk(i, j, k, 3)
-    temp4 = w(i, j, k+1, ivx)
-    temp3 = sj(i, j-1, k, 3)
-    temp2 = w(i, j-1, k, ivx)
-    temp1 = sk(i, j, k-1, 3)
-    temp0 = w(i, j, k-1, ivx)
-    temp = temp10*temp11 - temp8*temp9 + temp6*temp7 + temp4*temp5 - &
-&     temp2*temp3 - temp0*temp1
-    dudzd = fact*(temp11*wd(i+1, j, k, ivx)+temp10*sid(i, j, k, 3)-temp9&
-&     *wd(i-1, j, k, ivx)-temp8*sid(i-1, j, k, 3)+temp7*wd(i, j+1, k, &
-&     ivx)+temp6*sjd(i, j, k, 3)+temp5*wd(i, j, k+1, ivx)+temp4*skd(i, j&
-&     , k, 3)-temp3*wd(i, j-1, k, ivx)-temp2*sjd(i, j-1, k, 3)-temp1*wd(&
-&     i, j, k-1, ivx)-temp0*skd(i, j, k-1, 3)) + temp*factd
-    dudz = temp*fact
-! idem for the gradient of v.
-    temp11 = si(i, j, k, 1)
-    temp10 = w(i+1, j, k, ivy)
-    temp9 = si(i-1, j, k, 1)
-    temp8 = w(i-1, j, k, ivy)
-    temp7 = sj(i, j, k, 1)
-    temp6 = w(i, j+1, k, ivy)
-    temp5 = sk(i, j, k, 1)
-    temp4 = w(i, j, k+1, ivy)
-    temp3 = sj(i, j-1, k, 1)
-    temp2 = w(i, j-1, k, ivy)
-    temp1 = sk(i, j, k-1, 1)
-    temp0 = w(i, j, k-1, ivy)
-    temp = temp10*temp11 - temp8*temp9 + temp6*temp7 + temp4*temp5 - &
-&     temp2*temp3 - temp0*temp1
-    dvdxd = fact*(temp11*wd(i+1, j, k, ivy)+temp10*sid(i, j, k, 1)-temp9&
-&     *wd(i-1, j, k, ivy)-temp8*sid(i-1, j, k, 1)+temp7*wd(i, j+1, k, &
-&     ivy)+temp6*sjd(i, j, k, 1)+temp5*wd(i, j, k+1, ivy)+temp4*skd(i, j&
-&     , k, 1)-temp3*wd(i, j-1, k, ivy)-temp2*sjd(i, j-1, k, 1)-temp1*wd(&
-&     i, j, k-1, ivy)-temp0*skd(i, j, k-1, 1)) + temp*factd
-    dvdx = temp*fact
-    temp11 = si(i, j, k, 2)
-    temp10 = w(i+1, j, k, ivy)
-    temp9 = si(i-1, j, k, 2)
-    temp8 = w(i-1, j, k, ivy)
-    temp7 = sj(i, j, k, 2)
-    temp6 = w(i, j+1, k, ivy)
-    temp5 = sk(i, j, k, 2)
-    temp4 = w(i, j, k+1, ivy)
-    temp3 = sj(i, j-1, k, 2)
-    temp2 = w(i, j-1, k, ivy)
-    temp1 = sk(i, j, k-1, 2)
-    temp0 = w(i, j, k-1, ivy)
-    temp = temp10*temp11 - temp8*temp9 + temp6*temp7 + temp4*temp5 - &
-&     temp2*temp3 - temp0*temp1
-    dvdyd = fact*(temp11*wd(i+1, j, k, ivy)+temp10*sid(i, j, k, 2)-temp9&
-&     *wd(i-1, j, k, ivy)-temp8*sid(i-1, j, k, 2)+temp7*wd(i, j+1, k, &
-&     ivy)+temp6*sjd(i, j, k, 2)+temp5*wd(i, j, k+1, ivy)+temp4*skd(i, j&
-&     , k, 2)-temp3*wd(i, j-1, k, ivy)-temp2*sjd(i, j-1, k, 2)-temp1*wd(&
-&     i, j, k-1, ivy)-temp0*skd(i, j, k-1, 2)) + temp*factd
-    dvdy = temp*fact
-    temp11 = si(i, j, k, 3)
-    temp10 = w(i+1, j, k, ivy)
-    temp9 = si(i-1, j, k, 3)
-    temp8 = w(i-1, j, k, ivy)
-    temp7 = sj(i, j, k, 3)
-    temp6 = w(i, j+1, k, ivy)
-    temp5 = sk(i, j, k, 3)
-    temp4 = w(i, j, k+1, ivy)
-    temp3 = sj(i, j-1, k, 3)
-    temp2 = w(i, j-1, k, ivy)
-    temp1 = sk(i, j, k-1, 3)
-    temp0 = w(i, j, k-1, ivy)
-    temp = temp10*temp11 - temp8*temp9 + temp6*temp7 + temp4*temp5 - &
-&     temp2*temp3 - temp0*temp1
-    dvdzd = fact*(temp11*wd(i+1, j, k, ivy)+temp10*sid(i, j, k, 3)-temp9&
-&     *wd(i-1, j, k, ivy)-temp8*sid(i-1, j, k, 3)+temp7*wd(i, j+1, k, &
-&     ivy)+temp6*sjd(i, j, k, 3)+temp5*wd(i, j, k+1, ivy)+temp4*skd(i, j&
-&     , k, 3)-temp3*wd(i, j-1, k, ivy)-temp2*sjd(i, j-1, k, 3)-temp1*wd(&
-&     i, j, k-1, ivy)-temp0*skd(i, j, k-1, 3)) + temp*factd
-    dvdz = temp*fact
-! and for the gradient of w.
-    temp11 = si(i, j, k, 1)
-    temp10 = w(i+1, j, k, ivz)
-    temp9 = si(i-1, j, k, 1)
-    temp8 = w(i-1, j, k, ivz)
-    temp7 = sj(i, j, k, 1)
-    temp6 = w(i, j+1, k, ivz)
-    temp5 = sk(i, j, k, 1)
-    temp4 = w(i, j, k+1, ivz)
-    temp3 = sj(i, j-1, k, 1)
-    temp2 = w(i, j-1, k, ivz)
-    temp1 = sk(i, j, k-1, 1)
-    temp0 = w(i, j, k-1, ivz)
-    temp = temp10*temp11 - temp8*temp9 + temp6*temp7 + temp4*temp5 - &
-&     temp2*temp3 - temp0*temp1
-    dwdxd = fact*(temp11*wd(i+1, j, k, ivz)+temp10*sid(i, j, k, 1)-temp9&
-&     *wd(i-1, j, k, ivz)-temp8*sid(i-1, j, k, 1)+temp7*wd(i, j+1, k, &
-&     ivz)+temp6*sjd(i, j, k, 1)+temp5*wd(i, j, k+1, ivz)+temp4*skd(i, j&
-&     , k, 1)-temp3*wd(i, j-1, k, ivz)-temp2*sjd(i, j-1, k, 1)-temp1*wd(&
-&     i, j, k-1, ivz)-temp0*skd(i, j, k-1, 1)) + temp*factd
-    dwdx = temp*fact
-    temp11 = si(i, j, k, 2)
-    temp10 = w(i+1, j, k, ivz)
-    temp9 = si(i-1, j, k, 2)
-    temp8 = w(i-1, j, k, ivz)
-    temp7 = sj(i, j, k, 2)
-    temp6 = w(i, j+1, k, ivz)
-    temp5 = sk(i, j, k, 2)
-    temp4 = w(i, j, k+1, ivz)
-    temp3 = sj(i, j-1, k, 2)
-    temp2 = w(i, j-1, k, ivz)
-    temp1 = sk(i, j, k-1, 2)
-    temp0 = w(i, j, k-1, ivz)
-    temp = temp10*temp11 - temp8*temp9 + temp6*temp7 + temp4*temp5 - &
-&     temp2*temp3 - temp0*temp1
-    dwdyd = fact*(temp11*wd(i+1, j, k, ivz)+temp10*sid(i, j, k, 2)-temp9&
-&     *wd(i-1, j, k, ivz)-temp8*sid(i-1, j, k, 2)+temp7*wd(i, j+1, k, &
-&     ivz)+temp6*sjd(i, j, k, 2)+temp5*wd(i, j, k+1, ivz)+temp4*skd(i, j&
-&     , k, 2)-temp3*wd(i, j-1, k, ivz)-temp2*sjd(i, j-1, k, 2)-temp1*wd(&
-&     i, j, k-1, ivz)-temp0*skd(i, j, k-1, 2)) + temp*factd
-    dwdy = temp*fact
-    temp11 = si(i, j, k, 3)
-    temp10 = w(i+1, j, k, ivz)
-    temp9 = si(i-1, j, k, 3)
-    temp8 = w(i-1, j, k, ivz)
-    temp7 = sj(i, j, k, 3)
-    temp6 = w(i, j+1, k, ivz)
-    temp5 = sk(i, j, k, 3)
-    temp4 = w(i, j, k+1, ivz)
-    temp3 = sj(i, j-1, k, 3)
-    temp2 = w(i, j-1, k, ivz)
-    temp1 = sk(i, j, k-1, 3)
-    temp0 = w(i, j, k-1, ivz)
-    temp = temp10*temp11 - temp8*temp9 + temp6*temp7 + temp4*temp5 - &
-&     temp2*temp3 - temp0*temp1
-    dwdzd = fact*(temp11*wd(i+1, j, k, ivz)+temp10*sid(i, j, k, 3)-temp9&
-&     *wd(i-1, j, k, ivz)-temp8*sid(i-1, j, k, 3)+temp7*wd(i, j+1, k, &
-&     ivz)+temp6*sjd(i, j, k, 3)+temp5*wd(i, j, k+1, ivz)+temp4*skd(i, j&
-&     , k, 3)-temp3*wd(i, j-1, k, ivz)-temp2*sjd(i, j-1, k, 3)-temp1*wd(&
-&     i, j, k-1, ivz)-temp0*skd(i, j, k-1, 3)) + temp*factd
-    dwdz = temp*fact
-    temp11 = w(i, j, k, ivz)
-    temp10 = w(i, j, k, ivy)
-    temp9 = w(i, j, k, ivx)
-    temp8 = temp9*dudx + temp10*dudy + temp11*dudz
-    du_dxd = temp8*u_invd + u_inv*(dudx*wd(i, j, k, ivx)+temp9*dudxd+&
-&     dudy*wd(i, j, k, ivy)+temp10*dudyd+dudz*wd(i, j, k, ivz)+temp11*&
-&     dudzd)
-    du_dx = u_inv*temp8
-    temp11 = w(i, j, k, ivz)
-    temp10 = w(i, j, k, ivy)
-    temp9 = w(i, j, k, ivx)
-    temp8 = temp9*dvdx + temp10*dvdy + temp11*dvdz
-    du_dyd = temp8*u_invd + u_inv*(dvdx*wd(i, j, k, ivx)+temp9*dvdxd+&
-&     dvdy*wd(i, j, k, ivy)+temp10*dvdyd+dvdz*wd(i, j, k, ivz)+temp11*&
-&     dvdzd)
-    du_dy = u_inv*temp8
-    temp11 = w(i, j, k, ivz)
-    temp10 = w(i, j, k, ivy)
-    temp9 = w(i, j, k, ivx)
-    temp8 = temp9*dwdx + temp10*dwdy + temp11*dwdz
-    du_dzd = temp8*u_invd + u_inv*(dwdx*wd(i, j, k, ivx)+temp9*dwdxd+&
-&     dwdy*wd(i, j, k, ivy)+temp10*dwdyd+dwdz*wd(i, j, k, ivz)+temp11*&
-&     dwdzd)
-    du_dz = u_inv*temp8
-    temp11 = du_dx/u
-    temp10 = w(i, j, k, ivx)
-    temp9 = du_dy/u
-    temp8 = w(i, j, k, ivy)
-    temp7 = du_dz/u
-    temp6 = w(i, j, k, ivz)
-    du_dsd = temp11*wd(i, j, k, ivx) + temp10*(du_dxd-temp11*ud)/u + &
-&     temp9*wd(i, j, k, ivy) + temp8*(du_dyd-temp9*ud)/u + temp7*wd(i, j&
-&     , k, ivz) + temp6*(du_dzd-temp7*ud)/u
-    du_ds = temp10*temp11 + temp8*temp9 + temp6*temp7
-    arg1d = 2*wd(i, j, k, itu1)/3
-    arg1 = 2*w(i, j, k, itu1)/3
-    temp11 = sqrt(arg1)
-    if (arg1 .eq. 0.0_8) then
-      result1d = 0.0_8
-    else
-      result1d = arg1d/(2.0*temp11)
-    end if
-    result1 = temp11
-    tud = 100.0*(result1d-result1*ud/u)/u
-    tu = 100.0*result1/u
-    if (tu .lt. 0.027) then
-      tu = 0.027
-      tud = 0.0_8
-    else
-      tu = tu
-    end if
-! now we need to solve for theta through newton's method. the number of iterations is hard-coded so tapenade is 
-! able to differentiate it
-    thetat = 0.01
-    thetat_oldd = 0.0_8
-    re_thetat_eq_1d = 0.0_8
-    residum_oldd = 0.0_8
-    thetatd = 0.0_8
-    do n=1,10
-      temp11 = thetat*thetat*du_ds
-      temp10 = w(i, j, k, irho)/rlv(i, j, k)
-      lambdad = temp11*(wd(i, j, k, irho)-temp10*rlvd(i, j, k))/rlv(i, j&
-&       , k) + temp10*(du_ds*2*thetat*thetatd+thetat**2*du_dsd)
-      lambda = temp10*temp11
-      if (lambda .gt. 0.1) then
-        x1 = 0.1
-        x1d = 0.0_8
-      else
-        x1d = lambdad
-        x1 = lambda
-      end if
-      if (x1 .lt. -0.1) then
-        lambda = -0.1
-        lambdad = 0.0_8
-      else
-        lambdad = x1d
-        lambda = x1
-      end if
-! compute f function
-      temp11 = exp(-(tu/0.5))
-      temp10 = -exp(-(35.0*lambda)) + 1.0
-      f1d = 0.275*(temp11*exp(-(35.0*lambda))*35.0*lambdad-temp10*exp(-(&
-&       tu/0.5))*tud/0.5)
-      f1 = 0.275*(temp10*temp11) + 1.0
-      if (f1 .lt. 1.0) then
-        f2 = 1.0
-        f2d = 0.0_8
-      else
-        f2d = f1d
-        f2 = f1
-      end if
-      arg1d = -((tu/1.5)**0.5*tud)
-      arg1 = -((tu/1.5)**1.5)
-      temp11 = exp(arg1)
-      temp10 = -(12.986*lambda) - 123.66*(lambda*lambda) - 405.689*(&
-&       lambda*lambda*lambda)
-      f3d = -(temp10*exp(arg1)*arg1d-temp11*(123.66*2*lambda+405.689*3*&
-&       lambda**2+12.986)*lambdad)
-      f3 = 1.0 - temp10*temp11
-      if (f2 .gt. f3) then
-        fd = f3d
-        f = f3
-      else
-        fd = f2d
-        f = f2
-      end if
-      if (tu .gt. 1.3) then
-        temp11 = (tu-0.5658)**(-0.671)
-        re_thetat_eq_1d = 331.50*(temp11*fd-f*0.671*(tu-0.5658)**(-1.671&
-&         )*tud)
-        re_thetat_eq_1 = 331.50*(temp11*f)
-      else
-        temp11 = 0.2196/(tu*tu)
-        re_thetat_eq_1d = (temp11-589.428*tu+1173.51)*fd - f*(temp11*2/&
-&         tu+589.428)*tud
-        re_thetat_eq_1 = (temp11-589.428*tu+1173.51)*f
-      end if
-      temp11 = u*thetat/rlv(i, j, k)
-      temp10 = w(i, j, k, irho)
-      re_thetat_eq_2d = temp11*wd(i, j, k, irho) + temp10*(thetat*ud+u*&
-&       thetatd-temp11*rlvd(i, j, k))/rlv(i, j, k)
-      re_thetat_eq_2 = temp10*temp11
-! residum which should go to 0
-      residumd = re_thetat_eq_1d - re_thetat_eq_2d
-      residum = re_thetat_eq_1 - re_thetat_eq_2
-! print *, 'iteration, thetat, residum, re_thetat_eq_1', n, thetat, residum, re_thetat_eq_1
-! if we are in the first iteration, we need to kickstart the secant method first
-      if (n .eq. 1) then
-        residum_oldd = residumd
-        residum_old = residum
-        thetat_oldd = thetatd
-        thetat_old = thetat
-        thetatd = 0.5*thetatd
-        thetat = 0.5*thetat
-      else
-        if (residum .ge. 0.) then
-          abs0 = residum
-        else
-          abs0 = -residum
-        end if
-! if the residum is basically 0, we cycle until we reach the end. (we cant drop out because tapenade would be unable to
-! differentiate it)
-        if (abs0 .ge. 1e-9) then
-! compute next step (secant method)
-          temp11 = (thetat_old*residum-thetat*residum_old)/(residum-&
-&           residum_old)
-          thetat_newd = (residum*thetat_oldd+thetat_old*residumd-&
-&           residum_old*thetatd-thetat*residum_oldd-temp11*(residumd-&
-&           residum_oldd))/(residum-residum_old)
-          thetat_new = temp11
-! save values for next iteration
-          residum_oldd = residumd
-          residum_old = residum
-          thetat_oldd = thetatd
-          thetat_old = thetat
-          thetatd = thetat_newd
-          thetat = thetat_new
-        end if
-      end if
-    end do
-    if (re_thetat_eq_1 .lt. 20.0) then
-      re_thetat_eq = 20.0
-      re_thetat_eqd = 0.0_8
-    else
-      re_thetat_eqd = re_thetat_eq_1d
-      re_thetat_eq = re_thetat_eq_1
-    end if
-  end subroutine solve_local_re_thetat_eq_d
-
   subroutine solve_local_re_thetat_eq(re_thetat_eq, i, j, k)
     use blockpointers
     use constants
@@ -453,11 +24,10 @@ contains
     real(kind=realtype) :: re_thetat_eq_1, re_thetat_eq_2
     integer(kind=inttype) :: n
     intrinsic sqrt
+    intrinsic exp
     intrinsic max
     intrinsic min
-    intrinsic exp
     intrinsic abs
-    real(kind=realtype) :: x1
     real(kind=realtype) :: abs0
     real(kind=realtype) :: arg1
     real(kind=realtype) :: result1
@@ -518,26 +88,13 @@ contains
     arg1 = 2*w(i, j, k, itu1)/3
     result1 = sqrt(arg1)
     tu = 100.0*result1/u
-    if (tu .lt. 0.027) then
-      tu = 0.027
-    else
-      tu = tu
-    end if
+! tu = max(tu, 0.027) ! clip for numerical robustness
 ! now we need to solve for theta through newton's method. the number of iterations is hard-coded so tapenade is 
 ! able to differentiate it
     thetat = 0.01
     do n=1,10
       lambda = w(i, j, k, irho)*thetat**2/rlv(i, j, k)*du_ds
-      if (lambda .gt. 0.1) then
-        x1 = 0.1
-      else
-        x1 = lambda
-      end if
-      if (x1 .lt. -0.1) then
-        lambda = -0.1
-      else
-        lambda = x1
-      end if
+! lambda = max(min(lambda, 0.1), -0.1) ! clip for numerical robustness
 ! compute f function
       f1 = 1.0 + 0.275*(1.0-exp(-(35.0*lambda)))*exp(-(tu/0.5))
       if (f1 .lt. 1.0) then
@@ -575,32 +132,35 @@ contains
         end if
 ! if the residum is basically 0, we cycle until we reach the end. (we cant drop out because tapenade would be unable to
 ! differentiate it)
-        if (abs0 .ge. 1e-9) then
-! compute next step (secant method)
+        if (abs0 .gt. 1e-9) then
+! cycle
           thetat_new = (thetat_old*residum-thetat*residum_old)/(residum-&
 &           residum_old)
-! save values for next iteration
-          residum_old = residum
-          thetat_old = thetat
-          thetat = thetat_new
+        else
+          thetat_new = thetat
         end if
+! compute next step (secant method)
+! thetat_new = (thetat_old*residum - thetat*residum_old) / (residum - residum_old)
+! save values for next iteration
+        residum_old = residum
+        thetat_old = thetat
+        thetat = thetat_new
+! todo: make sure this still works after getting rid of 'cycle'
       end if
     end do
-    if (re_thetat_eq_1 .lt. 20.0) then
-      re_thetat_eq = 20.0
-    else
-      re_thetat_eq = re_thetat_eq_1
-    end if
+! save result in output-variable
+! re_thetat_eq = max(re_thetat_eq_1, 20.0) ! clip for numerical robustness
+! print *, 'thetat, lambda, re_thetat_eq', thetat, lambda, re_thetat_eq
+
   end subroutine solve_local_re_thetat_eq
 
 !  differentiation of gammarethetasource in forward (tangent) mode (with options i4 dr8 r8):
 !   variations   of useful results: *scratch
-!   with respect to varying inputs: *rev *w *rlv *scratch *vol
-!                *d2wall *si *sj *sk
+!   with respect to varying inputs: *rev *w *rlv *scratch *d2wall
 !   rw status of diff variables: *rev:in *w:in *rlv:in *scratch:in-out
-!                *vol:in *d2wall:in *si:in *sj:in *sk:in
+!                *d2wall:in
 !   plus diff mem management of: rev:in w:in rlv:in scratch:in
-!                vol:in d2wall:in si:in sj:in sk:in
+!                d2wall:in
   subroutine gammarethetasource_d()
     use blockpointers
     use constants
@@ -610,8 +170,8 @@ contains
     integer(kind=inttype) :: i, j, k
     real(kind=realtype) :: re_thetat_eq, u2, u, lambda_theta, delta, &
 &   f_theta_t, t, r_t, re_theta_c
-    real(kind=realtype) :: re_thetat_eqd, u2d, ud, deltad, f_theta_td, &
-&   td, r_td, re_theta
+    real(kind=realtype) :: u2d, ud, deltad, f_theta_td, td, r_td, &
+&   re_theta
     real(kind=realtype) :: re_s, f_length1, f_length, f_onset1, f_onset&
 &   , f_turb, p_gamma, e_gamma, p_thetat
     real(kind=realtype) :: re_sd, f_length1d, f_lengthd, f_onset1d, &
@@ -666,8 +226,7 @@ contains
             vort = x1
           end if
 ! compute re_thetat_eq
-          call solve_local_re_thetat_eq_d(re_thetat_eq, re_thetat_eqd, i&
-&                                   , j, k)
+          call solve_local_re_thetat_eq(re_thetat_eq, i, j, k)
           temp0 = w(i, j, k, ivx)
           temp = w(i, j, k, ivy)
           temp1 = w(i, j, k, ivz)
@@ -831,8 +390,8 @@ contains
           temp2 = (-f_theta_t+1.0)/t
           temp1 = w(i, j, k, irho)
           p_thetatd = rlmcthetat*(temp3*(temp2*wd(i, j, k, irho)+temp1*(&
-&           -f_theta_td-temp2*td)/t)+temp1*temp2*(re_thetat_eqd-wd(i, j&
-&           , k, itransition2)))
+&           -f_theta_td-temp2*td)/t)-temp1*temp2*wd(i, j, k, &
+&           itransition2))
           p_thetat = rlmcthetat*(temp1*temp2*temp3)
           scratchd(i, j, k, istransition1) = rhoi*(p_gammad-e_gammad) + &
 &           (p_gamma-e_gamma)*rhoid

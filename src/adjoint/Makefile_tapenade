@@ -215,6 +215,9 @@ SST%SSTResScale(scratch, dw) > \
 SST%f1SST(w, scratch, d2wall, rlv) > \
          (w, scratch, d2wall, rlv) \
 \
+gammaRetheta%solve_local_Re_thetat_eq(w, scratch, rev, rlv, vol, si, sj, sk, Re_thetat_eq) > \
+                                     (w, scratch, rev, rlv, vol, si, sj, sk, Re_thetat_eq) \
+\
 gammaRetheta%GammaRethetaSource(w, scratch, rev, rlv, vol, si, sj, sk, d2wall) > \
                                (w, scratch, rev, rlv, vol, si, sj, sk, d2wall) \
 \

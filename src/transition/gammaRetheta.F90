@@ -75,7 +75,7 @@ contains
             w(i, j, k, ivz)/U*dU_dz
 
         Tu = 100.0 * sqrt(2*w(i, j, k, itu1)/3) / U
-        Tu = max(Tu, 0.027) ! clip for numerical robustness
+        ! Tu = max(Tu, 0.027) ! clip for numerical robustness
 
 
         ! Now we need to solve for theta through Newton's method. The number of iterations is hard-coded so tapenade is 
@@ -83,7 +83,7 @@ contains
         thetat = 0.01
         do n = 1, 10
             lambda = w(i, j, k, irho)*thetat**2 / rlv(i, j, k) * dU_ds
-            lambda = max(min(lambda, 0.1), -0.1) ! clip for numerical robustness
+            ! lambda = max(min(lambda, 0.1), -0.1) ! clip for numerical robustness
 
             ! compute F function
             F1 = 1.0 + 0.275*(1.0 - exp(-35.0 * lambda))*exp(-(Tu/0.5))
@@ -110,27 +110,32 @@ contains
                 residum_old = residum
                 thetat_old = thetat
                 thetat = 0.5*thetat
-                cycle
+            else
+
+                ! if the residum is basically 0, we cycle until we reach the end. (we cant drop out because tapenade would be unable to
+                ! differentiate it)
+                if ( abs(residum) .gt. 1e-9) then
+                    ! cycle
+                    thetat_new = (thetat_old*residum - thetat*residum_old) / (residum - residum_old)
+                else
+                    thetat_new = thetat
+                end if
+
+                ! compute next step (secant method)
+                ! thetat_new = (thetat_old*residum - thetat*residum_old) / (residum - residum_old)
+
+                ! save values for next iteration
+                residum_old = residum
+                thetat_old = thetat
+                thetat = thetat_new
+                 
+                ! TODO: make sure this still works after getting rid of 'cycle'
             end if
-
-            ! if the residum is basically 0, we cycle until we reach the end. (we cant drop out because tapenade would be unable to
-            ! differentiate it)
-            if ( abs(residum) .lt. 1e-9) then
-                cycle
-            end if
-
-            ! compute next step (secant method)
-            thetat_new = (thetat_old*residum - thetat*residum_old) / (residum - residum_old)
-
-            ! save values for next iteration
-            residum_old = residum
-            thetat_old = thetat
-            thetat = thetat_new
 
         end do
 
         ! save result in output-variable
-        Re_thetat_eq = max(Re_thetat_eq_1, 20.0) ! clip for numerical robustness
+        ! Re_thetat_eq = max(Re_thetat_eq_1, 20.0) ! clip for numerical robustness
 
         ! print *, 'thetat, lambda, Re_thetat_eq', thetat, lambda, Re_thetat_eq
 
