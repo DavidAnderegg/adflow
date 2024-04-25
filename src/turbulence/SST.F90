@@ -42,28 +42,6 @@ contains
         ! Alloc central jacobian memory
         allocate (qq(2:il, 2:jl, 2:kl, 2, 2))
 
-        ! Advection and unsteady terms
-        select case (transitionModel) 
-        case (noTransitionModel)
-
-            call turbAdvection((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
-            call unsteadyTurbTerm((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
-
-
-        case (gammaRetheta)
-            call turbAdvection(&
-                (/itu1,itu2,iTransition1,iTransition2/), &
-                (/idvt,idvt+1,isTransition1,isTransition2/), &
-                1 &! dummy argument
-            )
-            call unsteadyTurbTerm(&
-                (/itu1,itu2,iTransition1,iTransition2/), &
-                (/idvt,idvt+1,isTransition1,isTransition2/), &
-                1 &! dummy argument
-            )
-        end select
-
-
         ! run transition Model if desired
         select case (transitionModel) 
         case (gammaRetheta)
@@ -71,6 +49,17 @@ contains
             call prodWmag2(2, il, 2, jl, 2, kl, iVorticity)
 
             call GammaRethetaSource
+            call turbAdvection(&
+                (/iTransition1,iTransition2/), &
+                (/isTransition1,isTransition2/), &
+                1 &! dummy argument
+            )
+            call unsteadyTurbTerm(&
+                (/iTransition1,iTransition2/), &
+                (/isTransition1,isTransition2/), &
+                1 &! dummy argument
+            )
+
             call GammaRethetaViscous
             call GammaRethetaResScale
         end select
@@ -95,6 +84,9 @@ contains
 
         ! Source Terms
         call SSTSource
+
+        call turbAdvection((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
+        call unsteadyTurbTerm((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
 
         ! Viscous Terms
         call SSTViscous
@@ -125,20 +117,6 @@ contains
 
         implicit none
 
-        ! advection terms
-        select case(transitionModel)
-        case (noTransitionModel)
-             call turbAdvection_d((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
-            !call unsteadyTurbTerm_d((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
-
-        case (gammaRetheta)
-            call turbAdvection_d(&
-                (/itu1,itu2,iTransition1,iTransition2/), &
-                (/idvt,idvt+1,isTransition1,isTransition2/), &
-                1 &! dummy argument
-            )
-        end select
-
         ! Run the transition model
         select case (transitionModel) 
         case (gammaRetheta)
@@ -146,6 +124,11 @@ contains
             call prodWmag2_d(2, il, 2, jl, 2, kl, iVorticity)
 
             call GammaRethetaSource_d
+            call turbAdvection_d(&
+                (/iTransition1,iTransition2/), &
+                (/isTransition1,isTransition2/), &
+                1 &! dummy argument
+            )
             call GammaRethetaViscous_d
             call GammaRethetaResScale_d
         end select
@@ -165,6 +148,8 @@ contains
         end select
 
         call SSTSource_d
+         call turbAdvection_d((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
+        !call unsteadyTurbTerm_d((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
         call SSTViscous_d
         call SSTResScale_d
 
