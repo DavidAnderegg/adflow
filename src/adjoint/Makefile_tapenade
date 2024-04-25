@@ -195,6 +195,12 @@ turbutils%prodWmag2(w, vol, si, sj, sk, scratch, timeref) > \
 turbutils%strainNorm2(w, vol, si, sj, sk, scratch) > \
                      (w, vol, si, sj, sk, scratch) \
 \
+utils%smoothMin(g1, g2) > \
+              (g1, g2) \
+\
+utils%smoothMax(g1, g2) > \
+              (g1, g2) \
+\
 sa%saSource(w, rlv, vol, si, sj, sk, timeRef, d2wall) > \
            (w, rlv, vol, si, sj, sk, timeREf, scratch) \
 \

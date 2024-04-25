@@ -1668,6 +1668,74 @@ contains
 &              'no idea how to convert this time to si units')
     end select
   end subroutine sivelocity
+
+  real(kind=realtype) function smoothmax(g1, g2, phi)
+    use constants
+    implicit none
+    real(kind=realtype), intent(in) :: g1, g2, phi
+    real(kind=realtype) :: a, b, p_switch
+    intrinsic max
+    intrinsic min
+    intrinsic abs
+    intrinsic log
+    intrinsic exp
+    real(kind=realtype) :: abs0
+    p_switch = 1e-15
+    if (g1 .lt. g2) then
+      a = g2
+    else
+      a = g1
+    end if
+    if (g1 .gt. g2) then
+      b = g2
+    else
+      b = g1
+    end if
+    if (a - b .ge. 0.) then
+      abs0 = a - b
+    else
+      abs0 = -(a-b)
+    end if
+    if (abs0 .gt. -(log(phi*p_switch)/phi)) then
+      smoothmax = a
+    else
+      smoothmax = a + log(1.0+exp(phi*(b-a)))/phi
+    end if
+  end function smoothmax
+
+  real(kind=realtype) function smoothmin(g1, g2, phi)
+    use constants
+    implicit none
+    real(kind=realtype), intent(in) :: g1, g2, phi
+    real(kind=realtype) :: a, b, p_switch
+    intrinsic max
+    intrinsic min
+    intrinsic abs
+    intrinsic log
+    intrinsic exp
+    real(kind=realtype) :: abs0
+    p_switch = 1e-15
+    if (g1 .lt. g2) then
+      a = g2
+    else
+      a = g1
+    end if
+    if (g1 .gt. g2) then
+      b = g2
+    else
+      b = g1
+    end if
+    if (a - b .ge. 0.) then
+      abs0 = a - b
+    else
+      abs0 = -(a-b)
+    end if
+    if (abs0 .gt. -(log(phi*p_switch)/phi)) then
+      smoothmin = b
+    else
+      smoothmin = b + log(1.0+exp(-(phi*(a-b))))/(-phi)
+    end if
+  end function smoothmin
 ! ----------------------------------------------------------------------
 !                                                                      |
 !                    no tapenade routine below this line               |

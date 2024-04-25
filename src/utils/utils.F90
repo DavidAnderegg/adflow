@@ -2038,6 +2038,49 @@ contains
 
     end subroutine siVelocity
 
+    real(kind=realType) function smoothMax(g1, g2, phi)
+
+        use constants
+
+        implicit none
+
+        real(kind=realType), intent(in) :: g1, g2, phi
+        real(kind=realType) :: a, b, p_switch
+
+        p_switch = 1e-15
+        a = max(g1, g2)
+        b = min(g1, g2)
+
+        if (abs(a - b) > -log(phi * p_switch)/phi) then
+            smoothMax = a
+        else
+            smoothMax = a + log(1.0 + exp(phi*(b-a)))/phi
+        end if
+
+    end function smoothMax
+
+    real(kind=realType) function smoothMin(g1, g2, phi)
+
+        use constants
+
+        implicit none
+
+        real(kind=realType), intent(in) :: g1, g2, phi
+        real(kind=realType) :: a, b, p_switch
+
+        p_switch = 1e-15
+        a = max(g1, g2)
+        b = min(g1, g2)
+
+        if (abs(a - b) > -log(phi * p_switch)/phi) then
+            smoothMin = b
+        else
+            smoothMin = b + log(1.0 + exp(-phi*(a-b)))/(-phi)
+        end if
+
+    end function smoothMin
+
+
     ! ----------------------------------------------------------------------
     !                                                                      |
     !                    No Tapenade Routine below this line               |

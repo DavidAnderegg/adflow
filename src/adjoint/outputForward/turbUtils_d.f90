@@ -2042,6 +2042,7 @@ nadvloopspectral:do ii=1,nadv
     use turbmod
     use flowvarrefstate, only : timeref, timerefd
     use inputphysics, only : use2003sst
+    use utils_d, only : smoothmax, smoothmax_d
     implicit none
 ! input variables
     integer(kind=inttype) :: ibeg, iend, jbeg, jend, kbeg, kend
@@ -2052,10 +2053,7 @@ nadvloopspectral:do ii=1,nadv
     real(kind=realtype) :: t1, t2, arg2, f2, vortmag
     real(kind=realtype) :: t1d, t2d, arg2d, f2d, vortmagd
     intrinsic sqrt
-    intrinsic max
     intrinsic tanh
-    real(kind=realtype) :: max1
-    real(kind=realtype) :: max1d
     real(kind=realtype) :: result1
     real(kind=realtype) :: result1d
     real(kind=realtype) :: arg1
@@ -2107,13 +2105,7 @@ nadvloopspectral:do ii=1,nadv
 &           , j, k, irho)+temp2*wd(i, j, k, itu2))+temp3*2*temp0*d2walld&
 &           (i, j, k)))/temp4
           t2 = 500.0_realtype*temp5
-          if (t1 .lt. t2) then
-            arg2d = t2d
-            arg2 = t2
-          else
-            arg2d = t1d
-            arg2 = t1
-          end if
+          arg2d = smoothmax_d(t1, t1d, t2, t2d, 300.0, arg2)
           arg1d = 2*arg2*arg2d
           arg1 = arg2**2
           f2d = (1.0-tanh(arg1)**2)*arg1d
@@ -2129,17 +2121,13 @@ nadvloopspectral:do ii=1,nadv
             vortmagd = scratchd(i, j, k, iprodalt)/(2.0*temp4)
           end if
           vortmag = temp4
-          if (rssta1*w(i, j, k, itu2) .lt. f2*vortmag) then
-            max1d = vortmag*f2d + f2*vortmagd
-            max1 = f2*vortmag
-          else
-            max1d = rssta1*wd(i, j, k, itu2)
-            max1 = rssta1*w(i, j, k, itu2)
-          end if
+          result1d = smoothmax_d(rssta1*w(i, j, k, itu2), rssta1*wd(i, j&
+&           , k, itu2), f2*vortmag, vortmag*f2d + f2*vortmagd, 300.0, &
+&           result1)
           temp5 = w(i, j, k, itu1)
-          temp4 = w(i, j, k, irho)/max1
-          revd(i, j, k) = rssta1*(temp5*(wd(i, j, k, irho)-temp4*max1d)/&
-&           max1+temp4*wd(i, j, k, itu1))
+          temp4 = w(i, j, k, irho)/result1
+          revd(i, j, k) = rssta1*(temp5*(wd(i, j, k, irho)-temp4*&
+&           result1d)/result1+temp4*wd(i, j, k, itu1))
           rev(i, j, k) = rssta1*(temp4*temp5)
         end do
       end do
@@ -2159,6 +2147,7 @@ nadvloopspectral:do ii=1,nadv
     use turbmod
     use flowvarrefstate, only : timeref
     use inputphysics, only : use2003sst
+    use utils_d, only : smoothmax
     implicit none
 ! input variables
     integer(kind=inttype) :: ibeg, iend, jbeg, jend, kbeg, kend
@@ -2168,9 +2157,7 @@ nadvloopspectral:do ii=1,nadv
     integer(kind=inttype) :: i, j, k, ii, isize, jsize, ksize
     real(kind=realtype) :: t1, t2, arg2, f2, vortmag
     intrinsic sqrt
-    intrinsic max
     intrinsic tanh
-    real(kind=realtype) :: max1
     real(kind=realtype) :: result1
     real(kind=realtype) :: arg1
 ! compute the vorticity squared in the cell centers. the reason
@@ -2194,23 +2181,17 @@ nadvloopspectral:do ii=1,nadv
 &           k))
           t2 = 500.0_realtype*rlv(i, j, k)/(w(i, j, k, irho)*w(i, j, k, &
 &           itu2)*d2wall(i, j, k)**2)
-          if (t1 .lt. t2) then
-            arg2 = t2
-          else
-            arg2 = t1
-          end if
+          arg2 = smoothmax(t1, t2, 300.0)
           arg1 = arg2**2
           f2 = tanh(arg1)
 ! and compute the eddy viscosity.
 ! same definition as in
 ! note that https://www.cfd-online.com/wiki/sst_k-omega_model utilizes the strain and not the vorticity
           vortmag = sqrt(scratch(i, j, k, iprodalt))
-          if (rssta1*w(i, j, k, itu2) .lt. f2*vortmag) then
-            max1 = f2*vortmag
-          else
-            max1 = rssta1*w(i, j, k, itu2)
-          end if
-          rev(i, j, k) = w(i, j, k, irho)*rssta1*w(i, j, k, itu1)/max1
+          result1 = smoothmax(rssta1*w(i, j, k, itu2), f2*vortmag, 300.0&
+&           )
+          rev(i, j, k) = w(i, j, k, irho)*rssta1*w(i, j, k, itu1)/&
+&           result1
         end do
       end do
     end do

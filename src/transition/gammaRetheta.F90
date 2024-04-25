@@ -211,7 +211,7 @@ contains
                             F_turb * (rLMce2 * w(i, j, k, iTransition1) - 1.0)
                             
                         P_thetat = rLMcthetat * w(i, j, k, irho) / T * (Re_thetat_eq - w(i, j, k, iTransition2)) * &
-                            (1.0 - F_theta_t)
+                            (1.0 - F_theta_t) ! somewhere here is the problem regarding partials not matching
 
                         scratch(i, j, k, isTransition1) = (P_gamma - E_gamma) * rhoi
                         scratch(i, j, k, isTransition2) = P_thetat * rhoi

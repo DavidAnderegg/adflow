@@ -1783,6 +1783,138 @@ contains
 &              'no idea how to convert this time to si units')
     end select
   end subroutine sivelocity
+
+!  differentiation of smoothmax in forward (tangent) mode (with options i4 dr8 r8):
+!   variations   of useful results: smoothmax
+!   with respect to varying inputs: g1 g2
+!   rw status of diff variables: g1:in g2:in smoothmax:out
+  real(kind=realtype) function smoothmax_d(g1, g1d, g2, g2d, phi, &
+&   smoothmax)
+    use constants
+    implicit none
+    real(kind=realtype), intent(in) :: g1, g2, phi
+    real(kind=realtype), intent(in) :: g1d, g2d
+    real(kind=realtype) :: a, b, p_switch
+    real(kind=realtype) :: ad, bd
+    intrinsic max
+    intrinsic min
+    intrinsic abs
+    intrinsic log
+    intrinsic exp
+    real(kind=realtype) :: abs0
+    real(kind=realtype) :: arg1
+    real(kind=realtype) :: arg1d
+    real(kind=realtype) :: arg2
+    real(kind=realtype) :: arg2d
+    real(kind=realtype) :: smoothmax
+    p_switch = 1e-15
+    if (g1 .lt. g2) then
+      ad = g2d
+      a = g2
+    else
+      ad = g1d
+      a = g1
+    end if
+    if (g1 .gt. g2) then
+      bd = g2d
+      b = g2
+    else
+      bd = g1d
+      b = g1
+    end if
+    if (a - b .ge. 0.) then
+      abs0 = a - b
+    else
+      abs0 = -(a-b)
+    end if
+    if (abs0 .gt. -(log(phi*p_switch)/phi)) then
+      smoothmax_d = ad
+      smoothmax = a
+    else
+      arg1d = phi*(bd-ad)
+      arg1 = phi*(b-a)
+      arg2d = exp(arg1)*arg1d
+      arg2 = 1.0 + exp(arg1)
+      smoothmax_d = ad + arg2d/(phi*arg2)
+      smoothmax = a + log(arg2)/phi
+    end if
+  end function smoothmax_d
+
+  real(kind=realtype) function smoothmax(g1, g2, phi)
+    use constants
+    implicit none
+    real(kind=realtype), intent(in) :: g1, g2, phi
+    real(kind=realtype) :: a, b, p_switch
+    intrinsic max
+    intrinsic min
+    intrinsic abs
+    intrinsic log
+    intrinsic exp
+    real(kind=realtype) :: abs0
+    real(kind=realtype) :: arg1
+    real(kind=realtype) :: arg2
+    p_switch = 1e-15
+    if (g1 .lt. g2) then
+      a = g2
+    else
+      a = g1
+    end if
+    if (g1 .gt. g2) then
+      b = g2
+    else
+      b = g1
+    end if
+    if (a - b .ge. 0.) then
+      abs0 = a - b
+    else
+      abs0 = -(a-b)
+    end if
+    if (abs0 .gt. -(log(phi*p_switch)/phi)) then
+      smoothmax = a
+    else
+      arg1 = phi*(b-a)
+      arg2 = 1.0 + exp(arg1)
+      smoothmax = a + log(arg2)/phi
+    end if
+  end function smoothmax
+
+  real(kind=realtype) function smoothmin(g1, g2, phi)
+    use constants
+    implicit none
+    real(kind=realtype), intent(in) :: g1, g2, phi
+    real(kind=realtype) :: a, b, p_switch
+    intrinsic max
+    intrinsic min
+    intrinsic abs
+    intrinsic log
+    intrinsic exp
+    real(kind=realtype) :: abs0
+    real(kind=realtype) :: arg1
+    real(kind=realtype) :: arg2
+    p_switch = 1e-15
+    if (g1 .lt. g2) then
+      a = g2
+    else
+      a = g1
+    end if
+    if (g1 .gt. g2) then
+      b = g2
+    else
+      b = g1
+    end if
+    if (a - b .ge. 0.) then
+      abs0 = a - b
+    else
+      abs0 = -(a-b)
+    end if
+    if (abs0 .gt. -(log(phi*p_switch)/phi)) then
+      smoothmin = b
+    else
+      arg1 = -(phi*(a-b))
+      arg2 = 1.0 + exp(arg1)
+      smoothmin = b + log(arg2)/(-phi)
+    end if
+  end function smoothmin
 ! ----------------------------------------------------------------------
 !                                                                      |
 !                    no tapenade routine below this line               |

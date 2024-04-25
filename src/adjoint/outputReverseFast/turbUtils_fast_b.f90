@@ -1333,6 +1333,7 @@ nadvloopspectral:do ii=1,nadv
     use turbmod
     use flowvarrefstate, only : timeref
     use inputphysics, only : use2003sst
+    use utils_fast_b, only : smoothmax
     implicit none
 ! input variables
     integer(kind=inttype) :: ibeg, iend, jbeg, jend, kbeg, kend
@@ -1343,9 +1344,10 @@ nadvloopspectral:do ii=1,nadv
     real(kind=realtype) :: t1, t2, arg2, f2, vortmag
     intrinsic mod
     intrinsic sqrt
-    intrinsic max
     intrinsic tanh
-    real(kind=realtype) :: max1
+    real(kind=realtype) :: arg1
+    real(kind=realtype) :: arg20
+    real(kind=realtype) :: result1
 ! compute the vorticity squared in the cell centers. the reason
 ! for computing the vorticity squared is that a routine exists
 ! for it; for the actual eddy viscosity computation the vorticity
@@ -1371,22 +1373,16 @@ nadvloopspectral:do ii=1,nadv
 &       d2wall(i, j, k))
       t2 = 500.0_realtype*rlv(i, j, k)/(w(i, j, k, irho)*w(i, j, k, itu2&
 &       )*d2wall(i, j, k)**2)
-      if (t1 .lt. t2) then
-        arg2 = t2
-      else
-        arg2 = t1
-      end if
+      arg2 = smoothmax(t1, t2, 300.0)
       f2 = tanh(arg2**2)
 ! and compute the eddy viscosity.
 ! same definition as in
 ! note that https://www.cfd-online.com/wiki/sst_k-omega_model utilizes the strain and not the vorticity
       vortmag = sqrt(scratch(i, j, k, iprodalt))
-      if (rssta1*w(i, j, k, itu2) .lt. f2*vortmag) then
-        max1 = f2*vortmag
-      else
-        max1 = rssta1*w(i, j, k, itu2)
-      end if
-      rev(i, j, k) = w(i, j, k, irho)*rssta1*w(i, j, k, itu1)/max1
+      arg1 = rssta1*w(i, j, k, itu2)
+      arg20 = f2*vortmag
+      result1 = smoothmax(arg1, arg20, 300.0)
+      rev(i, j, k) = w(i, j, k, irho)*rssta1*w(i, j, k, itu1)/result1
     end do
   end subroutine ssteddyviscosity
 

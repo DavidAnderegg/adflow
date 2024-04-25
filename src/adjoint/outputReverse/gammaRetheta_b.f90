@@ -6,422 +6,6 @@ module gammarethetamodel_b
   implicit none
 
 contains
-!  differentiation of solve_local_re_thetat_eq in reverse (adjoint) mode (with options noisize i4 dr8 r8):
-!   gradient     of useful results: *w re_thetat_eq
-!   with respect to varying inputs: *w
-!   plus diff mem management of: w:in
-  subroutine solve_local_re_thetat_eq_b(re_thetat_eq, re_thetat_eqd, i, &
-&   j, k)
-    use blockpointers
-    use constants
-    use paramturb
-    implicit none
-! input/output variables
-    integer(kind=inttype), intent(in) :: i, j, k
-    real(kind=realtype) :: re_thetat_eq
-    real(kind=realtype) :: re_thetat_eqd
-! local variables
-    real(kind=realtype) :: u, u_inv, fact, du_dx, du_dy, du_dz, du_ds, &
-&   tu, f1, f2, f3, f
-    real(kind=realtype) :: ud, u_invd, du_dxd, du_dyd, du_dzd, du_dsd, &
-&   tud, f1d, f2d, f3d, fd
-    real(kind=realtype) :: dudx, dudy, dudz, dvdx, dvdy, dvdz, dwdx, &
-&   dwdy, dwdz
-    real(kind=realtype) :: dudxd, dudyd, dudzd, dvdxd, dvdyd, dvdzd, &
-&   dwdxd, dwdyd, dwdzd
-    real(kind=realtype) :: lambda, thetat, residum, thetat_old, &
-&   residum_old, thetat_new
-    real(kind=realtype) :: lambdad, thetatd, residumd, thetat_oldd, &
-&   residum_oldd, thetat_newd
-    real(kind=realtype) :: re_thetat_eq_1, re_thetat_eq_2
-    real(kind=realtype) :: re_thetat_eq_1d, re_thetat_eq_2d
-    integer(kind=inttype) :: n
-    intrinsic sqrt
-    intrinsic max
-    intrinsic min
-    intrinsic exp
-    intrinsic abs
-    real(kind=realtype) :: x1
-    real(kind=realtype) :: x1d
-    real(kind=realtype) :: abs0
-    real(kind=realtype) :: temp
-    real(kind=realtype) :: temp0
-    real(kind=realtype) :: temp1
-    real(kind=realtype) :: temp2
-    real(kind=realtype) :: tempd
-    real(kind=realtype) :: tempd0
-    real(kind=realtype) :: tempd1
-    real(kind=realtype) :: tempd2
-    integer :: branch
-    u = sqrt(w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, ivz)**&
-&     2)
-    u_inv = 1.0/u
-! compute the gradient of u in the cell center. use is made
-! of the fact that the surrounding normals sum up to zero,
-! such that the cell i,j,k does not give a contribution.
-! since the gradient is scaled by a factor of 2*vol, we need to account for that
-    fact = 1.0/(vol(i, j, k)*2.0)
-    dudx = (w(i+1, j, k, ivx)*si(i, j, k, 1)-w(i-1, j, k, ivx)*si(i-1, j&
-&     , k, 1)+w(i, j+1, k, ivx)*sj(i, j, k, 1)-w(i, j-1, k, ivx)*sj(i, j&
-&     -1, k, 1)+w(i, j, k+1, ivx)*sk(i, j, k, 1)-w(i, j, k-1, ivx)*sk(i&
-&     , j, k-1, 1))*fact
-    dudy = (w(i+1, j, k, ivx)*si(i, j, k, 2)-w(i-1, j, k, ivx)*si(i-1, j&
-&     , k, 2)+w(i, j+1, k, ivx)*sj(i, j, k, 2)-w(i, j-1, k, ivx)*sj(i, j&
-&     -1, k, 2)+w(i, j, k+1, ivx)*sk(i, j, k, 2)-w(i, j, k-1, ivx)*sk(i&
-&     , j, k-1, 2))*fact
-    dudz = (w(i+1, j, k, ivx)*si(i, j, k, 3)-w(i-1, j, k, ivx)*si(i-1, j&
-&     , k, 3)+w(i, j+1, k, ivx)*sj(i, j, k, 3)-w(i, j-1, k, ivx)*sj(i, j&
-&     -1, k, 3)+w(i, j, k+1, ivx)*sk(i, j, k, 3)-w(i, j, k-1, ivx)*sk(i&
-&     , j, k-1, 3))*fact
-! idem for the gradient of v.
-    dvdx = (w(i+1, j, k, ivy)*si(i, j, k, 1)-w(i-1, j, k, ivy)*si(i-1, j&
-&     , k, 1)+w(i, j+1, k, ivy)*sj(i, j, k, 1)-w(i, j-1, k, ivy)*sj(i, j&
-&     -1, k, 1)+w(i, j, k+1, ivy)*sk(i, j, k, 1)-w(i, j, k-1, ivy)*sk(i&
-&     , j, k-1, 1))*fact
-    dvdy = (w(i+1, j, k, ivy)*si(i, j, k, 2)-w(i-1, j, k, ivy)*si(i-1, j&
-&     , k, 2)+w(i, j+1, k, ivy)*sj(i, j, k, 2)-w(i, j-1, k, ivy)*sj(i, j&
-&     -1, k, 2)+w(i, j, k+1, ivy)*sk(i, j, k, 2)-w(i, j, k-1, ivy)*sk(i&
-&     , j, k-1, 2))*fact
-    dvdz = (w(i+1, j, k, ivy)*si(i, j, k, 3)-w(i-1, j, k, ivy)*si(i-1, j&
-&     , k, 3)+w(i, j+1, k, ivy)*sj(i, j, k, 3)-w(i, j-1, k, ivy)*sj(i, j&
-&     -1, k, 3)+w(i, j, k+1, ivy)*sk(i, j, k, 3)-w(i, j, k-1, ivy)*sk(i&
-&     , j, k-1, 3))*fact
-! and for the gradient of w.
-    dwdx = (w(i+1, j, k, ivz)*si(i, j, k, 1)-w(i-1, j, k, ivz)*si(i-1, j&
-&     , k, 1)+w(i, j+1, k, ivz)*sj(i, j, k, 1)-w(i, j-1, k, ivz)*sj(i, j&
-&     -1, k, 1)+w(i, j, k+1, ivz)*sk(i, j, k, 1)-w(i, j, k-1, ivz)*sk(i&
-&     , j, k-1, 1))*fact
-    dwdy = (w(i+1, j, k, ivz)*si(i, j, k, 2)-w(i-1, j, k, ivz)*si(i-1, j&
-&     , k, 2)+w(i, j+1, k, ivz)*sj(i, j, k, 2)-w(i, j-1, k, ivz)*sj(i, j&
-&     -1, k, 2)+w(i, j, k+1, ivz)*sk(i, j, k, 2)-w(i, j, k-1, ivz)*sk(i&
-&     , j, k-1, 2))*fact
-    dwdz = (w(i+1, j, k, ivz)*si(i, j, k, 3)-w(i-1, j, k, ivz)*si(i-1, j&
-&     , k, 3)+w(i, j+1, k, ivz)*sj(i, j, k, 3)-w(i, j-1, k, ivz)*sj(i, j&
-&     -1, k, 3)+w(i, j, k+1, ivz)*sk(i, j, k, 3)-w(i, j, k-1, ivz)*sk(i&
-&     , j, k-1, 3))*fact
-    du_dx = u_inv*(w(i, j, k, ivx)*dudx+w(i, j, k, ivy)*dudy+w(i, j, k, &
-&     ivz)*dudz)
-    du_dy = u_inv*(w(i, j, k, ivx)*dvdx+w(i, j, k, ivy)*dvdy+w(i, j, k, &
-&     ivz)*dvdz)
-    du_dz = u_inv*(w(i, j, k, ivx)*dwdx+w(i, j, k, ivy)*dwdy+w(i, j, k, &
-&     ivz)*dwdz)
-    du_ds = w(i, j, k, ivx)/u*du_dx + w(i, j, k, ivy)/u*du_dy + w(i, j, &
-&     k, ivz)/u*du_dz
-    tu = 100.0*sqrt(2*w(i, j, k, itu1)/3)/u
-    if (tu .lt. 0.027) then
-      tu = 0.027
-      call pushcontrol1b(0)
-    else
-      call pushcontrol1b(1)
-      tu = tu
-    end if
-! now we need to solve for theta through newton's method. the number of iterations is hard-coded so tapenade is 
-! able to differentiate it
-    thetat = 0.01
-    do n=1,10
-      call pushreal8(lambda)
-      lambda = w(i, j, k, irho)*thetat**2/rlv(i, j, k)*du_ds
-      if (lambda .gt. 0.1) then
-        x1 = 0.1
-        call pushcontrol1b(0)
-      else
-        x1 = lambda
-        call pushcontrol1b(1)
-      end if
-      if (x1 .lt. -0.1) then
-        lambda = -0.1
-        call pushcontrol1b(0)
-      else
-        lambda = x1
-        call pushcontrol1b(1)
-      end if
-! compute f function
-      f1 = 1.0 + 0.275*(1.0-exp(-(35.0*lambda)))*exp(-(tu/0.5))
-      if (f1 .lt. 1.0) then
-        f2 = 1.0
-        call pushcontrol1b(0)
-      else
-        f2 = f1
-        call pushcontrol1b(1)
-      end if
-      f3 = 1.0 - (-(12.986*lambda)-123.66*lambda**2-405.689*lambda**3)*&
-&       exp(-((tu/1.5)**1.5))
-      if (f2 .gt. f3) then
-        call pushreal8(f)
-        f = f3
-        call pushcontrol1b(0)
-      else
-        call pushreal8(f)
-        f = f2
-        call pushcontrol1b(1)
-      end if
-      if (tu .gt. 1.3) then
-        re_thetat_eq_1 = 331.50*(tu-0.5658)**(-0.671)*f
-        call pushcontrol1b(0)
-      else
-        re_thetat_eq_1 = (1173.51-589.428*tu+0.2196*tu**(-2))*f
-        call pushcontrol1b(1)
-      end if
-      re_thetat_eq_2 = w(i, j, k, irho)*u*thetat/rlv(i, j, k)
-! residum which should go to 0
-      call pushreal8(residum)
-      residum = re_thetat_eq_1 - re_thetat_eq_2
-! print *, 'iteration, thetat, residum, re_thetat_eq_1', n, thetat, residum, re_thetat_eq_1
-! if we are in the first iteration, we need to kickstart the secant method first
-      if (n .eq. 1) then
-        residum_old = residum
-        thetat_old = thetat
-        call pushreal8(thetat)
-        thetat = 0.5*thetat
-        call pushcontrol2b(1)
-      else
-        if (residum .ge. 0.) then
-          abs0 = residum
-        else
-          abs0 = -residum
-        end if
-! if the residum is basically 0, we cycle until we reach the end. (we cant drop out because tapenade would be unable to
-! differentiate it)
-        if (abs0 .lt. 1e-9) then
-          call pushcontrol2b(0)
-        else
-! compute next step (secant method)
-          thetat_new = (thetat_old*residum-thetat*residum_old)/(residum-&
-&           residum_old)
-! save values for next iteration
-          call pushreal8(residum_old)
-          residum_old = residum
-          call pushreal8(thetat_old)
-          thetat_old = thetat
-          call pushreal8(thetat)
-          thetat = thetat_new
-          call pushcontrol2b(2)
-        end if
-      end if
-    end do
-    if (re_thetat_eq_1 .lt. 20.0) then
-      re_thetat_eq_1d = 0.0_8
-    else
-      re_thetat_eq_1d = re_thetat_eqd
-    end if
-    tud = 0.0_8
-    thetat_oldd = 0.0_8
-    ud = 0.0_8
-    du_dsd = 0.0_8
-    residum_oldd = 0.0_8
-    thetatd = 0.0_8
-    do n=10,1,-1
-      call popcontrol2b(branch)
-      if (branch .eq. 0) then
-        residumd = 0.0_8
-      else if (branch .eq. 1) then
-        call popreal8(thetat)
-        thetatd = 0.5*thetatd + thetat_oldd
-        residumd = residum_oldd
-        thetat_oldd = 0.0_8
-        residum_oldd = 0.0_8
-      else
-        call popreal8(thetat)
-        thetat_newd = thetatd
-        call popreal8(thetat_old)
-        call popreal8(residum_old)
-        tempd = thetat_newd/(residum-residum_old)
-        thetatd = thetat_oldd - residum_old*tempd
-        thetat_oldd = residum*tempd
-        tempd1 = -((thetat_old*residum-thetat*residum_old)*tempd/(&
-&         residum-residum_old))
-        residumd = residum_oldd + thetat_old*tempd + tempd1
-        residum_oldd = -(thetat*tempd) - tempd1
-      end if
-      call popreal8(residum)
-      re_thetat_eq_1d = re_thetat_eq_1d + residumd
-      re_thetat_eq_2d = -residumd
-      wd(i, j, k, irho) = wd(i, j, k, irho) + u*thetat*re_thetat_eq_2d/&
-&       rlv(i, j, k)
-      tempd = w(i, j, k, irho)*re_thetat_eq_2d/rlv(i, j, k)
-      ud = ud + thetat*tempd
-      thetatd = thetatd + u*tempd
-      call popcontrol1b(branch)
-      if (branch .eq. 0) then
-        tud = tud - 0.671*(tu-0.5658)**(-1.671)*f*331.50*re_thetat_eq_1d
-        fd = (tu-0.5658)**(-0.671)*331.50*re_thetat_eq_1d
-      else
-        temp2 = 0.2196/(tu*tu)
-        tud = tud - (2*temp2*f/tu+589.428*f)*re_thetat_eq_1d
-        fd = (temp2-589.428*tu+1173.51)*re_thetat_eq_1d
-      end if
-      call popcontrol1b(branch)
-      if (branch .eq. 0) then
-        call popreal8(f)
-        f3d = fd
-        f2d = 0.0_8
-      else
-        call popreal8(f)
-        f2d = fd
-        f3d = 0.0_8
-      end if
-      temp2 = -((tu/1.5)**1.5)
-      tempd1 = -(exp(temp2)*f3d)
-      tud = tud + (tu/1.5)**0.5*exp(temp2)*(-(12.986*lambda)-123.66*&
-&       lambda**2-405.689*lambda**3)*f3d
-      lambdad = -((2*lambda*123.66+3*lambda**2*405.689+12.986)*tempd1)
-      call popcontrol1b(branch)
-      if (branch .eq. 0) then
-        f1d = 0.0_8
-      else
-        f1d = f2d
-      end if
-      lambdad = lambdad + 35.0*exp(-(35.0*lambda))*exp(-(tu/0.5))*0.275*&
-&       f1d
-      tud = tud - exp(-(tu/0.5))*(1.0-exp(-(35.0*lambda)))*0.275*f1d/0.5
-      call popcontrol1b(branch)
-      if (branch .eq. 0) then
-        x1d = 0.0_8
-      else
-        x1d = lambdad
-      end if
-      call popcontrol1b(branch)
-      if (branch .eq. 0) then
-        lambdad = 0.0_8
-      else
-        lambdad = x1d
-      end if
-      call popreal8(lambda)
-      wd(i, j, k, irho) = wd(i, j, k, irho) + thetat**2*du_ds*lambdad/&
-&       rlv(i, j, k)
-      tempd = w(i, j, k, irho)*lambdad/rlv(i, j, k)
-      thetatd = thetatd + 2*thetat*du_ds*tempd
-      du_dsd = du_dsd + thetat**2*tempd
-      re_thetat_eq_1d = 0.0_8
-    end do
-    call popcontrol1b(branch)
-    if (branch .eq. 0) tud = 0.0_8
-    temp1 = 2*w(i, j, k, itu1)/3
-    temp0 = sqrt(temp1)
-    tempd = 100.0*tud/u
-    if (.not.temp1 .eq. 0.0_8) wd(i, j, k, itu1) = wd(i, j, k, itu1) + 2&
-&       *tempd/(3*2.0*temp0)
-    ud = ud - temp0*tempd/u
-    wd(i, j, k, ivx) = wd(i, j, k, ivx) + du_dx*du_dsd/u
-    tempd = w(i, j, k, ivx)*du_dsd/u
-    wd(i, j, k, ivy) = wd(i, j, k, ivy) + du_dy*du_dsd/u
-    tempd1 = w(i, j, k, ivy)*du_dsd/u
-    wd(i, j, k, ivz) = wd(i, j, k, ivz) + du_dz*du_dsd/u
-    tempd2 = w(i, j, k, ivz)*du_dsd/u
-    du_dzd = tempd2
-    du_dyd = tempd1
-    du_dxd = tempd
-    temp2 = w(i, j, k, ivz)
-    temp1 = w(i, j, k, ivy)
-    temp0 = w(i, j, k, ivx)
-    u_invd = (temp0*dwdx+temp1*dwdy+temp2*dwdz)*du_dzd
-    tempd0 = u_inv*du_dzd
-    wd(i, j, k, ivx) = wd(i, j, k, ivx) + dwdx*tempd0
-    dwdxd = temp0*tempd0
-    wd(i, j, k, ivy) = wd(i, j, k, ivy) + dwdy*tempd0
-    dwdyd = temp1*tempd0
-    wd(i, j, k, ivz) = wd(i, j, k, ivz) + dwdz*tempd0
-    dwdzd = temp2*tempd0
-    temp2 = w(i, j, k, ivz)
-    temp1 = w(i, j, k, ivy)
-    temp0 = w(i, j, k, ivx)
-    u_invd = u_invd + (temp0*dvdx+temp1*dvdy+temp2*dvdz)*du_dyd
-    tempd0 = u_inv*du_dyd
-    wd(i, j, k, ivx) = wd(i, j, k, ivx) + dvdx*tempd0
-    dvdxd = temp0*tempd0
-    wd(i, j, k, ivy) = wd(i, j, k, ivy) + dvdy*tempd0
-    dvdyd = temp1*tempd0
-    wd(i, j, k, ivz) = wd(i, j, k, ivz) + dvdz*tempd0
-    dvdzd = temp2*tempd0
-    temp2 = w(i, j, k, ivz)
-    temp1 = w(i, j, k, ivy)
-    temp0 = w(i, j, k, ivx)
-    u_invd = u_invd + (temp0*dudx+temp1*dudy+temp2*dudz)*du_dxd
-    ud = ud - du_dz*tempd2/u - du_dy*tempd1/u - du_dx*tempd/u - u_invd/u&
-&     **2
-    tempd0 = u_inv*du_dxd
-    wd(i, j, k, ivx) = wd(i, j, k, ivx) + dudx*tempd0
-    dudxd = temp0*tempd0
-    wd(i, j, k, ivy) = wd(i, j, k, ivy) + dudy*tempd0
-    dudyd = temp1*tempd0
-    wd(i, j, k, ivz) = wd(i, j, k, ivz) + dudz*tempd0
-    dudzd = temp2*tempd0
-    tempd = fact*dwdzd
-    wd(i+1, j, k, ivz) = wd(i+1, j, k, ivz) + si(i, j, k, 3)*tempd
-    wd(i-1, j, k, ivz) = wd(i-1, j, k, ivz) - si(i-1, j, k, 3)*tempd
-    wd(i, j+1, k, ivz) = wd(i, j+1, k, ivz) + sj(i, j, k, 3)*tempd
-    wd(i, j, k+1, ivz) = wd(i, j, k+1, ivz) + sk(i, j, k, 3)*tempd
-    wd(i, j-1, k, ivz) = wd(i, j-1, k, ivz) - sj(i, j-1, k, 3)*tempd
-    wd(i, j, k-1, ivz) = wd(i, j, k-1, ivz) - sk(i, j, k-1, 3)*tempd
-    tempd = fact*dwdyd
-    wd(i+1, j, k, ivz) = wd(i+1, j, k, ivz) + si(i, j, k, 2)*tempd
-    wd(i-1, j, k, ivz) = wd(i-1, j, k, ivz) - si(i-1, j, k, 2)*tempd
-    wd(i, j+1, k, ivz) = wd(i, j+1, k, ivz) + sj(i, j, k, 2)*tempd
-    wd(i, j, k+1, ivz) = wd(i, j, k+1, ivz) + sk(i, j, k, 2)*tempd
-    wd(i, j-1, k, ivz) = wd(i, j-1, k, ivz) - sj(i, j-1, k, 2)*tempd
-    wd(i, j, k-1, ivz) = wd(i, j, k-1, ivz) - sk(i, j, k-1, 2)*tempd
-    tempd = fact*dwdxd
-    wd(i+1, j, k, ivz) = wd(i+1, j, k, ivz) + si(i, j, k, 1)*tempd
-    wd(i-1, j, k, ivz) = wd(i-1, j, k, ivz) - si(i-1, j, k, 1)*tempd
-    wd(i, j+1, k, ivz) = wd(i, j+1, k, ivz) + sj(i, j, k, 1)*tempd
-    wd(i, j, k+1, ivz) = wd(i, j, k+1, ivz) + sk(i, j, k, 1)*tempd
-    wd(i, j-1, k, ivz) = wd(i, j-1, k, ivz) - sj(i, j-1, k, 1)*tempd
-    wd(i, j, k-1, ivz) = wd(i, j, k-1, ivz) - sk(i, j, k-1, 1)*tempd
-    tempd = fact*dvdzd
-    wd(i+1, j, k, ivy) = wd(i+1, j, k, ivy) + si(i, j, k, 3)*tempd
-    wd(i-1, j, k, ivy) = wd(i-1, j, k, ivy) - si(i-1, j, k, 3)*tempd
-    wd(i, j+1, k, ivy) = wd(i, j+1, k, ivy) + sj(i, j, k, 3)*tempd
-    wd(i, j, k+1, ivy) = wd(i, j, k+1, ivy) + sk(i, j, k, 3)*tempd
-    wd(i, j-1, k, ivy) = wd(i, j-1, k, ivy) - sj(i, j-1, k, 3)*tempd
-    wd(i, j, k-1, ivy) = wd(i, j, k-1, ivy) - sk(i, j, k-1, 3)*tempd
-    tempd = fact*dvdyd
-    wd(i+1, j, k, ivy) = wd(i+1, j, k, ivy) + si(i, j, k, 2)*tempd
-    wd(i-1, j, k, ivy) = wd(i-1, j, k, ivy) - si(i-1, j, k, 2)*tempd
-    wd(i, j+1, k, ivy) = wd(i, j+1, k, ivy) + sj(i, j, k, 2)*tempd
-    wd(i, j, k+1, ivy) = wd(i, j, k+1, ivy) + sk(i, j, k, 2)*tempd
-    wd(i, j-1, k, ivy) = wd(i, j-1, k, ivy) - sj(i, j-1, k, 2)*tempd
-    wd(i, j, k-1, ivy) = wd(i, j, k-1, ivy) - sk(i, j, k-1, 2)*tempd
-    tempd = fact*dvdxd
-    wd(i+1, j, k, ivy) = wd(i+1, j, k, ivy) + si(i, j, k, 1)*tempd
-    wd(i-1, j, k, ivy) = wd(i-1, j, k, ivy) - si(i-1, j, k, 1)*tempd
-    wd(i, j+1, k, ivy) = wd(i, j+1, k, ivy) + sj(i, j, k, 1)*tempd
-    wd(i, j, k+1, ivy) = wd(i, j, k+1, ivy) + sk(i, j, k, 1)*tempd
-    wd(i, j-1, k, ivy) = wd(i, j-1, k, ivy) - sj(i, j-1, k, 1)*tempd
-    wd(i, j, k-1, ivy) = wd(i, j, k-1, ivy) - sk(i, j, k-1, 1)*tempd
-    tempd = fact*dudzd
-    wd(i+1, j, k, ivx) = wd(i+1, j, k, ivx) + si(i, j, k, 3)*tempd
-    wd(i-1, j, k, ivx) = wd(i-1, j, k, ivx) - si(i-1, j, k, 3)*tempd
-    wd(i, j+1, k, ivx) = wd(i, j+1, k, ivx) + sj(i, j, k, 3)*tempd
-    wd(i, j, k+1, ivx) = wd(i, j, k+1, ivx) + sk(i, j, k, 3)*tempd
-    wd(i, j-1, k, ivx) = wd(i, j-1, k, ivx) - sj(i, j-1, k, 3)*tempd
-    wd(i, j, k-1, ivx) = wd(i, j, k-1, ivx) - sk(i, j, k-1, 3)*tempd
-    tempd = fact*dudyd
-    wd(i+1, j, k, ivx) = wd(i+1, j, k, ivx) + si(i, j, k, 2)*tempd
-    wd(i-1, j, k, ivx) = wd(i-1, j, k, ivx) - si(i-1, j, k, 2)*tempd
-    wd(i, j+1, k, ivx) = wd(i, j+1, k, ivx) + sj(i, j, k, 2)*tempd
-    wd(i, j, k+1, ivx) = wd(i, j, k+1, ivx) + sk(i, j, k, 2)*tempd
-    wd(i, j-1, k, ivx) = wd(i, j-1, k, ivx) - sj(i, j-1, k, 2)*tempd
-    wd(i, j, k-1, ivx) = wd(i, j, k-1, ivx) - sk(i, j, k-1, 2)*tempd
-    tempd = fact*dudxd
-    wd(i+1, j, k, ivx) = wd(i+1, j, k, ivx) + si(i, j, k, 1)*tempd
-    wd(i-1, j, k, ivx) = wd(i-1, j, k, ivx) - si(i-1, j, k, 1)*tempd
-    wd(i, j+1, k, ivx) = wd(i, j+1, k, ivx) + sj(i, j, k, 1)*tempd
-    wd(i, j, k+1, ivx) = wd(i, j, k+1, ivx) + sk(i, j, k, 1)*tempd
-    wd(i, j-1, k, ivx) = wd(i, j-1, k, ivx) - sj(i, j-1, k, 1)*tempd
-    wd(i, j, k-1, ivx) = wd(i, j, k-1, ivx) - sk(i, j, k-1, 1)*tempd
-    temp = w(i, j, k, ivz)
-    temp0 = w(i, j, k, ivy)
-    temp1 = w(i, j, k, ivx)
-    if (temp1**2 + temp0**2 + temp**2 .eq. 0.0_8) then
-      tempd = 0.0_8
-    else
-      tempd = ud/(2.0*sqrt(temp1**2+temp0**2+temp**2))
-    end if
-    wd(i, j, k, ivx) = wd(i, j, k, ivx) + 2*temp1*tempd
-    wd(i, j, k, ivy) = wd(i, j, k, ivy) + 2*temp0*tempd
-    wd(i, j, k, ivz) = wd(i, j, k, ivz) + 2*temp*tempd
-  end subroutine solve_local_re_thetat_eq_b
-
   subroutine solve_local_re_thetat_eq(re_thetat_eq, i, j, k)
     use blockpointers
     use constants
@@ -440,11 +24,10 @@ contains
     real(kind=realtype) :: re_thetat_eq_1, re_thetat_eq_2
     integer(kind=inttype) :: n
     intrinsic sqrt
+    intrinsic exp
     intrinsic max
     intrinsic min
-    intrinsic exp
     intrinsic abs
-    real(kind=realtype) :: x1
     real(kind=realtype) :: abs0
     u = sqrt(w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, ivz)**&
 &     2)
@@ -501,26 +84,13 @@ contains
     du_ds = w(i, j, k, ivx)/u*du_dx + w(i, j, k, ivy)/u*du_dy + w(i, j, &
 &     k, ivz)/u*du_dz
     tu = 100.0*sqrt(2*w(i, j, k, itu1)/3)/u
-    if (tu .lt. 0.027) then
-      tu = 0.027
-    else
-      tu = tu
-    end if
+! tu = max(tu, 0.027) ! clip for numerical robustness
 ! now we need to solve for theta through newton's method. the number of iterations is hard-coded so tapenade is 
 ! able to differentiate it
     thetat = 0.01
     do n=1,10
       lambda = w(i, j, k, irho)*thetat**2/rlv(i, j, k)*du_ds
-      if (lambda .gt. 0.1) then
-        x1 = 0.1
-      else
-        x1 = lambda
-      end if
-      if (x1 .lt. -0.1) then
-        lambda = -0.1
-      else
-        lambda = x1
-      end if
+! lambda = max(min(lambda, 0.1), -0.1) ! clip for numerical robustness
 ! compute f function
       f1 = 1.0 + 0.275*(1.0-exp(-(35.0*lambda)))*exp(-(tu/0.5))
       if (f1 .lt. 1.0) then
@@ -557,29 +127,35 @@ contains
         end if
 ! if the residum is basically 0, we cycle until we reach the end. (we cant drop out because tapenade would be unable to
 ! differentiate it)
-        if (abs0 .ge. 1e-9) then
-! compute next step (secant method)
+        if (abs0 .gt. 1e-9) then
+! cycle
           thetat_new = (thetat_old*residum-thetat*residum_old)/(residum-&
 &           residum_old)
-! save values for next iteration
-          residum_old = residum
-          thetat_old = thetat
-          thetat = thetat_new
+        else
+          thetat_new = thetat
         end if
+! compute next step (secant method)
+! thetat_new = (thetat_old*residum - thetat*residum_old) / (residum - residum_old)
+! save values for next iteration
+        residum_old = residum
+        thetat_old = thetat
+        thetat = thetat_new
+! todo: make sure this still works after getting rid of 'cycle'
       end if
     end do
-    if (re_thetat_eq_1 .lt. 20.0) then
-      re_thetat_eq = 20.0
-    else
-      re_thetat_eq = re_thetat_eq_1
-    end if
+! save result in output-variable
+! re_thetat_eq = max(re_thetat_eq_1, 20.0) ! clip for numerical robustness
+! print *, 'thetat, lambda, re_thetat_eq', thetat, lambda, re_thetat_eq
+
   end subroutine solve_local_re_thetat_eq
 
 !  differentiation of gammarethetasource in reverse (adjoint) mode (with options noisize i4 dr8 r8):
-!   gradient     of useful results: *rev *w *scratch
-!   with respect to varying inputs: *rev *w *scratch
-!   rw status of diff variables: *rev:incr *w:incr *scratch:in-out
-!   plus diff mem management of: rev:in w:in scratch:in
+!   gradient     of useful results: *rev *w *rlv *scratch *d2wall
+!   with respect to varying inputs: *rev *w *rlv *scratch *d2wall
+!   rw status of diff variables: *rev:incr *w:incr *rlv:incr *scratch:in-out
+!                *d2wall:incr
+!   plus diff mem management of: rev:in w:in rlv:in scratch:in
+!                d2wall:in
   subroutine gammarethetasource_b()
     use blockpointers
     use constants
@@ -589,18 +165,20 @@ contains
     integer(kind=inttype) :: i, j, k
     real(kind=realtype) :: re_thetat_eq, u2, u, lambda_theta, delta, &
 &   f_theta_t, t, r_t, re_theta_c
-    real(kind=realtype) :: re_thetat_eqd, u2d, ud, deltad, f_theta_td, &
-&   td, r_td, re_theta_cd
+    real(kind=realtype) :: u2d, ud, deltad, f_theta_td, td, r_td, &
+&   re_theta_cd
     real(kind=realtype) :: re_s, f_length1, f_length, f_onset1, f_onset&
 &   , f_turb, p_gamma, e_gamma, p_thetat
     real(kind=realtype) :: re_sd, f_length1d, f_lengthd, f_onset1d, &
 &   f_onsetd, f_turbd, p_gammad, e_gammad, p_thetatd
     real(kind=realtype) :: re_omega, f_wake
     real(kind=realtype) :: re_omegad, f_waked
+    real(kind=realtype) :: rhoi, vort
+    real(kind=realtype) :: rhoid, vortd
     intrinsic mod
     intrinsic sqrt
-    intrinsic exp
     intrinsic max
+    intrinsic exp
     intrinsic min
     intrinsic sin
     intrinsic tanh
@@ -608,21 +186,24 @@ contains
     real(kind=realtype) :: x1d
     real(kind=realtype) :: x2
     real(kind=realtype) :: x2d
+    real(kind=realtype) :: x3
+    real(kind=realtype) :: x3d
     real(kind=realtype) :: temp
-    real(kind=realtype) :: tempd
     real(kind=realtype) :: temp0
     real(kind=realtype) :: temp1
+    real(kind=realtype) :: tempd
+    real(kind=realtype) :: tempd0
     real(kind=realtype) :: temp2
     real(kind=realtype) :: temp3
-    real(kind=realtype) :: tempd0
-    real(kind=realtype) :: temp4
     real(kind=realtype) :: tempd1
     real(kind=realtype) :: tempd2
-    real(kind=realtype) :: tempd3
+    real(kind=realtype) :: temp4
     real(kind=realtype) :: temp5
     real(kind=realtype) :: temp6
-    real(kind=realtype) :: tempd4
+    real(kind=realtype) :: tempd3
     real(kind=realtype) :: temp7
+    real(kind=realtype) :: tempd4
+    real(kind=realtype) :: temp8
     real(kind=realtype) :: tempd5
     real(kind=realtype) :: tempd6
     real(kind=realtype) :: tempd7
@@ -633,239 +214,38 @@ contains
       i = mod(ii, nx) + 2
       j = mod(ii/nx, ny) + 2
       k = ii/(nx*ny) + 2
+      rhoi = one/w(i, j, k, irho)
+      x1 = sqrt(scratch(i, j, k, ivorticity))
+      if (x1 .lt. eps) then
+        vort = eps
+        call pushcontrol1b(0)
+      else
+        vort = x1
+        call pushcontrol1b(1)
+      end if
 ! compute re_thetat_eq
-      call solve_local_re_thetat_eq(re_thetat_eq, i, j, k)
       u2 = w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, ivz)**2
       u = sqrt(u2)
       re_omega = w(i, j, k, irho)*w(i, j, k, itu2)*d2wall(i, j, k)**2/&
 &       rlv(i, j, k)
       f_wake = exp(-((re_omega/1e5)**2))
-      delta = 375.0*sqrt(scratch(i, j, k, ivorticity))*w(i, j, k, &
-&       itransition2)*d2wall(i, j, k)/(w(i, j, k, irho)*u)
-      x2 = f_wake*exp(-((d2wall(i, j, k)/delta)**4))
-      if (x2 .lt. 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1&
+      delta = 375.0*vort*w(i, j, k, itransition2)*d2wall(i, j, k)/(w(i, &
+&       j, k, irho)*u)
+      x3 = f_wake*exp(-((d2wall(i, j, k)/delta)**4))
+      if (x3 .lt. 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1&
 &         ))**2) then
-        x1 = 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1))**2
+        x2 = 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1))**2
         call pushcontrol1b(0)
       else
-        x1 = x2
+        x2 = x3
         call pushcontrol1b(1)
       end if
-      if (x1 .gt. 1.0) then
+      if (x2 .gt. 1.0) then
         f_theta_t = 1.0
         call pushcontrol1b(0)
       else
-        f_theta_t = x1
+        f_theta_t = x2
         call pushcontrol1b(1)
-      end if
-      t = 500.0*rlv(i, j, k)/(w(i, j, k, irho)*u2)
-! todo: save this in scratch
-      r_t = w(i, j, k, irho)*w(i, j, k, itu1)/(rlv(i, j, k)*w(i, j, k, &
-&       itu2))
-! todo: save this in scratch
-      re_theta_c = 0.67*w(i, j, k, itransition2) + 24.0*sin(w(i, j, k, &
-&       itransition2)/240.0+0.5) + 14.0
-! todo: save this in scratch
-      re_s = w(i, j, k, irho)*sqrt(scratch(i, j, k, istrain))*d2wall(i, &
-&       j, k)**2/rev(i, j, k)
-      f_length1 = exp(-(0.03*(w(i, j, k, itransition2)-460.0)))
-      f_length = 44.0 - (44.0-(0.5-30000.0*(w(i, j, k, itransition2)-&
-&       596.0)))/(1+f_length1)**(1/6)
-! continue here
-      f_onset1 = sqrt(re_s/(2.6*re_theta_c))
-      f_onset = (tanh(6.0*(f_onset1-1.35))+1.0)/2.0
-      f_turb = (1-f_onset)*exp(-r_t)
-! since we need to divide by rho, rho does not appear here anymore
-! print *, 'source terms: gamma, thetat', scratch(i, j, k, istransition1), scratch(i, j, k, istransition2)
-      p_thetatd = scratchd(i, j, k, istransition2)
-      scratchd(i, j, k, istransition2) = 0.0_8
-      p_gammad = scratchd(i, j, k, istransition1)
-      e_gammad = -scratchd(i, j, k, istransition1)
-      scratchd(i, j, k, istransition1) = 0.0_8
-      temp7 = (-f_theta_t+1.0)/t
-      temp6 = w(i, j, k, irho)
-      tempd6 = (re_thetat_eq-w(i, j, k, itransition2))*rlmcthetat*&
-&       p_thetatd
-      tempd7 = temp6*temp7*rlmcthetat*p_thetatd
-      re_thetat_eqd = tempd7
-      wd(i, j, k, itransition2) = wd(i, j, k, itransition2) - tempd7
-      wd(i, j, k, irho) = wd(i, j, k, irho) + temp7*tempd6
-      tempd5 = temp6*tempd6/t
-      f_theta_td = -tempd5
-      td = -(temp7*tempd5)
-      temp7 = scratch(i, j, k, ivorticity)
-      temp6 = sqrt(temp7)
-      temp5 = rlmce2*w(i, j, k, itransition1) - 1.0
-      temp3 = w(i, j, k, itransition1)
-      temp2 = w(i, j, k, irho)
-      temp4 = temp2*f_turb*temp3
-      tempd6 = rlmca2*e_gammad
-      tempd1 = temp5*temp6*tempd6
-      wd(i, j, k, itransition1) = wd(i, j, k, itransition1) + rlmce2*&
-&       temp4*temp6*tempd6
-      if (.not.temp7 .eq. 0.0_8) scratchd(i, j, k, ivorticity) = &
-&         scratchd(i, j, k, ivorticity) + temp4*temp5*tempd6/(2.0*temp6)
-      wd(i, j, k, irho) = wd(i, j, k, irho) + f_turb*temp3*tempd1
-      f_turbd = temp2*temp3*tempd1
-      temp4 = -(rlmce1*w(i, j, k, itransition1)) + 1.0
-      temp3 = w(i, j, k, irho)
-      temp1 = w(i, j, k, itransition1)
-      temp0 = temp1*f_onset
-      temp = sqrt(temp0)
-      temp5 = scratch(i, j, k, istrain)
-      temp6 = sqrt(temp5)
-      tempd3 = f_length*temp3*temp4*rlmca1*p_gammad
-      tempd5 = temp6*temp*rlmca1*p_gammad
-      wd(i, j, k, itransition1) = wd(i, j, k, itransition1) + temp2*&
-&       f_turb*tempd1 - rlmce1*f_length*temp3*tempd5
-      tempd6 = temp4*tempd5
-      f_lengthd = temp3*tempd6
-      wd(i, j, k, irho) = wd(i, j, k, irho) + f_length*tempd6
-      if (.not.temp5 .eq. 0.0_8) scratchd(i, j, k, istrain) = scratchd(i&
-&         , j, k, istrain) + temp*tempd3/(2.0*temp6)
-      if (temp0 .eq. 0.0_8) then
-        tempd4 = 0.0_8
-      else
-        tempd4 = temp6*tempd3/(2.0*temp)
-      end if
-      wd(i, j, k, itransition1) = wd(i, j, k, itransition1) + f_onset*&
-&       tempd4
-      f_onsetd = temp1*tempd4 - exp(-r_t)*f_turbd
-      r_td = -(exp(-r_t)*(1-f_onset)*f_turbd)
-      f_onset1d = 6.0*(1.0-tanh(6.0*(f_onset1-1.35))**2)*f_onsetd/2.0
-      temp4 = re_s/(2.6*re_theta_c)
-      if (temp4 .eq. 0.0_8) then
-        tempd1 = 0.0_8
-      else
-        tempd1 = f_onset1d/(2.6*re_theta_c*2.0*sqrt(temp4))
-      end if
-      re_sd = tempd1
-      re_theta_cd = -(2.6*temp4*tempd1)
-      temp4 = (f_length1+1)**(1.0/6)
-      if (f_length1 + 1 .le. 0.0_8 .and. (1.0/6 .eq. 0.0_8 .or. 1.0/6 &
-&         .ne. int(1.0/6))) then
-        f_length1d = 0.0_8
-      else
-        f_length1d = (f_length1+1)**(1.0/6-1)*(30000.0*(w(i, j, k, &
-&         itransition2)-596.0)+43.5)*f_lengthd/(6*temp4**2)
-      end if
-      wd(i, j, k, itransition2) = wd(i, j, k, itransition2) - 30000.0*&
-&       f_lengthd/temp4 - 0.03*exp(-(0.03*(w(i, j, k, itransition2)-&
-&       460.0)))*f_length1d
-      temp3 = scratch(i, j, k, istrain)
-      temp2 = sqrt(temp3)
-      temp1 = w(i, j, k, irho)/rev(i, j, k)
-      tempd1 = d2wall(i, j, k)**2*re_sd
-      tempd0 = temp2*tempd1/rev(i, j, k)
-      if (.not.temp3 .eq. 0.0_8) scratchd(i, j, k, istrain) = scratchd(i&
-&         , j, k, istrain) + temp1*tempd1/(2.0*temp2)
-      wd(i, j, k, irho) = wd(i, j, k, irho) + tempd0
-      revd(i, j, k) = revd(i, j, k) - temp1*tempd0
-      wd(i, j, k, itransition2) = wd(i, j, k, itransition2) + (cos(w(i, &
-&       j, k, itransition2)/240.0+0.5)*24.0/240.0+0.67)*re_theta_cd
-      temp4 = rlv(i, j, k)*w(i, j, k, itu2)
-      temp2 = w(i, j, k, itu1)
-      temp1 = w(i, j, k, irho)
-      tempd2 = r_td/temp4
-      wd(i, j, k, irho) = wd(i, j, k, irho) + temp2*tempd2
-      wd(i, j, k, itu1) = wd(i, j, k, itu1) + temp1*tempd2
-      wd(i, j, k, itu2) = wd(i, j, k, itu2) - rlv(i, j, k)*temp1*temp2*&
-&       tempd2/temp4
-      temp4 = w(i, j, k, irho)
-      tempd2 = -(rlv(i, j, k)*500.0*td/(temp4**2*u2**2))
-      wd(i, j, k, irho) = wd(i, j, k, irho) + u2*tempd2
-      u2d = temp4*tempd2
-      call popcontrol1b(branch)
-      if (branch .eq. 0) then
-        x1d = 0.0_8
-      else
-        x1d = f_theta_td
-      end if
-      call popcontrol1b(branch)
-      if (branch .eq. 0) then
-        wd(i, j, k, itransition1) = wd(i, j, k, itransition1) - rlmce2*2&
-&         *(rlmce2*w(i, j, k, itransition1)-1.0)*x1d/(rlmce2-1)**2
-        x2d = 0.0_8
-      else
-        x2d = x1d
-      end if
-      temp4 = d2wall(i, j, k)/delta
-      temp3 = -(temp4**4)
-      f_waked = exp(temp3)*x2d
-      deltad = temp4**4*4*exp(temp3)*f_wake*x2d/delta
-      temp0 = w(i, j, k, irho)
-      temp1 = w(i, j, k, itransition2)/(temp0*u)
-      temp2 = scratch(i, j, k, ivorticity)
-      temp3 = sqrt(temp2)
-      tempd = d2wall(i, j, k)*375.0*deltad
-      if (.not.temp2 .eq. 0.0_8) scratchd(i, j, k, ivorticity) = &
-&         scratchd(i, j, k, ivorticity) + temp1*tempd/(2.0*temp3)
-      tempd0 = temp3*tempd/(temp0*u)
-      wd(i, j, k, itransition2) = wd(i, j, k, itransition2) + tempd0
-      tempd1 = -(temp1*tempd0)
-      ud = temp0*tempd1
-      re_omegad = -(2*re_omega*exp(-((re_omega/1e5)**2))*f_waked/1e5**2)
-      tempd = d2wall(i, j, k)**2*re_omegad
-      wd(i, j, k, irho) = wd(i, j, k, irho) + u*tempd1 + w(i, j, k, itu2&
-&       )*tempd/rlv(i, j, k)
-      wd(i, j, k, itu2) = wd(i, j, k, itu2) + w(i, j, k, irho)*tempd/rlv&
-&       (i, j, k)
-      if (.not.u2 .eq. 0.0_8) u2d = u2d + ud/(2.0*sqrt(u2))
-      wd(i, j, k, ivx) = wd(i, j, k, ivx) + 2*w(i, j, k, ivx)*u2d
-      wd(i, j, k, ivy) = wd(i, j, k, ivy) + 2*w(i, j, k, ivy)*u2d
-      wd(i, j, k, ivz) = wd(i, j, k, ivz) + 2*w(i, j, k, ivz)*u2d
-      call solve_local_re_thetat_eq_b(re_thetat_eq, re_thetat_eqd, i, j&
-&                               , k)
-    end do
-  end subroutine gammarethetasource_b
-
-  subroutine gammarethetasource()
-    use blockpointers
-    use constants
-    use variableconstants
-    use paramturb
-    implicit none
-    integer(kind=inttype) :: i, j, k
-    real(kind=realtype) :: re_thetat_eq, u2, u, lambda_theta, delta, &
-&   f_theta_t, t, r_t, re_theta_c
-    real(kind=realtype) :: re_s, f_length1, f_length, f_onset1, f_onset&
-&   , f_turb, p_gamma, e_gamma, p_thetat
-    real(kind=realtype) :: re_omega, f_wake
-    intrinsic mod
-    intrinsic sqrt
-    intrinsic exp
-    intrinsic max
-    intrinsic min
-    intrinsic sin
-    intrinsic tanh
-    real(kind=realtype) :: x1
-    real(kind=realtype) :: x2
-    integer :: ii
-!$ad ii-loop
-    do ii=0,nx*ny*nz-1
-      i = mod(ii, nx) + 2
-      j = mod(ii/nx, ny) + 2
-      k = ii/(nx*ny) + 2
-! compute re_thetat_eq
-      call solve_local_re_thetat_eq(re_thetat_eq, i, j, k)
-      u2 = w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, ivz)**2
-      u = sqrt(u2)
-      re_omega = w(i, j, k, irho)*w(i, j, k, itu2)*d2wall(i, j, k)**2/&
-&       rlv(i, j, k)
-      f_wake = exp(-((re_omega/1e5)**2))
-      delta = 375.0*sqrt(scratch(i, j, k, ivorticity))*w(i, j, k, &
-&       itransition2)*d2wall(i, j, k)/(w(i, j, k, irho)*u)
-      x2 = f_wake*exp(-((d2wall(i, j, k)/delta)**4))
-      if (x2 .lt. 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1&
-&         ))**2) then
-        x1 = 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1))**2
-      else
-        x1 = x2
-      end if
-      if (x1 .gt. 1.0) then
-        f_theta_t = 1.0
-      else
-        f_theta_t = x1
       end if
       t = 500.0*rlv(i, j, k)/(w(i, j, k, irho)*u2)
 ! todo: save this in scratch
@@ -888,13 +268,256 @@ contains
       p_gamma = f_length*rlmca1*w(i, j, k, irho)*sqrt(scratch(i, j, k, &
 &       istrain))*sqrt(w(i, j, k, itransition1)*f_onset)*(1.0-rlmce1*w(i&
 &       , j, k, itransition1))
-      e_gamma = rlmca2*w(i, j, k, irho)*sqrt(scratch(i, j, k, ivorticity&
-&       ))*w(i, j, k, itransition1)*f_turb*(rlmce2*w(i, j, k, &
-&       itransition1)-1.0)
+      e_gamma = rlmca2*w(i, j, k, irho)*vort*w(i, j, k, itransition1)*&
+&       f_turb*(rlmce2*w(i, j, k, itransition1)-1.0)
+! somewhere here is the problem regarding partials not matching
       p_thetat = rlmcthetat*w(i, j, k, irho)/t*(re_thetat_eq-w(i, j, k, &
 &       itransition2))*(1.0-f_theta_t)
-      scratch(i, j, k, istransition1) = p_gamma - e_gamma
-      scratch(i, j, k, istransition2) = p_thetat
+! print *, 'source terms: gamma, thetat', scratch(i, j, k, istransition1), scratch(i, j, k, istransition2)
+      p_thetatd = rhoi*scratchd(i, j, k, istransition2)
+      rhoid = p_thetat*scratchd(i, j, k, istransition2)
+      scratchd(i, j, k, istransition2) = 0.0_8
+      p_gammad = rhoi*scratchd(i, j, k, istransition1)
+      e_gammad = -(rhoi*scratchd(i, j, k, istransition1))
+      rhoid = rhoid + (p_gamma-e_gamma)*scratchd(i, j, k, istransition1)
+      scratchd(i, j, k, istransition1) = 0.0_8
+      temp7 = (-f_theta_t+1.0)/t
+      temp6 = w(i, j, k, irho)
+      tempd5 = (re_thetat_eq-w(i, j, k, itransition2))*rlmcthetat*&
+&       p_thetatd
+      wd(i, j, k, itransition2) = wd(i, j, k, itransition2) - temp6*&
+&       temp7*rlmcthetat*p_thetatd
+      wd(i, j, k, irho) = wd(i, j, k, irho) + temp7*tempd5
+      tempd4 = temp6*tempd5/t
+      f_theta_td = -tempd4
+      td = -(temp7*tempd4)
+      temp8 = rlmce2*w(i, j, k, itransition1) - 1.0
+      temp7 = w(i, j, k, itransition1)
+      temp5 = w(i, j, k, irho)
+      tempd6 = temp7*temp8*rlmca2*e_gammad
+      tempd7 = temp5*vort*f_turb*rlmca2*e_gammad
+      wd(i, j, k, itransition1) = wd(i, j, k, itransition1) + (temp8+&
+&       rlmce2*temp7)*tempd7
+      wd(i, j, k, irho) = wd(i, j, k, irho) + vort*f_turb*tempd6
+      vortd = f_turb*temp5*tempd6
+      f_turbd = vort*temp5*tempd6
+      temp3 = -(rlmce1*w(i, j, k, itransition1)) + 1.0
+      temp2 = w(i, j, k, irho)
+      temp0 = w(i, j, k, itransition1)
+      temp = temp0*f_onset
+      temp4 = sqrt(temp)
+      temp5 = scratch(i, j, k, istrain)
+      temp6 = sqrt(temp5)
+      tempd = f_length*temp2*temp3*rlmca1*p_gammad
+      tempd4 = temp6*temp4*rlmca1*p_gammad
+      tempd5 = temp3*tempd4
+      wd(i, j, k, itransition1) = wd(i, j, k, itransition1) - rlmce1*&
+&       f_length*temp2*tempd4
+      f_lengthd = temp2*tempd5
+      wd(i, j, k, irho) = wd(i, j, k, irho) + f_length*tempd5
+      if (.not.temp5 .eq. 0.0_8) scratchd(i, j, k, istrain) = scratchd(i&
+&         , j, k, istrain) + temp4*tempd/(2.0*temp6)
+      if (temp .eq. 0.0_8) then
+        tempd3 = 0.0_8
+      else
+        tempd3 = temp6*tempd/(2.0*temp4)
+      end if
+      wd(i, j, k, itransition1) = wd(i, j, k, itransition1) + f_onset*&
+&       tempd3
+      f_onsetd = temp0*tempd3 - exp(-r_t)*f_turbd
+      r_td = -(exp(-r_t)*(1-f_onset)*f_turbd)
+      f_onset1d = 6.0*(1.0-tanh(6.0*(f_onset1-1.35))**2)*f_onsetd/2.0
+      temp3 = re_s/(2.6*re_theta_c)
+      if (temp3 .eq. 0.0_8) then
+        tempd1 = 0.0_8
+      else
+        tempd1 = f_onset1d/(2.6*re_theta_c*2.0*sqrt(temp3))
+      end if
+      re_sd = tempd1
+      re_theta_cd = -(2.6*temp3*tempd1)
+      temp3 = (f_length1+1)**(1.0/6)
+      if (f_length1 + 1 .le. 0.0_8 .and. (1.0/6 .eq. 0.0_8 .or. 1.0/6 &
+&         .ne. int(1.0/6))) then
+        f_length1d = 0.0_8
+      else
+        f_length1d = (f_length1+1)**(1.0/6-1)*(30000.0*(w(i, j, k, &
+&         itransition2)-596.0)+43.5)*f_lengthd/(6*temp3**2)
+      end if
+      wd(i, j, k, itransition2) = wd(i, j, k, itransition2) - 30000.0*&
+&       f_lengthd/temp3 - 0.03*exp(-(0.03*(w(i, j, k, itransition2)-&
+&       460.0)))*f_length1d
+      temp3 = scratch(i, j, k, istrain)
+      temp2 = sqrt(temp3)
+      temp1 = d2wall(i, j, k)
+      temp0 = w(i, j, k, irho)/rev(i, j, k)
+      tempd0 = temp1**2*temp2*re_sd/rev(i, j, k)
+      d2walld(i, j, k) = d2walld(i, j, k) + 2*temp1*temp0*temp2*re_sd
+      if (.not.temp3 .eq. 0.0_8) scratchd(i, j, k, istrain) = scratchd(i&
+&         , j, k, istrain) + temp0*temp1**2*re_sd/(2.0*temp2)
+      wd(i, j, k, irho) = wd(i, j, k, irho) + tempd0
+      revd(i, j, k) = revd(i, j, k) - temp0*tempd0
+      wd(i, j, k, itransition2) = wd(i, j, k, itransition2) + (cos(w(i, &
+&       j, k, itransition2)/240.0+0.5)*24.0/240.0+0.67)*re_theta_cd
+      temp3 = w(i, j, k, itu2)
+      temp2 = rlv(i, j, k)*temp3
+      temp0 = w(i, j, k, itu1)
+      temp = w(i, j, k, irho)
+      tempd = r_td/temp2
+      wd(i, j, k, irho) = wd(i, j, k, irho) + temp0*tempd
+      wd(i, j, k, itu1) = wd(i, j, k, itu1) + temp*tempd
+      tempd2 = -(temp*temp0*tempd/temp2)
+      rlvd(i, j, k) = rlvd(i, j, k) + temp3*tempd2
+      wd(i, j, k, itu2) = wd(i, j, k, itu2) + rlv(i, j, k)*tempd2
+      temp3 = w(i, j, k, irho)
+      temp2 = temp3*u2
+      tempd = 500.0*td/temp2
+      rlvd(i, j, k) = rlvd(i, j, k) + tempd
+      tempd2 = -(rlv(i, j, k)*tempd/temp2)
+      wd(i, j, k, irho) = wd(i, j, k, irho) + u2*tempd2
+      u2d = temp3*tempd2
+      call popcontrol1b(branch)
+      if (branch .eq. 0) then
+        x2d = 0.0_8
+      else
+        x2d = f_theta_td
+      end if
+      call popcontrol1b(branch)
+      if (branch .eq. 0) then
+        wd(i, j, k, itransition1) = wd(i, j, k, itransition1) - rlmce2*2&
+&         *(rlmce2*w(i, j, k, itransition1)-1.0)*x2d/(rlmce2-1)**2
+        x3d = 0.0_8
+      else
+        x3d = x2d
+      end if
+      temp3 = d2wall(i, j, k)/delta
+      temp2 = -(temp3**4)
+      f_waked = exp(temp2)*x3d
+      tempd1 = -(4*temp3**3*exp(temp2)*f_wake*x3d/delta)
+      d2walld(i, j, k) = d2walld(i, j, k) + tempd1
+      deltad = -(temp3*tempd1)
+      temp1 = w(i, j, k, irho)
+      temp = d2wall(i, j, k)
+      temp2 = w(i, j, k, itransition2)
+      tempd0 = 375.0*deltad/(temp1*u)
+      wd(i, j, k, itransition2) = wd(i, j, k, itransition2) + vort*temp*&
+&       tempd0
+      vortd = vortd + temp*temp2*tempd0
+      tempd1 = -(temp2*vort*temp*tempd0/(temp1*u))
+      wd(i, j, k, irho) = wd(i, j, k, irho) + u*tempd1
+      ud = temp1*tempd1
+      re_omegad = -(2*re_omega*exp(-((re_omega/1e5)**2))*f_waked/1e5**2)
+      temp = d2wall(i, j, k)
+      temp0 = w(i, j, k, itu2)
+      temp1 = w(i, j, k, irho)/rlv(i, j, k)
+      d2walld(i, j, k) = d2walld(i, j, k) + vort*temp2*tempd0 + 2*temp*&
+&       temp0*temp1*re_omegad
+      tempd = temp0*temp**2*re_omegad/rlv(i, j, k)
+      wd(i, j, k, itu2) = wd(i, j, k, itu2) + temp**2*temp1*re_omegad
+      wd(i, j, k, irho) = wd(i, j, k, irho) + tempd
+      rlvd(i, j, k) = rlvd(i, j, k) - temp1*tempd
+      if (.not.u2 .eq. 0.0_8) u2d = u2d + ud/(2.0*sqrt(u2))
+      wd(i, j, k, ivx) = wd(i, j, k, ivx) + 2*w(i, j, k, ivx)*u2d
+      wd(i, j, k, ivy) = wd(i, j, k, ivy) + 2*w(i, j, k, ivy)*u2d
+      wd(i, j, k, ivz) = wd(i, j, k, ivz) + 2*w(i, j, k, ivz)*u2d
+      call popcontrol1b(branch)
+      if (branch .eq. 0) then
+        x1d = 0.0_8
+      else
+        x1d = vortd
+      end if
+      if (.not.scratch(i, j, k, ivorticity) .eq. 0.0_8) scratchd(i, j, k&
+&       , ivorticity) = scratchd(i, j, k, ivorticity) + x1d/(2.0*sqrt(&
+&         scratch(i, j, k, ivorticity)))
+      temp = w(i, j, k, irho)
+      wd(i, j, k, irho) = wd(i, j, k, irho) - one*rhoid/temp**2
+    end do
+  end subroutine gammarethetasource_b
+
+  subroutine gammarethetasource()
+    use blockpointers
+    use constants
+    use variableconstants
+    use paramturb
+    implicit none
+    integer(kind=inttype) :: i, j, k
+    real(kind=realtype) :: re_thetat_eq, u2, u, lambda_theta, delta, &
+&   f_theta_t, t, r_t, re_theta_c
+    real(kind=realtype) :: re_s, f_length1, f_length, f_onset1, f_onset&
+&   , f_turb, p_gamma, e_gamma, p_thetat
+    real(kind=realtype) :: re_omega, f_wake
+    real(kind=realtype) :: rhoi, vort
+    intrinsic mod
+    intrinsic sqrt
+    intrinsic max
+    intrinsic exp
+    intrinsic min
+    intrinsic sin
+    intrinsic tanh
+    real(kind=realtype) :: x1
+    real(kind=realtype) :: x2
+    real(kind=realtype) :: x3
+    integer :: ii
+!$ad ii-loop
+    do ii=0,nx*ny*nz-1
+      i = mod(ii, nx) + 2
+      j = mod(ii/nx, ny) + 2
+      k = ii/(nx*ny) + 2
+      rhoi = one/w(i, j, k, irho)
+      x1 = sqrt(scratch(i, j, k, ivorticity))
+      if (x1 .lt. eps) then
+        vort = eps
+      else
+        vort = x1
+      end if
+! compute re_thetat_eq
+      call solve_local_re_thetat_eq(re_thetat_eq, i, j, k)
+      u2 = w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, ivz)**2
+      u = sqrt(u2)
+      re_omega = w(i, j, k, irho)*w(i, j, k, itu2)*d2wall(i, j, k)**2/&
+&       rlv(i, j, k)
+      f_wake = exp(-((re_omega/1e5)**2))
+      delta = 375.0*vort*w(i, j, k, itransition2)*d2wall(i, j, k)/(w(i, &
+&       j, k, irho)*u)
+      x3 = f_wake*exp(-((d2wall(i, j, k)/delta)**4))
+      if (x3 .lt. 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1&
+&         ))**2) then
+        x2 = 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1))**2
+      else
+        x2 = x3
+      end if
+      if (x2 .gt. 1.0) then
+        f_theta_t = 1.0
+      else
+        f_theta_t = x2
+      end if
+      t = 500.0*rlv(i, j, k)/(w(i, j, k, irho)*u2)
+! todo: save this in scratch
+      r_t = w(i, j, k, irho)*w(i, j, k, itu1)/(rlv(i, j, k)*w(i, j, k, &
+&       itu2))
+! todo: save this in scratch
+      re_theta_c = 0.67*w(i, j, k, itransition2) + 24.0*sin(w(i, j, k, &
+&       itransition2)/240.0+0.5) + 14.0
+! todo: save this in scratch
+      re_s = w(i, j, k, irho)*sqrt(scratch(i, j, k, istrain))*d2wall(i, &
+&       j, k)**2/rev(i, j, k)
+      f_length1 = exp(-(0.03*(w(i, j, k, itransition2)-460.0)))
+      f_length = 44.0 - (44.0-(0.5-30000.0*(w(i, j, k, itransition2)-&
+&       596.0)))/(1+f_length1)**(1/6)
+! continue here
+      f_onset1 = sqrt(re_s/(2.6*re_theta_c))
+      f_onset = (tanh(6.0*(f_onset1-1.35))+1.0)/2.0
+      f_turb = (1-f_onset)*exp(-r_t)
+! since we need to divide by rho, rho does not appear here anymore
+      p_gamma = f_length*rlmca1*w(i, j, k, irho)*sqrt(scratch(i, j, k, &
+&       istrain))*sqrt(w(i, j, k, itransition1)*f_onset)*(1.0-rlmce1*w(i&
+&       , j, k, itransition1))
+      e_gamma = rlmca2*w(i, j, k, irho)*vort*w(i, j, k, itransition1)*&
+&       f_turb*(rlmce2*w(i, j, k, itransition1)-1.0)
+! somewhere here is the problem regarding partials not matching
+      p_thetat = rlmcthetat*w(i, j, k, irho)/t*(re_thetat_eq-w(i, j, k, &
+&       itransition2))*(1.0-f_theta_t)
+      scratch(i, j, k, istransition1) = (p_gamma-e_gamma)*rhoi
+      scratch(i, j, k, istransition2) = p_thetat*rhoi
 ! print *, 'source terms: gamma, thetat', scratch(i, j, k, istransition1), scratch(i, j, k, istransition2)
     end do
   end subroutine gammarethetasource

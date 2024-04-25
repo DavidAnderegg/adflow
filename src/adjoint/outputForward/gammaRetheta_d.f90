@@ -386,6 +386,7 @@ contains
 &           temp1*(f_turb*vortd+vort*f_turbd))+temp0*(temp3+temp2*rlmce2&
 &           )*wd(i, j, k, itransition1))
           e_gamma = rlmca2*(temp0*(temp2*temp3))
+! somewhere here is the problem regarding partials not matching
           temp3 = re_thetat_eq - w(i, j, k, itransition2)
           temp2 = (-f_theta_t+1.0)/t
           temp1 = w(i, j, k, irho)
@@ -493,6 +494,7 @@ contains
 &           1.0-rlmce1*w(i, j, k, itransition1))
           e_gamma = rlmca2*w(i, j, k, irho)*vort*w(i, j, k, itransition1&
 &           )*f_turb*(rlmce2*w(i, j, k, itransition1)-1.0)
+! somewhere here is the problem regarding partials not matching
           p_thetat = rlmcthetat*w(i, j, k, irho)/t*(re_thetat_eq-w(i, j&
 &           , k, itransition2))*(1.0-f_theta_t)
           scratch(i, j, k, istransition1) = (p_gamma-e_gamma)*rhoi

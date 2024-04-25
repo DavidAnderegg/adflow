@@ -24,11 +24,10 @@ contains
     real(kind=realtype) :: re_thetat_eq_1, re_thetat_eq_2
     integer(kind=inttype) :: n
     intrinsic sqrt
+    intrinsic exp
     intrinsic max
     intrinsic min
-    intrinsic exp
     intrinsic abs
-    real(kind=realtype) :: x1
     real(kind=realtype) :: abs0
     u = sqrt(w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, ivz)**&
 &     2)
@@ -85,26 +84,13 @@ contains
     du_ds = w(i, j, k, ivx)/u*du_dx + w(i, j, k, ivy)/u*du_dy + w(i, j, &
 &     k, ivz)/u*du_dz
     tu = 100.0*sqrt(2*w(i, j, k, itu1)/3)/u
-    if (tu .lt. 0.027) then
-      tu = 0.027
-    else
-      tu = tu
-    end if
+! tu = max(tu, 0.027) ! clip for numerical robustness
 ! now we need to solve for theta through newton's method. the number of iterations is hard-coded so tapenade is 
 ! able to differentiate it
     thetat = 0.01
     do n=1,10
       lambda = w(i, j, k, irho)*thetat**2/rlv(i, j, k)*du_ds
-      if (lambda .gt. 0.1) then
-        x1 = 0.1
-      else
-        x1 = lambda
-      end if
-      if (x1 .lt. -0.1) then
-        lambda = -0.1
-      else
-        lambda = x1
-      end if
+! lambda = max(min(lambda, 0.1), -0.1) ! clip for numerical robustness
 ! compute f function
       f1 = 1.0 + 0.275*(1.0-exp(-(35.0*lambda)))*exp(-(tu/0.5))
       if (f1 .lt. 1.0) then
@@ -141,22 +127,26 @@ contains
         end if
 ! if the residum is basically 0, we cycle until we reach the end. (we cant drop out because tapenade would be unable to
 ! differentiate it)
-        if (abs0 .ge. 1e-9) then
-! compute next step (secant method)
+        if (abs0 .gt. 1e-9) then
+! cycle
           thetat_new = (thetat_old*residum-thetat*residum_old)/(residum-&
 &           residum_old)
-! save values for next iteration
-          residum_old = residum
-          thetat_old = thetat
-          thetat = thetat_new
+        else
+          thetat_new = thetat
         end if
+! compute next step (secant method)
+! thetat_new = (thetat_old*residum - thetat*residum_old) / (residum - residum_old)
+! save values for next iteration
+        residum_old = residum
+        thetat_old = thetat
+        thetat = thetat_new
+! todo: make sure this still works after getting rid of 'cycle'
       end if
     end do
-    if (re_thetat_eq_1 .lt. 20.0) then
-      re_thetat_eq = 20.0
-    else
-      re_thetat_eq = re_thetat_eq_1
-    end if
+! save result in output-variable
+! re_thetat_eq = max(re_thetat_eq_1, 20.0) ! clip for numerical robustness
+! print *, 'thetat, lambda, re_thetat_eq', thetat, lambda, re_thetat_eq
+
   end subroutine solve_local_re_thetat_eq
 
   subroutine gammarethetasource()
@@ -171,21 +161,30 @@ contains
     real(kind=realtype) :: re_s, f_length1, f_length, f_onset1, f_onset&
 &   , f_turb, p_gamma, e_gamma, p_thetat
     real(kind=realtype) :: re_omega, f_wake
+    real(kind=realtype) :: rhoi, vort
     intrinsic mod
     intrinsic sqrt
-    intrinsic exp
     intrinsic max
+    intrinsic exp
     intrinsic min
     intrinsic sin
     intrinsic tanh
     real(kind=realtype) :: x1
     real(kind=realtype) :: x2
+    real(kind=realtype) :: x3
     integer :: ii
 !$ad ii-loop
     do ii=0,nx*ny*nz-1
       i = mod(ii, nx) + 2
       j = mod(ii/nx, ny) + 2
       k = ii/(nx*ny) + 2
+      rhoi = one/w(i, j, k, irho)
+      x1 = sqrt(scratch(i, j, k, ivorticity))
+      if (x1 .lt. eps) then
+        vort = eps
+      else
+        vort = x1
+      end if
 ! compute re_thetat_eq
       call solve_local_re_thetat_eq(re_thetat_eq, i, j, k)
       u2 = w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, ivz)**2
@@ -193,19 +192,19 @@ contains
       re_omega = w(i, j, k, irho)*w(i, j, k, itu2)*d2wall(i, j, k)**2/&
 &       rlv(i, j, k)
       f_wake = exp(-((re_omega/1e5)**2))
-      delta = 375.0*sqrt(scratch(i, j, k, ivorticity))*w(i, j, k, &
-&       itransition2)*d2wall(i, j, k)/(w(i, j, k, irho)*u)
-      x2 = f_wake*exp(-((d2wall(i, j, k)/delta)**4))
-      if (x2 .lt. 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1&
+      delta = 375.0*vort*w(i, j, k, itransition2)*d2wall(i, j, k)/(w(i, &
+&       j, k, irho)*u)
+      x3 = f_wake*exp(-((d2wall(i, j, k)/delta)**4))
+      if (x3 .lt. 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1&
 &         ))**2) then
-        x1 = 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1))**2
+        x2 = 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1))**2
       else
-        x1 = x2
+        x2 = x3
       end if
-      if (x1 .gt. 1.0) then
+      if (x2 .gt. 1.0) then
         f_theta_t = 1.0
       else
-        f_theta_t = x1
+        f_theta_t = x2
       end if
       t = 500.0*rlv(i, j, k)/(w(i, j, k, irho)*u2)
 ! todo: save this in scratch
@@ -228,13 +227,13 @@ contains
       p_gamma = f_length*rlmca1*w(i, j, k, irho)*sqrt(scratch(i, j, k, &
 &       istrain))*sqrt(w(i, j, k, itransition1)*f_onset)*(1.0-rlmce1*w(i&
 &       , j, k, itransition1))
-      e_gamma = rlmca2*w(i, j, k, irho)*sqrt(scratch(i, j, k, ivorticity&
-&       ))*w(i, j, k, itransition1)*f_turb*(rlmce2*w(i, j, k, &
-&       itransition1)-1.0)
+      e_gamma = rlmca2*w(i, j, k, irho)*vort*w(i, j, k, itransition1)*&
+&       f_turb*(rlmce2*w(i, j, k, itransition1)-1.0)
+! somewhere here is the problem regarding partials not matching
       p_thetat = rlmcthetat*w(i, j, k, irho)/t*(re_thetat_eq-w(i, j, k, &
 &       itransition2))*(1.0-f_theta_t)
-      scratch(i, j, k, istransition1) = p_gamma - e_gamma
-      scratch(i, j, k, istransition2) = p_thetat
+      scratch(i, j, k, istransition1) = (p_gamma-e_gamma)*rhoi
+      scratch(i, j, k, istransition2) = p_thetat*rhoi
 ! print *, 'source terms: gamma, thetat', scratch(i, j, k, istransition1), scratch(i, j, k, istransition2)
     end do
   end subroutine gammarethetasource

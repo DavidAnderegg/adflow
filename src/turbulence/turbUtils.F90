@@ -935,6 +935,7 @@ contains
         use turbMod
         use flowVarRefState, only: timeRef
         use inputPhysics, only: use2003SST
+        use utils, only: smoothMax
         implicit none
         ! Input variables
         integer(kind=intType) :: iBeg, iEnd, jBeg, jEnd, kBeg, kEnd
@@ -980,7 +981,7 @@ contains
                         t2 = 500.0_realType * rlv(i, j, k) &
                              / (w(i, j, k, irho) * w(i, j, k, itu2) * d2Wall(i, j, k)**2)
 
-                        arg2 = max(t1, t2)
+                        arg2 = smoothMax(t1, t2, 300.0)
                         f2 = tanh(arg2**2)
 
                         ! And compute the eddy viscosity.
@@ -989,7 +990,7 @@ contains
 
                         vortMag = sqrt(scratch(i, j, k, iprodAlt))
                         rev(i, j, k) = w(i, j, k, irho) * rSSTA1 * w(i, j, k, itu1) &
-                                       / max(rSSTA1 * w(i, j, k, itu2), f2 * vortMag)
+                                       / smoothMax(rSSTA1 * w(i, j, k, itu2), f2 * vortMag, 300.0)
 #ifdef TAPENADE_REVERSE
                     end do
 #else
