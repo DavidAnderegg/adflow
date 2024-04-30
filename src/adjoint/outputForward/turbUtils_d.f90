@@ -2050,9 +2050,10 @@ nadvloopspectral:do ii=1,nadv
 !      local variables.
 !
     integer(kind=inttype) :: i, j, k, ii, isize, jsize, ksize
-    real(kind=realtype) :: t1, t2, arg2, f2, vortmag
-    real(kind=realtype) :: t1d, t2d, arg2d, f2d, vortmagd
+    real(kind=realtype) :: t1, t2, arg2, f2, phi1, phi2
+    real(kind=realtype) :: t1d, t2d, arg2d, f2d
     intrinsic sqrt
+    intrinsic max
     intrinsic tanh
     real(kind=realtype) :: result1
     real(kind=realtype) :: result1d
@@ -2074,6 +2075,9 @@ nadvloopspectral:do ii=1,nadv
     else
       call prodwmag2_d(ibeg, iend, jbeg, jend, kbeg, kend, iprodalt)
     end if
+! control value for smooth min/max functions. needs to be declared in advance because of 'complexify'
+    phi1 = 1.0e3_realtype
+    phi2 = 3.0e1_realtype
 ! loop over the cells of this block and compute the eddy viscosity.
 ! most of the time, do not include halo's (ibeg=2...il,...)
     do k=kbeg,kend
@@ -2105,7 +2109,14 @@ nadvloopspectral:do ii=1,nadv
 &           , j, k, irho)+temp2*wd(i, j, k, itu2))+temp3*2*temp0*d2walld&
 &           (i, j, k)))/temp4
           t2 = 500.0_realtype*temp5
-          arg2d = smoothmax_d(t1, t1d, t2, t2d, 300.0, arg2)
+          if (t1 .lt. t2) then
+            arg2 = t2
+          else
+            arg2 = t1
+          end if
+! 1e3
+          arg2d = 0.0_8
+          call smoothmax_d(arg2, arg2d, t1, t1d, t2, t2d, phi1)
           arg1d = 2*arg2*arg2d
           arg1 = arg2**2
           f2d = (1.0-tanh(arg1)**2)*arg1d
@@ -2113,21 +2124,25 @@ nadvloopspectral:do ii=1,nadv
 ! and compute the eddy viscosity.
 ! same definition as in
 ! note that https://www.cfd-online.com/wiki/sst_k-omega_model utilizes the strain and not the vorticity
+          t1d = rssta1*wd(i, j, k, itu2)
+          t1 = rssta1*w(i, j, k, itu2)
           temp5 = scratch(i, j, k, iprodalt)
           temp4 = sqrt(temp5)
           if (temp5 .eq. 0.0_8) then
-            vortmagd = 0.0_8
+            result1d = 0.0_8
           else
-            vortmagd = scratchd(i, j, k, iprodalt)/(2.0*temp4)
+            result1d = scratchd(i, j, k, iprodalt)/(2.0*temp4)
           end if
-          vortmag = temp4
-          result1d = smoothmax_d(rssta1*w(i, j, k, itu2), rssta1*wd(i, j&
-&           , k, itu2), f2*vortmag, vortmag*f2d + f2*vortmagd, 300.0, &
-&           result1)
+          result1 = temp4
+          t2d = result1*f2d + f2*result1d
+          t2 = f2*result1
+! 1e1
+          arg2d = 0.0_8
+          call smoothmax_d(arg2, arg2d, t1, t1d, t2, t2d, phi2)
           temp5 = w(i, j, k, itu1)
-          temp4 = w(i, j, k, irho)/result1
-          revd(i, j, k) = rssta1*(temp5*(wd(i, j, k, irho)-temp4*&
-&           result1d)/result1+temp4*wd(i, j, k, itu1))
+          temp4 = w(i, j, k, irho)/arg2
+          revd(i, j, k) = rssta1*(temp5*(wd(i, j, k, irho)-temp4*arg2d)/&
+&           arg2+temp4*wd(i, j, k, itu1))
           rev(i, j, k) = rssta1*(temp4*temp5)
         end do
       end do
@@ -2155,8 +2170,9 @@ nadvloopspectral:do ii=1,nadv
 !      local variables.
 !
     integer(kind=inttype) :: i, j, k, ii, isize, jsize, ksize
-    real(kind=realtype) :: t1, t2, arg2, f2, vortmag
+    real(kind=realtype) :: t1, t2, arg2, f2, phi1, phi2
     intrinsic sqrt
+    intrinsic max
     intrinsic tanh
     real(kind=realtype) :: result1
     real(kind=realtype) :: arg1
@@ -2169,6 +2185,9 @@ nadvloopspectral:do ii=1,nadv
     else
       call prodwmag2(ibeg, iend, jbeg, jend, kbeg, kend, iprodalt)
     end if
+! control value for smooth min/max functions. needs to be declared in advance because of 'complexify'
+    phi1 = 1.0e3_realtype
+    phi2 = 3.0e1_realtype
 ! loop over the cells of this block and compute the eddy viscosity.
 ! most of the time, do not include halo's (ibeg=2...il,...)
     do k=kbeg,kend
@@ -2181,17 +2200,24 @@ nadvloopspectral:do ii=1,nadv
 &           k))
           t2 = 500.0_realtype*rlv(i, j, k)/(w(i, j, k, irho)*w(i, j, k, &
 &           itu2)*d2wall(i, j, k)**2)
-          arg2 = smoothmax(t1, t2, 300.0)
+          if (t1 .lt. t2) then
+            arg2 = t2
+          else
+            arg2 = t1
+          end if
+! 1e3
+          call smoothmax(arg2, t1, t2, phi1)
           arg1 = arg2**2
           f2 = tanh(arg1)
 ! and compute the eddy viscosity.
 ! same definition as in
 ! note that https://www.cfd-online.com/wiki/sst_k-omega_model utilizes the strain and not the vorticity
-          vortmag = sqrt(scratch(i, j, k, iprodalt))
-          result1 = smoothmax(rssta1*w(i, j, k, itu2), f2*vortmag, 300.0&
-&           )
-          rev(i, j, k) = w(i, j, k, irho)*rssta1*w(i, j, k, itu1)/&
-&           result1
+          t1 = rssta1*w(i, j, k, itu2)
+          result1 = sqrt(scratch(i, j, k, iprodalt))
+          t2 = f2*result1
+! 1e1
+          call smoothmax(arg2, t1, t2, phi2)
+          rev(i, j, k) = w(i, j, k, irho)*rssta1*w(i, j, k, itu1)/arg2
         end do
       end do
     end do

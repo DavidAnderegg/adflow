@@ -2038,12 +2038,13 @@ contains
 
     end subroutine siVelocity
 
-    real(kind=realType) function smoothMax(g1, g2, phi)
+   subroutine smoothMax(sMax, g1, g2, phi)
 
         use constants
 
         implicit none
 
+        real(kind=realType), intent(out) :: sMax
         real(kind=realType), intent(in) :: g1, g2, phi
         real(kind=realType) :: a, b, p_switch
 
@@ -2052,19 +2053,21 @@ contains
         b = min(g1, g2)
 
         if (abs(a - b) > -log(phi * p_switch)/phi) then
-            smoothMax = a
+
+            sMax = a
         else
-            smoothMax = a + log(1.0 + exp(phi*(b-a)))/phi
+            sMax = a + log(1.0 + exp(phi*(b-a)))/phi
         end if
 
-    end function smoothMax
+    end subroutine smoothMax
 
-    real(kind=realType) function smoothMin(g1, g2, phi)
+    subroutine smoothMin(sMin, g1, g2, phi)
 
         use constants
 
         implicit none
 
+        real(kind=realType), intent(out) :: sMin
         real(kind=realType), intent(in) :: g1, g2, phi
         real(kind=realType) :: a, b, p_switch
 
@@ -2073,12 +2076,12 @@ contains
         b = min(g1, g2)
 
         if (abs(a - b) > -log(phi * p_switch)/phi) then
-            smoothMin = b
+            sMin = b
         else
-            smoothMin = b + log(1.0 + exp(-phi*(a-b)))/(-phi)
+            sMin = b + log(1.0 + exp(-phi*(a-b)))/(-phi)
         end if
 
-    end function smoothMin
+    end subroutine smoothMin
 
 
     ! ----------------------------------------------------------------------

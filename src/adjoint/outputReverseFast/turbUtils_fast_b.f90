@@ -1341,13 +1341,11 @@ nadvloopspectral:do ii=1,nadv
 !      local variables.
 !
     integer(kind=inttype) :: i, j, k, ii, isize, jsize, ksize
-    real(kind=realtype) :: t1, t2, arg2, f2, vortmag
+    real(kind=realtype) :: t1, t2, arg2, f2, phi1, phi2
     intrinsic mod
     intrinsic sqrt
+    intrinsic max
     intrinsic tanh
-    real(kind=realtype) :: arg1
-    real(kind=realtype) :: arg20
-    real(kind=realtype) :: result1
 ! compute the vorticity squared in the cell centers. the reason
 ! for computing the vorticity squared is that a routine exists
 ! for it; for the actual eddy viscosity computation the vorticity
@@ -1357,6 +1355,9 @@ nadvloopspectral:do ii=1,nadv
     else
       call prodwmag2(ibeg, iend, jbeg, jend, kbeg, kend, iprodalt)
     end if
+! control value for smooth min/max functions. needs to be declared in advance because of 'complexify'
+    phi1 = 1.0e3_realtype
+    phi2 = 3.0e1_realtype
 ! loop over the cells of this block and compute the eddy viscosity.
 ! most of the time, do not include halo's (ibeg=2...il,...)
     isize = iend - ibeg + 1
@@ -1373,16 +1374,22 @@ nadvloopspectral:do ii=1,nadv
 &       d2wall(i, j, k))
       t2 = 500.0_realtype*rlv(i, j, k)/(w(i, j, k, irho)*w(i, j, k, itu2&
 &       )*d2wall(i, j, k)**2)
-      arg2 = smoothmax(t1, t2, 300.0)
+      if (t1 .lt. t2) then
+        arg2 = t2
+      else
+        arg2 = t1
+      end if
+! 1e3
+      call smoothmax(arg2, t1, t2, phi1)
       f2 = tanh(arg2**2)
 ! and compute the eddy viscosity.
 ! same definition as in
 ! note that https://www.cfd-online.com/wiki/sst_k-omega_model utilizes the strain and not the vorticity
-      vortmag = sqrt(scratch(i, j, k, iprodalt))
-      arg1 = rssta1*w(i, j, k, itu2)
-      arg20 = f2*vortmag
-      result1 = smoothmax(arg1, arg20, 300.0)
-      rev(i, j, k) = w(i, j, k, irho)*rssta1*w(i, j, k, itu1)/result1
+      t1 = rssta1*w(i, j, k, itu2)
+      t2 = f2*sqrt(scratch(i, j, k, iprodalt))
+! 1e1
+      call smoothmax(arg2, t1, t2, phi2)
+      rev(i, j, k) = w(i, j, k, irho)*rssta1*w(i, j, k, itu1)/arg2
     end do
   end subroutine ssteddyviscosity
 

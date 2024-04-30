@@ -261,6 +261,7 @@ contains
         use inputPhysics
         use inputDiscretization, only: approxTurb
         use paramTurb
+        use utils, only: smoothMin, smoothMax
         implicit none
         !
         !      Local variables.
@@ -274,7 +275,7 @@ contains
 
         real(kind=realType) :: Re_w, U, F_wake, delta, R_t, Re_S, F_theta_t
         real(kind=realType) :: Re_theta_c, F_reattach, gamma_sep, gamma_eff
-        real(kind=realType) :: vort
+        real(kind=realType) :: vort, phi
 
         ! Set model constants
 
@@ -289,6 +290,9 @@ contains
                        - rSSTSigw2 * rSSTK * rSSTK / sqrt(rSSTBetas)
             pklim = 20.0
         end if
+
+        ! control value for smooth min/max functions. Needs to be declared in advance because of 'complexify'
+        phi = 1.0e15_realType
 
         !       Source terms.
         !       Determine the source term and its derivative w.r.t. k and
@@ -333,11 +337,10 @@ contains
                             spk = rev(i, j, k) * ss * rhoi
                         end if
                         sdk = rSSTBetas * w(i, j, k, itu1) * w(i, j, k, itu2)
-                        spk = min(spk, pklim * sdk)
+
+                        call smoothMin(spk, spk, pklim * sdk, phi)
 
                         if (transitionModel .eq. gammaRetheta) then
-
-                            
                             vort = max(sqrt(scratch(i, j, k, iVorticity)), eps)
 
                             Re_w = w(i, j, k, irho) * w(i, j, k, itu2) * d2wall(i, j, k)**2 / rlv(i, j, k)
@@ -878,6 +881,7 @@ contains
         use iteration
         use paramTurb, only: rSSTSigw2
         use inputPhysics, only: use2003SST, transitionModel
+        use utils, only: smoothMin, smoothMax
         implicit none
         !
         !      Local variables.
@@ -887,7 +891,11 @@ contains
         integer(kind=intType) :: jSize, jBeg, jEnd
         integer(kind=intType) :: kSize, kBeg, kEnd
 
-        real(kind=realType) :: t1, t2, arg1, myeps, f1, f3, Ry
+        real(kind=realType) :: t1, t2, arg1, myeps, f1, f3, Ry, phi1, phi2
+
+        ! control value for smooth min/max functions. Needs to be declared in advance because of 'complexify'
+        phi1 = 1.0e3_realType
+        phi2 = 1.0e4_realType
 
         myeps = 1e-10_realType / two / rSSTSigw2
 
@@ -943,11 +951,11 @@ contains
                             t1 = sqrt(w(i, j, k, itu1)) &
                                  / (0.09_realType * w(i, j, k, itu2) * d2Wall(i, j, k))
                         else
-                            t1 = 0
+                            t1 = 0_realType
                         end if
                         t2 = 500.0_realType * rlv(i, j, k) &
                              / (w(i, j, k, irho) * w(i, j, k, itu2) * d2Wall(i, j, k)**2)
-                        t1 = max(t1, t2)
+                        call smoothMax(t1, t1, t2, phi1) ! 1e3
 
                         if (use2003SST) then
                             t2 = two * w(i, j, k, itu1) &
@@ -957,7 +965,7 @@ contains
                                  / (max(eps, scratch(i, j, k, icd)) * d2Wall(i, j, k)**2)
                         end if
 
-                        arg1 = min(t1, t2)
+                        call smoothMin(arg1, t1, t2, phi2) ! 1e4
                         f1 = tanh(arg1**4)
 
                         if (transitionModel .eq. gammaRetheta) then

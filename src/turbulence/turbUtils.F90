@@ -943,7 +943,7 @@ contains
         !      Local variables.
         !
         integer(kind=intType) :: i, j, k, ii, iSize, jSize, kSize
-        real(kind=realType) :: t1, t2, arg2, f2, vortMag
+        real(kind=realType) :: t1, t2, arg2, f2, phi1, phi2
 
         ! Compute the vorticity squared in the cell centers. The reason
         ! for computing the vorticity squared is that a routine exists
@@ -956,6 +956,9 @@ contains
             call prodWmag2(iBeg, iEnd, jBeg, jEnd, kBeg, kEnd, iprodAlt)
         end if
 
+        ! control value for smooth min/max functions. Needs to be declared in advance because of 'complexify'
+        phi1 = 1.0e3_realType
+        phi2 = 3.0e1_realType
         ! Loop over the cells of this block and compute the eddy viscosity.
         ! Most of the time, do not include halo's (iBeg=2...il,...)
 #ifdef TAPENADE_REVERSE
@@ -981,16 +984,18 @@ contains
                         t2 = 500.0_realType * rlv(i, j, k) &
                              / (w(i, j, k, irho) * w(i, j, k, itu2) * d2Wall(i, j, k)**2)
 
-                        arg2 = smoothMax(t1, t2, 300.0)
+                        arg2 = max(t1, t2)
+                        call smoothMax(arg2, t1, t2, phi1) ! 1e3
                         f2 = tanh(arg2**2)
 
                         ! And compute the eddy viscosity.
                         ! Same definition as in
                         ! Note that https://www.cfd-online.com/Wiki/SST_k-omega_model utilizes the strain and not the vorticity
+                        t1 = rSSTA1 * w(i, j, k, itu2)
+                        t2 = f2 * sqrt(scratch(i, j, k, iprodAlt))
 
-                        vortMag = sqrt(scratch(i, j, k, iprodAlt))
-                        rev(i, j, k) = w(i, j, k, irho) * rSSTA1 * w(i, j, k, itu1) &
-                                       / smoothMax(rSSTA1 * w(i, j, k, itu2), f2 * vortMag, 300.0)
+                        call smoothMax(arg2, t1, t2, phi2) ! 1e1
+                        rev(i, j, k) = w(i, j, k, irho) * rSSTA1 * w(i, j, k, itu1)  / arg2
 #ifdef TAPENADE_REVERSE
                     end do
 #else

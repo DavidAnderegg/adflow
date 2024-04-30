@@ -1669,27 +1669,44 @@ contains
     end select
   end subroutine sivelocity
 
-  real(kind=realtype) function smoothmax(g1, g2, phi)
+!  differentiation of smoothmax in reverse (adjoint) mode (with options noisize i4 dr8 r8):
+!   gradient     of useful results: smax g1
+!   with respect to varying inputs: g1 g2
+  subroutine smoothmax_fast_b(smax, smaxd, g1, g1d, g2, g2d, phi)
     use constants
     implicit none
+    real(kind=realtype) :: smax
+    real(kind=realtype) :: smaxd
     real(kind=realtype), intent(in) :: g1, g2, phi
+    real(kind=realtype) :: g1d, g2d
     real(kind=realtype) :: a, b, p_switch
+    real(kind=realtype) :: ad, bd
     intrinsic max
     intrinsic min
     intrinsic abs
     intrinsic log
     intrinsic exp
     real(kind=realtype) :: abs0
+    real(kind=realtype) :: tempd
+    integer :: branch
     p_switch = 1e-15
     if (g1 .lt. g2) then
       a = g2
+myIntPtr = myIntPtr + 1
+ myIntStack(myIntPtr) = 0
     else
       a = g1
+myIntPtr = myIntPtr + 1
+ myIntStack(myIntPtr) = 1
     end if
     if (g1 .gt. g2) then
       b = g2
+myIntPtr = myIntPtr + 1
+ myIntStack(myIntPtr) = 0
     else
       b = g1
+myIntPtr = myIntPtr + 1
+ myIntStack(myIntPtr) = 1
     end if
     if (a - b .ge. 0.) then
       abs0 = a - b
@@ -1697,15 +1714,34 @@ contains
       abs0 = -(a-b)
     end if
     if (abs0 .gt. -(log(phi*p_switch)/phi)) then
-      smoothmax = a
+      ad = smaxd
+      bd = 0.0_8
     else
-      smoothmax = a + log(1.0+exp(phi*(b-a)))/phi
+      tempd = exp(phi*(b-a))*smaxd/(exp(phi*(b-a))+1.0)
+      ad = smaxd - tempd
+      bd = tempd
     end if
-  end function smoothmax
+branch = myIntStack(myIntPtr)
+ myIntPtr = myIntPtr - 1
+    if (branch .eq. 0) then
+      g2d = bd
+    else
+      g1d = g1d + bd
+      g2d = 0.0_8
+    end if
+branch = myIntStack(myIntPtr)
+ myIntPtr = myIntPtr - 1
+    if (branch .eq. 0) then
+      g2d = g2d + ad
+    else
+      g1d = g1d + ad
+    end if
+  end subroutine smoothmax_fast_b
 
-  real(kind=realtype) function smoothmin(g1, g2, phi)
+  subroutine smoothmax(smax, g1, g2, phi)
     use constants
     implicit none
+    real(kind=realtype), intent(out) :: smax
     real(kind=realtype), intent(in) :: g1, g2, phi
     real(kind=realtype) :: a, b, p_switch
     intrinsic max
@@ -1731,11 +1767,115 @@ contains
       abs0 = -(a-b)
     end if
     if (abs0 .gt. -(log(phi*p_switch)/phi)) then
-      smoothmin = b
+      smax = a
     else
-      smoothmin = b + log(1.0+exp(-(phi*(a-b))))/(-phi)
+      smax = a + log(1.0+exp(phi*(b-a)))/phi
     end if
-  end function smoothmin
+  end subroutine smoothmax
+
+!  differentiation of smoothmin in reverse (adjoint) mode (with options noisize i4 dr8 r8):
+!   gradient     of useful results: g1 smin
+!   with respect to varying inputs: g1 g2
+  subroutine smoothmin_fast_b(smin, smind, g1, g1d, g2, g2d, phi)
+    use constants
+    implicit none
+    real(kind=realtype) :: smin
+    real(kind=realtype) :: smind
+    real(kind=realtype), intent(in) :: g1, g2, phi
+    real(kind=realtype) :: g1d, g2d
+    real(kind=realtype) :: a, b, p_switch
+    real(kind=realtype) :: ad, bd
+    intrinsic max
+    intrinsic min
+    intrinsic abs
+    intrinsic log
+    intrinsic exp
+    real(kind=realtype) :: abs0
+    real(kind=realtype) :: tempd
+    integer :: branch
+    p_switch = 1e-15
+    if (g1 .lt. g2) then
+      a = g2
+myIntPtr = myIntPtr + 1
+ myIntStack(myIntPtr) = 0
+    else
+      a = g1
+myIntPtr = myIntPtr + 1
+ myIntStack(myIntPtr) = 1
+    end if
+    if (g1 .gt. g2) then
+      b = g2
+myIntPtr = myIntPtr + 1
+ myIntStack(myIntPtr) = 0
+    else
+      b = g1
+myIntPtr = myIntPtr + 1
+ myIntStack(myIntPtr) = 1
+    end if
+    if (a - b .ge. 0.) then
+      abs0 = a - b
+    else
+      abs0 = -(a-b)
+    end if
+    if (abs0 .gt. -(log(phi*p_switch)/phi)) then
+      bd = smind
+      ad = 0.0_8
+    else
+      tempd = exp(-(phi*(a-b)))*smind/(exp(-(phi*(a-b)))+1.0)
+      bd = smind - tempd
+      ad = tempd
+    end if
+branch = myIntStack(myIntPtr)
+ myIntPtr = myIntPtr - 1
+    if (branch .eq. 0) then
+      g2d = bd
+    else
+      g1d = g1d + bd
+      g2d = 0.0_8
+    end if
+branch = myIntStack(myIntPtr)
+ myIntPtr = myIntPtr - 1
+    if (branch .eq. 0) then
+      g2d = g2d + ad
+    else
+      g1d = g1d + ad
+    end if
+  end subroutine smoothmin_fast_b
+
+  subroutine smoothmin(smin, g1, g2, phi)
+    use constants
+    implicit none
+    real(kind=realtype), intent(out) :: smin
+    real(kind=realtype), intent(in) :: g1, g2, phi
+    real(kind=realtype) :: a, b, p_switch
+    intrinsic max
+    intrinsic min
+    intrinsic abs
+    intrinsic log
+    intrinsic exp
+    real(kind=realtype) :: abs0
+    p_switch = 1e-15
+    if (g1 .lt. g2) then
+      a = g2
+    else
+      a = g1
+    end if
+    if (g1 .gt. g2) then
+      b = g2
+    else
+      b = g1
+    end if
+    if (a - b .ge. 0.) then
+      abs0 = a - b
+    else
+      abs0 = -(a-b)
+    end if
+    if (abs0 .gt. -(log(phi*p_switch)/phi)) then
+      smin = b
+    else
+      smin = b + log(1.0+exp(-(phi*(a-b))))/(-phi)
+    end if
+  end subroutine smoothmin
 ! ----------------------------------------------------------------------
 !                                                                      |
 !                    no tapenade routine below this line               |
