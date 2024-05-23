@@ -1334,6 +1334,7 @@ nadvloopspectral:do ii=1,nadv
     use flowvarrefstate, only : timeref
     use inputphysics, only : use2003sst
     use utils_fast_b, only : smoothmax
+    use inputiteration, only : smoothsstphi
     implicit none
 ! input variables
     integer(kind=inttype) :: ibeg, iend, jbeg, jend, kbeg, kend
@@ -1341,7 +1342,7 @@ nadvloopspectral:do ii=1,nadv
 !      local variables.
 !
     integer(kind=inttype) :: i, j, k, ii, isize, jsize, ksize
-    real(kind=realtype) :: t1, t2, arg2, f2, phi1, phi2
+    real(kind=realtype) :: t1, t2, arg2, f2
     intrinsic mod
     intrinsic sqrt
     intrinsic max
@@ -1355,9 +1356,6 @@ nadvloopspectral:do ii=1,nadv
     else
       call prodwmag2(ibeg, iend, jbeg, jend, kbeg, kend, iprodalt)
     end if
-! control value for smooth min/max functions. needs to be declared in advance because of 'complexify'
-    phi1 = 1.0e3_realtype
-    phi2 = 3.0e1_realtype
 ! loop over the cells of this block and compute the eddy viscosity.
 ! most of the time, do not include halo's (ibeg=2...il,...)
     isize = iend - ibeg + 1
@@ -1380,7 +1378,7 @@ nadvloopspectral:do ii=1,nadv
         arg2 = t1
       end if
 ! 1e3
-      call smoothmax(arg2, t1, t2, phi1)
+      call smoothmax(arg2, t1, t2, smoothsstphi(1))
       f2 = tanh(arg2**2)
 ! and compute the eddy viscosity.
 ! same definition as in
@@ -1388,7 +1386,7 @@ nadvloopspectral:do ii=1,nadv
       t1 = rssta1*w(i, j, k, itu2)
       t2 = f2*sqrt(scratch(i, j, k, iprodalt))
 ! 1e1
-      call smoothmax(arg2, t1, t2, phi2)
+      call smoothmax(arg2, t1, t2, smoothsstphi(2))
       rev(i, j, k) = w(i, j, k, irho)*rssta1*w(i, j, k, itu1)/arg2
     end do
   end subroutine ssteddyviscosity

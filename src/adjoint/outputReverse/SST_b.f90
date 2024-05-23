@@ -32,7 +32,8 @@ contains
     use inputphysics
     use inputdiscretization, only : approxturb
     use paramturb
-    use utils_b, only : smoothmin, smoothmin_b, smoothmax
+    use utils_b, only : smoothmin, smoothmax
+    use inputiteration, only : smoothsstphi
     implicit none
 !
 !      local variables.
@@ -51,13 +52,13 @@ contains
     real(kind=realtype) :: re_theta_c, f_reattach, gamma_sep, gamma_eff
     real(kind=realtype) :: re_theta_cd, f_reattachd, gamma_sepd, &
 &   gamma_effd
-    real(kind=realtype) :: vort, phi
+    real(kind=realtype) :: vort
     real(kind=realtype) :: vortd
     intrinsic sqrt
     intrinsic mod
+    intrinsic min
     intrinsic max
     intrinsic exp
-    intrinsic min
     intrinsic sin
     real(kind=realtype) :: x1
     real(kind=realtype) :: x1d
@@ -75,8 +76,6 @@ contains
     real(kind=realtype) :: min2d
     real(kind=realtype) :: max1
     real(kind=realtype) :: max1d
-    real(kind=realtype) :: arg1
-    real(kind=realtype) :: arg1d
     real(kind=realtype) :: temp
     real(kind=realtype) :: tempd
     real(kind=realtype) :: temp0
@@ -97,7 +96,7 @@ contains
     if (use2003sst) then
       rsstgam1 = 5.0_realtype/9.0_realtype
       rsstgam2 = 0.44_realtype
-      pklim = 20.0
+      pklim = 10.0
     else
       rsstgam1 = rsstbeta1/rsstbetas - rsstsigw1*rsstk*rsstk/sqrt(&
 &       rsstbetas)
@@ -105,8 +104,6 @@ contains
 &       rsstbetas)
       pklim = 20.0
     end if
-! control value for smooth min/max functions. needs to be declared in advance because of 'complexify'
-    phi = 1.0e15_realtype
 !$bwd-of ii-loop 
     do ii=0,nx*ny*nz-1
       i = mod(ii, nx) + 2
@@ -128,14 +125,19 @@ contains
       ss = scratch(i, j, k, iprod)
       if (approxturb) then
         spk = zero
-        call pushcontrol1b(0)
+        call pushcontrol1b(1)
       else
         spk = rev(i, j, k)*ss*rhoi
-        call pushcontrol1b(1)
+        call pushcontrol1b(0)
       end if
       sdk = rsstbetas*w(i, j, k, itu1)*w(i, j, k, itu2)
-      arg1 = pklim*sdk
-      call smoothmin(spk, spk, arg1, phi)
+      if (spk .gt. pklim*sdk) then
+        spk = pklim*sdk
+        call pushcontrol1b(0)
+      else
+        call pushcontrol1b(1)
+        spk = spk
+      end if
       if (transitionmodel .eq. gammaretheta) then
         x1 = sqrt(scratch(i, j, k, ivorticity))
         if (x1 .lt. eps) then
@@ -386,21 +388,23 @@ contains
 &         , k, ivorticity) = scratchd(i, j, k, ivorticity) + x1d/(2.0*&
 &           sqrt(scratch(i, j, k, ivorticity)))
       end if
-      arg1d = 0.0_8
-      call smoothmin_b(spk, spkd, spk, spkd, arg1, arg1d, phi)
-      sdkd = sdkd + pklim*arg1d
+      call popcontrol1b(branch)
+      if (branch .eq. 0) then
+        sdkd = sdkd + pklim*spkd
+        spkd = 0.0_8
+      end if
       wd(i, j, k, itu1) = wd(i, j, k, itu1) + w(i, j, k, itu2)*rsstbetas&
 &       *sdkd
       wd(i, j, k, itu2) = wd(i, j, k, itu2) + w(i, j, k, itu1)*rsstbetas&
 &       *sdkd
       call popcontrol1b(branch)
       if (branch .eq. 0) then
-        rhoid = 0.0_8
-      else
         revd(i, j, k) = revd(i, j, k) + ss*rhoi*spkd
         tempd = rev(i, j, k)*spkd
         ssd = ssd + rhoi*tempd
         rhoid = ss*tempd
+      else
+        rhoid = 0.0_8
       end if
       t2d = t2d + rsstbeta2*rsstbetad + rsstgam2*rsstgamd
       scratchd(i, j, k, iprod) = scratchd(i, j, k, iprod) + ssd
@@ -424,6 +428,7 @@ contains
     use inputdiscretization, only : approxturb
     use paramturb
     use utils_b, only : smoothmin, smoothmax
+    use inputiteration, only : smoothsstphi
     implicit none
 !
 !      local variables.
@@ -435,12 +440,12 @@ contains
     real(kind=realtype) :: xm, ym, zm, xp, yp, zp, xa, ya, za
     real(kind=realtype) :: re_w, u, f_wake, delta, r_t, re_s, f_theta_t
     real(kind=realtype) :: re_theta_c, f_reattach, gamma_sep, gamma_eff
-    real(kind=realtype) :: vort, phi
+    real(kind=realtype) :: vort
     intrinsic sqrt
     intrinsic mod
+    intrinsic min
     intrinsic max
     intrinsic exp
-    intrinsic min
     intrinsic sin
     real(kind=realtype) :: x1
     real(kind=realtype) :: x2
@@ -450,13 +455,12 @@ contains
     real(kind=realtype) :: min1
     real(kind=realtype) :: min2
     real(kind=realtype) :: max1
-    real(kind=realtype) :: arg1
     integer :: ii
 ! set model constants
     if (use2003sst) then
       rsstgam1 = 5.0_realtype/9.0_realtype
       rsstgam2 = 0.44_realtype
-      pklim = 20.0
+      pklim = 10.0
     else
       rsstgam1 = rsstbeta1/rsstbetas - rsstsigw1*rsstk*rsstk/sqrt(&
 &       rsstbetas)
@@ -464,8 +468,6 @@ contains
 &       rsstbetas)
       pklim = 20.0
     end if
-! control value for smooth min/max functions. needs to be declared in advance because of 'complexify'
-    phi = 1.0e15_realtype
 !$ad ii-loop
 !       source terms.
 !       determine the source term and its derivative w.r.t. k and
@@ -497,8 +499,11 @@ contains
         spk = rev(i, j, k)*ss*rhoi
       end if
       sdk = rsstbetas*w(i, j, k, itu1)*w(i, j, k, itu2)
-      arg1 = pklim*sdk
-      call smoothmin(spk, spk, arg1, phi)
+      if (spk .gt. pklim*sdk) then
+        spk = pklim*sdk
+      else
+        spk = spk
+      end if
       if (transitionmodel .eq. gammaretheta) then
         x1 = sqrt(scratch(i, j, k, ivorticity))
         if (x1 .lt. eps) then
@@ -1637,6 +1642,8 @@ contains
     use paramturb, only : rsstsigw2
     use inputphysics, only : use2003sst, transitionmodel
     use utils_b, only : smoothmin, smoothmin_b, smoothmax, smoothmax_b
+    use inputiteration, only : smoothsstphi
+    use inputdiscretization, only : approxturb
     implicit none
 !
 !      local variables.
@@ -1645,7 +1652,7 @@ contains
     integer(kind=inttype) :: isize, ibeg, iend
     integer(kind=inttype) :: jsize, jbeg, jend
     integer(kind=inttype) :: ksize, kbeg, kend
-    real(kind=realtype) :: t1, t2, arg1, myeps, f1, f3, ry, phi1, phi2
+    real(kind=realtype) :: t1, t2, arg1, myeps, f1, f3, ry
     real(kind=realtype) :: t1d, t2d, arg1d
     intrinsic mod
     intrinsic sqrt
@@ -1698,9 +1705,6 @@ contains
     integer :: ad_to9
     integer :: ad_from10
     integer :: ad_to10
-! control value for smooth min/max functions. needs to be declared in advance because of 'complexify'
-    phi1 = 1.0e3_realtype
-    phi2 = 1.0e4_realtype
     myeps = 1e-10_realtype/two/rsstsigw2
     ibeg = 1
     jbeg = 1
@@ -1921,7 +1925,7 @@ bocos:do nn=1,nbocos
       t2 = 500.0_realtype*rlv(i, j, k)/(w(i, j, k, irho)*w(i, j, k, itu2&
 &       )*d2wall(i, j, k)**2)
 ! 1e3
-      call smoothmax(t1, t1, t2, phi1)
+      call smoothmax(t1, t1, t2, smoothsstphi(4))
       if (use2003sst) then
         if (myeps/w(i, j, k, irho) .lt. scratch(i, j, k, icd)) then
           max1 = scratch(i, j, k, icd)
@@ -1946,12 +1950,12 @@ bocos:do nn=1,nbocos
         call pushcontrol1b(1)
       end if
 ! 1e4
-      call smoothmin(arg1, t1, t2, phi2)
+      call smoothmin(arg1, t1, t2, smoothsstphi(4))
       arg1d = 4*arg1**3*(1.0-tanh(arg1**4)**2)*scratchd(i, j, k, if1sst)
       scratchd(i, j, k, if1sst) = 0.0_8
       t1d = 0.0_8
       t2d = 0.0_8
-      call smoothmin_b(arg1, arg1d, t1, t1d, t2, t2d, phi2)
+      call smoothmin_b(arg1, arg1d, t1, t1d, t2, t2d, smoothsstphi(4))
       call popcontrol1b(branch)
       if (branch .eq. 0) then
         call popreal8(t2)
@@ -1983,7 +1987,7 @@ bocos:do nn=1,nbocos
 &           icd) + max2d
       end if
       t2d = 0.0_8
-      call smoothmax_b(t1, t1d, t1, t1d, t2, t2d, phi1)
+      call smoothmax_b(t1, t1d, t1, t1d, t2, t2d, smoothsstphi(4))
       temp3 = d2wall(i, j, k)*d2wall(i, j, k)
       temp2 = w(i, j, k, itu2)
       temp1 = w(i, j, k, irho)
@@ -2030,6 +2034,8 @@ bocos:do nn=1,nbocos
     use paramturb, only : rsstsigw2
     use inputphysics, only : use2003sst, transitionmodel
     use utils_b, only : smoothmin, smoothmax
+    use inputiteration, only : smoothsstphi
+    use inputdiscretization, only : approxturb
     implicit none
 !
 !      local variables.
@@ -2038,7 +2044,7 @@ bocos:do nn=1,nbocos
     integer(kind=inttype) :: isize, ibeg, iend
     integer(kind=inttype) :: jsize, jbeg, jend
     integer(kind=inttype) :: ksize, kbeg, kend
-    real(kind=realtype) :: t1, t2, arg1, myeps, f1, f3, ry, phi1, phi2
+    real(kind=realtype) :: t1, t2, arg1, myeps, f1, f3, ry
     intrinsic mod
     intrinsic sqrt
     intrinsic max
@@ -2046,9 +2052,6 @@ bocos:do nn=1,nbocos
     intrinsic exp
     real(kind=realtype) :: max1
     real(kind=realtype) :: max2
-! control value for smooth min/max functions. needs to be declared in advance because of 'complexify'
-    phi1 = 1.0e3_realtype
-    phi2 = 1.0e4_realtype
     myeps = 1e-10_realtype/two/rsstsigw2
     ibeg = 1
     jbeg = 1
@@ -2093,7 +2096,7 @@ bocos:do nn=1,nbocos
       t2 = 500.0_realtype*rlv(i, j, k)/(w(i, j, k, irho)*w(i, j, k, itu2&
 &       )*d2wall(i, j, k)**2)
 ! 1e3
-      call smoothmax(t1, t1, t2, phi1)
+      call smoothmax(t1, t1, t2, smoothsstphi(4))
       if (use2003sst) then
         if (myeps/w(i, j, k, irho) .lt. scratch(i, j, k, icd)) then
           max1 = scratch(i, j, k, icd)
@@ -2110,7 +2113,7 @@ bocos:do nn=1,nbocos
         t2 = two*w(i, j, k, itu1)/(max2*d2wall(i, j, k)**2)
       end if
 ! 1e4
-      call smoothmin(arg1, t1, t2, phi2)
+      call smoothmin(arg1, t1, t2, smoothsstphi(4))
       f1 = tanh(arg1**4)
       if (transitionmodel .eq. gammaretheta) then
         ry = w(i, j, k, irho)*d2wall(i, j, k)*sqrt(w(i, j, k, itu1))/rlv&
@@ -2122,6 +2125,7 @@ bocos:do nn=1,nbocos
           f1 = f1
         end if
       end if
+! scratch(i, j, k, if1sst) = 1.0_realtype
       scratch(i, j, k, if1sst) = tanh(arg1**4)
     end do
 ! loop over the boundary conditions to set f1 in the boundary

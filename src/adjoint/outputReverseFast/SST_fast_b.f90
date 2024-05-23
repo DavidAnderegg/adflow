@@ -30,7 +30,8 @@ contains
     use inputphysics
     use inputdiscretization, only : approxturb
     use paramturb
-    use utils_fast_b, only : smoothmin, smoothmin_fast_b, smoothmax
+    use utils_fast_b, only : smoothmin, smoothmax
+    use inputiteration, only : smoothsstphi
     implicit none
 !
 !      local variables.
@@ -49,13 +50,13 @@ contains
     real(kind=realtype) :: re_theta_c, f_reattach, gamma_sep, gamma_eff
     real(kind=realtype) :: re_theta_cd, f_reattachd, gamma_sepd, &
 &   gamma_effd
-    real(kind=realtype) :: vort, phi
+    real(kind=realtype) :: vort
     real(kind=realtype) :: vortd
     intrinsic sqrt
     intrinsic mod
+    intrinsic min
     intrinsic max
     intrinsic exp
-    intrinsic min
     intrinsic sin
     real(kind=realtype) :: x1
     real(kind=realtype) :: x1d
@@ -73,8 +74,6 @@ contains
     real(kind=realtype) :: min2d
     real(kind=realtype) :: max1
     real(kind=realtype) :: max1d
-    real(kind=realtype) :: arg1
-    real(kind=realtype) :: arg1d
     real(kind=realtype) :: temp
     real(kind=realtype) :: tempd
     real(kind=realtype) :: temp0
@@ -92,7 +91,7 @@ contains
     if (use2003sst) then
       rsstgam1 = 5.0_realtype/9.0_realtype
       rsstgam2 = 0.44_realtype
-      pklim = 20.0
+      pklim = 10.0
     else
       rsstgam1 = rsstbeta1/rsstbetas - rsstsigw1*rsstk*rsstk/sqrt(&
 &       rsstbetas)
@@ -100,8 +99,6 @@ contains
 &       rsstbetas)
       pklim = 20.0
     end if
-! control value for smooth min/max functions. needs to be declared in advance because of 'complexify'
-    phi = 1.0e15_realtype
 !$bwd-of ii-loop 
     do ii=0,nx*ny*nz-1
       i = mod(ii, nx) + 2
@@ -124,15 +121,22 @@ contains
       if (approxturb) then
         spk = zero
 myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 0
+ myIntStack(myIntPtr) = 1
       else
         spk = rev(i, j, k)*ss*rhoi
 myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 1
+ myIntStack(myIntPtr) = 0
       end if
       sdk = rsstbetas*w(i, j, k, itu1)*w(i, j, k, itu2)
-      arg1 = pklim*sdk
-      call smoothmin(spk, spk, arg1, phi)
+      if (spk .gt. pklim*sdk) then
+        spk = pklim*sdk
+myIntPtr = myIntPtr + 1
+ myIntStack(myIntPtr) = 0
+      else
+myIntPtr = myIntPtr + 1
+ myIntStack(myIntPtr) = 1
+        spk = spk
+      end if
       if (transitionmodel .eq. gammaretheta) then
         x1 = sqrt(scratch(i, j, k, ivorticity))
         if (x1 .lt. eps) then
@@ -401,9 +405,12 @@ branch = myIntStack(myIntPtr)
 &         , k, ivorticity) = scratchd(i, j, k, ivorticity) + x1d/(2.0*&
 &           sqrt(scratch(i, j, k, ivorticity)))
       end if
-      call smoothmin_fast_b(spk, spkd, spk, spkd, arg1, arg1d, phi)
-      spkd = 0.0_8
-      sdkd = sdkd + pklim*arg1d
+branch = myIntStack(myIntPtr)
+ myIntPtr = myIntPtr - 1
+      if (branch .eq. 0) then
+        sdkd = sdkd + pklim*spkd
+        spkd = 0.0_8
+      end if
       wd(i, j, k, itu1) = wd(i, j, k, itu1) + w(i, j, k, itu2)*rsstbetas&
 &       *sdkd
       wd(i, j, k, itu2) = wd(i, j, k, itu2) + w(i, j, k, itu1)*rsstbetas&
@@ -411,12 +418,12 @@ branch = myIntStack(myIntPtr)
 branch = myIntStack(myIntPtr)
  myIntPtr = myIntPtr - 1
       if (branch .eq. 0) then
-        rhoid = 0.0_8
-      else
         revd(i, j, k) = revd(i, j, k) + ss*rhoi*spkd
         tempd = rev(i, j, k)*spkd
         ssd = ssd + rhoi*tempd
         rhoid = ss*tempd
+      else
+        rhoid = 0.0_8
       end if
       t2d = t2d + rsstbeta2*rsstbetad + rsstgam2*rsstgamd
       scratchd(i, j, k, iprod) = scratchd(i, j, k, iprod) + ssd
@@ -440,6 +447,7 @@ branch = myIntStack(myIntPtr)
     use inputdiscretization, only : approxturb
     use paramturb
     use utils_fast_b, only : smoothmin, smoothmax
+    use inputiteration, only : smoothsstphi
     implicit none
 !
 !      local variables.
@@ -451,12 +459,12 @@ branch = myIntStack(myIntPtr)
     real(kind=realtype) :: xm, ym, zm, xp, yp, zp, xa, ya, za
     real(kind=realtype) :: re_w, u, f_wake, delta, r_t, re_s, f_theta_t
     real(kind=realtype) :: re_theta_c, f_reattach, gamma_sep, gamma_eff
-    real(kind=realtype) :: vort, phi
+    real(kind=realtype) :: vort
     intrinsic sqrt
     intrinsic mod
+    intrinsic min
     intrinsic max
     intrinsic exp
-    intrinsic min
     intrinsic sin
     real(kind=realtype) :: x1
     real(kind=realtype) :: x2
@@ -466,13 +474,12 @@ branch = myIntStack(myIntPtr)
     real(kind=realtype) :: min1
     real(kind=realtype) :: min2
     real(kind=realtype) :: max1
-    real(kind=realtype) :: arg1
     integer :: ii
 ! set model constants
     if (use2003sst) then
       rsstgam1 = 5.0_realtype/9.0_realtype
       rsstgam2 = 0.44_realtype
-      pklim = 20.0
+      pklim = 10.0
     else
       rsstgam1 = rsstbeta1/rsstbetas - rsstsigw1*rsstk*rsstk/sqrt(&
 &       rsstbetas)
@@ -480,8 +487,6 @@ branch = myIntStack(myIntPtr)
 &       rsstbetas)
       pklim = 20.0
     end if
-! control value for smooth min/max functions. needs to be declared in advance because of 'complexify'
-    phi = 1.0e15_realtype
 !$ad ii-loop
 !       source terms.
 !       determine the source term and its derivative w.r.t. k and
@@ -513,8 +518,11 @@ branch = myIntStack(myIntPtr)
         spk = rev(i, j, k)*ss*rhoi
       end if
       sdk = rsstbetas*w(i, j, k, itu1)*w(i, j, k, itu2)
-      arg1 = pklim*sdk
-      call smoothmin(spk, spk, arg1, phi)
+      if (spk .gt. pklim*sdk) then
+        spk = pklim*sdk
+      else
+        spk = spk
+      end if
       if (transitionmodel .eq. gammaretheta) then
         x1 = sqrt(scratch(i, j, k, ivorticity))
         if (x1 .lt. eps) then
@@ -1530,6 +1538,8 @@ branch = myIntStack(myIntPtr)
     use inputphysics, only : use2003sst, transitionmodel
     use utils_fast_b, only : smoothmin, smoothmin_fast_b, smoothmax, &
 &   smoothmax_fast_b
+    use inputiteration, only : smoothsstphi
+    use inputdiscretization, only : approxturb
     implicit none
 !
 !      local variables.
@@ -1538,7 +1548,7 @@ branch = myIntStack(myIntPtr)
     integer(kind=inttype) :: isize, ibeg, iend
     integer(kind=inttype) :: jsize, jbeg, jend
     integer(kind=inttype) :: ksize, kbeg, kend
-    real(kind=realtype) :: t1, t2, arg1, myeps, f1, f3, ry, phi1, phi2
+    real(kind=realtype) :: t1, t2, arg1, myeps, f1, f3, ry
     real(kind=realtype) :: t1d, t2d, arg1d
     intrinsic mod
     intrinsic sqrt
@@ -1589,9 +1599,6 @@ branch = myIntStack(myIntPtr)
     integer :: ad_to9
     integer :: ad_from10
     integer :: ad_to10
-! control value for smooth min/max functions. needs to be declared in advance because of 'complexify'
-    phi1 = 1.0e3_realtype
-    phi2 = 1.0e4_realtype
     myeps = 1e-10_realtype/two/rsstsigw2
     ibeg = 1
     jbeg = 1
@@ -1814,7 +1821,7 @@ myIntPtr = myIntPtr + 1
       t2 = 500.0_realtype*rlv(i, j, k)/(w(i, j, k, irho)*w(i, j, k, itu2&
 &       )*d2wall(i, j, k)**2)
 ! 1e3
-      call smoothmax(t1, t1, t2, phi1)
+      call smoothmax(t1, t1, t2, smoothsstphi(4))
       if (use2003sst) then
         if (myeps/w(i, j, k, irho) .lt. scratch(i, j, k, icd)) then
           max1 = scratch(i, j, k, icd)
@@ -1845,11 +1852,11 @@ myIntPtr = myIntPtr + 1
  myIntStack(myIntPtr) = 1
       end if
 ! 1e4
-      call smoothmin(arg1, t1, t2, phi2)
+      call smoothmin(arg1, t1, t2, smoothsstphi(4))
       arg1d = 4*arg1**3*(1.0-tanh(arg1**4)**2)*scratchd(i, j, k, if1sst)
       scratchd(i, j, k, if1sst) = 0.0_8
-      t1d = 0.0_8
-      call smoothmin_fast_b(arg1, arg1d, t1, t1d, t2, t2d, phi2)
+      call smoothmin_fast_b(arg1, arg1d, t1, t1d, t2, t2d, smoothsstphi(&
+&                     4))
 branch = myIntStack(myIntPtr)
  myIntPtr = myIntPtr - 1
       if (branch .eq. 0) then
@@ -1877,7 +1884,7 @@ branch = myIntStack(myIntPtr)
         if (branch .eq. 0) scratchd(i, j, k, icd) = scratchd(i, j, k, &
 &           icd) + max2d
       end if
-      call smoothmax_fast_b(t1, t1d, t1, t1d, t2, t2d, phi1)
+      call smoothmax_fast_b(t1, t1d, t1, t1d, t2, t2d, smoothsstphi(4))
       t1d = 0.0_8
       temp2 = w(i, j, k, itu2)
       temp1 = w(i, j, k, irho)
@@ -1920,6 +1927,8 @@ branch = myIntStack(myIntPtr)
     use paramturb, only : rsstsigw2
     use inputphysics, only : use2003sst, transitionmodel
     use utils_fast_b, only : smoothmin, smoothmax
+    use inputiteration, only : smoothsstphi
+    use inputdiscretization, only : approxturb
     implicit none
 !
 !      local variables.
@@ -1928,7 +1937,7 @@ branch = myIntStack(myIntPtr)
     integer(kind=inttype) :: isize, ibeg, iend
     integer(kind=inttype) :: jsize, jbeg, jend
     integer(kind=inttype) :: ksize, kbeg, kend
-    real(kind=realtype) :: t1, t2, arg1, myeps, f1, f3, ry, phi1, phi2
+    real(kind=realtype) :: t1, t2, arg1, myeps, f1, f3, ry
     intrinsic mod
     intrinsic sqrt
     intrinsic max
@@ -1936,9 +1945,6 @@ branch = myIntStack(myIntPtr)
     intrinsic exp
     real(kind=realtype) :: max1
     real(kind=realtype) :: max2
-! control value for smooth min/max functions. needs to be declared in advance because of 'complexify'
-    phi1 = 1.0e3_realtype
-    phi2 = 1.0e4_realtype
     myeps = 1e-10_realtype/two/rsstsigw2
     ibeg = 1
     jbeg = 1
@@ -1983,7 +1989,7 @@ branch = myIntStack(myIntPtr)
       t2 = 500.0_realtype*rlv(i, j, k)/(w(i, j, k, irho)*w(i, j, k, itu2&
 &       )*d2wall(i, j, k)**2)
 ! 1e3
-      call smoothmax(t1, t1, t2, phi1)
+      call smoothmax(t1, t1, t2, smoothsstphi(4))
       if (use2003sst) then
         if (myeps/w(i, j, k, irho) .lt. scratch(i, j, k, icd)) then
           max1 = scratch(i, j, k, icd)
@@ -2000,7 +2006,7 @@ branch = myIntStack(myIntPtr)
         t2 = two*w(i, j, k, itu1)/(max2*d2wall(i, j, k)**2)
       end if
 ! 1e4
-      call smoothmin(arg1, t1, t2, phi2)
+      call smoothmin(arg1, t1, t2, smoothsstphi(4))
       f1 = tanh(arg1**4)
       if (transitionmodel .eq. gammaretheta) then
         ry = w(i, j, k, irho)*d2wall(i, j, k)*sqrt(w(i, j, k, itu1))/rlv&
@@ -2012,6 +2018,7 @@ branch = myIntStack(myIntPtr)
           f1 = f1
         end if
       end if
+! scratch(i, j, k, if1sst) = 1.0_realtype
       scratch(i, j, k, if1sst) = tanh(arg1**4)
     end do
 ! loop over the boundary conditions to set f1 in the boundary

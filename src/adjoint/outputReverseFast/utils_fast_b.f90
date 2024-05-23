@@ -1774,7 +1774,7 @@ branch = myIntStack(myIntPtr)
   end subroutine smoothmax
 
 !  differentiation of smoothmin in reverse (adjoint) mode (with options noisize i4 dr8 r8):
-!   gradient     of useful results: g1 smin
+!   gradient     of useful results: smin
 !   with respect to varying inputs: g1 g2
   subroutine smoothmin_fast_b(smin, smind, g1, g1d, g2, g2d, phi)
     use constants
@@ -1829,8 +1829,9 @@ branch = myIntStack(myIntPtr)
  myIntPtr = myIntPtr - 1
     if (branch .eq. 0) then
       g2d = bd
+      g1d = 0.0_8
     else
-      g1d = g1d + bd
+      g1d = bd
       g2d = 0.0_8
     end if
 branch = myIntStack(myIntPtr)

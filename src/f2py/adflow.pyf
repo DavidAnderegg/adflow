@@ -1086,6 +1086,7 @@ python module libadflow
          real(kind=realtype) allocatable,dimension(:) :: etark
          real(kind=realtype) allocatable,dimension(:) :: cdisrk
          real(kind=realtype), dimension(4) :: turbresscale
+         real(kind=realtype), dimension(5) :: smoothsstphi
          real(kind=realtype) :: meshmaxskewness
          logical :: useskewnesscheck
          logical :: freezeturbsource

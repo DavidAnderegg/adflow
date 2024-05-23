@@ -262,6 +262,7 @@ contains
         use inputDiscretization, only: approxTurb
         use paramTurb
         use utils, only: smoothMin, smoothMax
+        use inputIteration, only: smoothSSTphi
         implicit none
         !
         !      Local variables.
@@ -275,14 +276,14 @@ contains
 
         real(kind=realType) :: Re_w, U, F_wake, delta, R_t, Re_S, F_theta_t
         real(kind=realType) :: Re_theta_c, F_reattach, gamma_sep, gamma_eff
-        real(kind=realType) :: vort, phi
+        real(kind=realType) :: vort
 
         ! Set model constants
 
         if (use2003SST) then
             rSSTGam1 = 5.0_realType / 9.0_realType
             rSSTGam2 = 0.44_realType
-            pklim = 20.0
+            pklim = 10.0
         else
             rSSTGam1 = rSSTBeta1 / rSSTBetas &
                        - rSSTSigw1 * rSSTK * rSSTK / sqrt(rSSTBetas)
@@ -290,9 +291,6 @@ contains
                        - rSSTSigw2 * rSSTK * rSSTK / sqrt(rSSTBetas)
             pklim = 20.0
         end if
-
-        ! control value for smooth min/max functions. Needs to be declared in advance because of 'complexify'
-        phi = 1.0e15_realType
 
         !       Source terms.
         !       Determine the source term and its derivative w.r.t. k and
@@ -338,7 +336,8 @@ contains
                         end if
                         sdk = rSSTBetas * w(i, j, k, itu1) * w(i, j, k, itu2)
 
-                        call smoothMin(spk, spk, pklim * sdk, phi)
+                        ! call smoothMin(spk, spk, pklim * sdk, smoothSSTphi(3))
+                        spk = Min(spk, pklim * sdk)
 
                         if (transitionModel .eq. gammaRetheta) then
                             vort = max(sqrt(scratch(i, j, k, iVorticity)), eps)
@@ -882,6 +881,8 @@ contains
         use paramTurb, only: rSSTSigw2
         use inputPhysics, only: use2003SST, transitionModel
         use utils, only: smoothMin, smoothMax
+        use inputIteration, only: smoothSSTphi
+        use inputDiscretization, only: approxTurb
         implicit none
         !
         !      Local variables.
@@ -891,11 +892,7 @@ contains
         integer(kind=intType) :: jSize, jBeg, jEnd
         integer(kind=intType) :: kSize, kBeg, kEnd
 
-        real(kind=realType) :: t1, t2, arg1, myeps, f1, f3, Ry, phi1, phi2
-
-        ! control value for smooth min/max functions. Needs to be declared in advance because of 'complexify'
-        phi1 = 1.0e3_realType
-        phi2 = 1.0e4_realType
+        real(kind=realType) :: t1, t2, arg1, myeps, f1, f3, Ry
 
         myeps = 1e-10_realType / two / rSSTSigw2
 
@@ -955,7 +952,7 @@ contains
                         end if
                         t2 = 500.0_realType * rlv(i, j, k) &
                              / (w(i, j, k, irho) * w(i, j, k, itu2) * d2Wall(i, j, k)**2)
-                        call smoothMax(t1, t1, t2, phi1) ! 1e3
+                        call smoothMax(t1, t1, t2, smoothSSTphi(4)) ! 1e3
 
                         if (use2003SST) then
                             t2 = two * w(i, j, k, itu1) &
@@ -965,7 +962,7 @@ contains
                                  / (max(eps, scratch(i, j, k, icd)) * d2Wall(i, j, k)**2)
                         end if
 
-                        call smoothMin(arg1, t1, t2, phi2) ! 1e4
+                        call smoothMin(arg1, t1, t2, smoothSSTphi(4)) ! 1e4
                         f1 = tanh(arg1**4)
 
                         if (transitionModel .eq. gammaRetheta) then
@@ -973,6 +970,10 @@ contains
                             f3 = exp(-(Ry/120.0)**8)
                             f1 = max(f1, f3)
                         end if
+
+
+                        ! scratch(i, j, k, if1SST) = 1.0_realtype
+
                         scratch(i, j, k, if1SST) = tanh(arg1**4)
 
 #ifdef TAPENADE_REVERSE

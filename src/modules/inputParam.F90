@@ -250,6 +250,7 @@ module inputIteration
     ! printIterations:  If True, iterations are printed to stdout
     ! turbresscale:     Scaling factor for turbulent residual. Necessary for
     !                   NKsolver with RANS. Only tested on SA.
+    ! smoothsstphi:     Phi values for smooth SST variant
     ! meshMaxSkewness   If one cell has a highe skewness than this, the Solver
     !                   errors out.
     ! iterType : String used for specifying which type of iteration was taken
@@ -290,6 +291,7 @@ module inputIteration
     logical :: printBadlySkewedCells
     logical :: printBCWarnings
     real(kind=realType), dimension(4) :: turbResScale
+    real(kind=realType), dimension(5) :: smoothsstphi
     real(kind=realType) :: meshMaxSkewness
     logical :: useSkewnessCheck
     logical :: useDissContinuation

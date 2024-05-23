@@ -936,6 +936,7 @@ contains
         use flowVarRefState, only: timeRef
         use inputPhysics, only: use2003SST
         use utils, only: smoothMax
+        use inputIteration, only: smoothSSTphi
         implicit none
         ! Input variables
         integer(kind=intType) :: iBeg, iEnd, jBeg, jEnd, kBeg, kEnd
@@ -943,7 +944,7 @@ contains
         !      Local variables.
         !
         integer(kind=intType) :: i, j, k, ii, iSize, jSize, kSize
-        real(kind=realType) :: t1, t2, arg2, f2, phi1, phi2
+        real(kind=realType) :: t1, t2, arg2, f2
 
         ! Compute the vorticity squared in the cell centers. The reason
         ! for computing the vorticity squared is that a routine exists
@@ -956,9 +957,6 @@ contains
             call prodWmag2(iBeg, iEnd, jBeg, jEnd, kBeg, kEnd, iprodAlt)
         end if
 
-        ! control value for smooth min/max functions. Needs to be declared in advance because of 'complexify'
-        phi1 = 1.0e3_realType
-        phi2 = 3.0e1_realType
         ! Loop over the cells of this block and compute the eddy viscosity.
         ! Most of the time, do not include halo's (iBeg=2...il,...)
 #ifdef TAPENADE_REVERSE
@@ -985,7 +983,7 @@ contains
                              / (w(i, j, k, irho) * w(i, j, k, itu2) * d2Wall(i, j, k)**2)
 
                         arg2 = max(t1, t2)
-                        call smoothMax(arg2, t1, t2, phi1) ! 1e3
+                        call smoothMax(arg2, t1, t2, smoothSSTphi(1)) ! 1e3
                         f2 = tanh(arg2**2)
 
                         ! And compute the eddy viscosity.
@@ -994,7 +992,7 @@ contains
                         t1 = rSSTA1 * w(i, j, k, itu2)
                         t2 = f2 * sqrt(scratch(i, j, k, iprodAlt))
 
-                        call smoothMax(arg2, t1, t2, phi2) ! 1e1
+                        call smoothMax(arg2, t1, t2, smoothSSTphi(2)) ! 1e1
                         rev(i, j, k) = w(i, j, k, irho) * rSSTA1 * w(i, j, k, itu1)  / arg2
 #ifdef TAPENADE_REVERSE
                     end do

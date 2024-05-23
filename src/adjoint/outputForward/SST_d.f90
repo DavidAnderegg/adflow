@@ -32,7 +32,8 @@ contains
     use inputphysics
     use inputdiscretization, only : approxturb
     use paramturb
-    use utils_d, only : smoothmin, smoothmin_d, smoothmax
+    use utils_d, only : smoothmin, smoothmax
+    use inputiteration, only : smoothsstphi
     implicit none
 !
 !      local variables.
@@ -51,12 +52,12 @@ contains
     real(kind=realtype) :: re_theta_c, f_reattach, gamma_sep, gamma_eff
     real(kind=realtype) :: re_theta, f_reattachd, gamma_sepd, &
 &   gamma_effd
-    real(kind=realtype) :: vort, phi
+    real(kind=realtype) :: vort
     real(kind=realtype) :: vortd
     intrinsic sqrt
+    intrinsic min
     intrinsic max
     intrinsic exp
-    intrinsic min
     intrinsic sin
     real(kind=realtype) :: x1
     real(kind=realtype) :: x1d
@@ -87,7 +88,7 @@ contains
     if (use2003sst) then
       rsstgam1 = 5.0_realtype/9.0_realtype
       rsstgam2 = 0.44_realtype
-      pklim = 20.0
+      pklim = 10.0
     else
       result1 = sqrt(rsstbetas)
       rsstgam1 = rsstbeta1/rsstbetas - rsstsigw1*rsstk*rsstk/result1
@@ -95,8 +96,6 @@ contains
       rsstgam2 = rsstbeta2/rsstbetas - rsstsigw2*rsstk*rsstk/result1
       pklim = 20.0
     end if
-! control value for smooth min/max functions. needs to be declared in advance because of 'complexify'
-    phi = 1.0e15_realtype
 !       source terms.
 !       determine the source term and its derivative w.r.t. k and
 !       omega for all internal cells of the block.
@@ -140,8 +139,12 @@ contains
           sdkd = rsstbetas*(temp*wd(i, j, k, itu1)+temp0*wd(i, j, k, &
 &           itu2))
           sdk = rsstbetas*(temp0*temp)
-          call smoothmin_d(spk, spkd, spk, spkd, pklim*sdk, pklim*sdkd, &
-&                    phi)
+          if (spk .gt. pklim*sdk) then
+            spkd = pklim*sdkd
+            spk = pklim*sdk
+          else
+            spk = spk
+          end if
           if (transitionmodel .eq. gammaretheta) then
             temp0 = scratch(i, j, k, ivorticity)
             temp = sqrt(temp0)
@@ -341,6 +344,7 @@ contains
     use inputdiscretization, only : approxturb
     use paramturb
     use utils_d, only : smoothmin, smoothmax
+    use inputiteration, only : smoothsstphi
     implicit none
 !
 !      local variables.
@@ -352,11 +356,11 @@ contains
     real(kind=realtype) :: xm, ym, zm, xp, yp, zp, xa, ya, za
     real(kind=realtype) :: re_w, u, f_wake, delta, r_t, re_s, f_theta_t
     real(kind=realtype) :: re_theta_c, f_reattach, gamma_sep, gamma_eff
-    real(kind=realtype) :: vort, phi
+    real(kind=realtype) :: vort
     intrinsic sqrt
+    intrinsic min
     intrinsic max
     intrinsic exp
-    intrinsic min
     intrinsic sin
     real(kind=realtype) :: x1
     real(kind=realtype) :: x2
@@ -372,7 +376,7 @@ contains
     if (use2003sst) then
       rsstgam1 = 5.0_realtype/9.0_realtype
       rsstgam2 = 0.44_realtype
-      pklim = 20.0
+      pklim = 10.0
     else
       result1 = sqrt(rsstbetas)
       rsstgam1 = rsstbeta1/rsstbetas - rsstsigw1*rsstk*rsstk/result1
@@ -380,8 +384,6 @@ contains
       rsstgam2 = rsstbeta2/rsstbetas - rsstsigw2*rsstk*rsstk/result1
       pklim = 20.0
     end if
-! control value for smooth min/max functions. needs to be declared in advance because of 'complexify'
-    phi = 1.0e15_realtype
 !       source terms.
 !       determine the source term and its derivative w.r.t. k and
 !       omega for all internal cells of the block.
@@ -411,7 +413,11 @@ contains
             spk = rev(i, j, k)*ss*rhoi
           end if
           sdk = rsstbetas*w(i, j, k, itu1)*w(i, j, k, itu2)
-          call smoothmin(spk, spk, pklim*sdk, phi)
+          if (spk .gt. pklim*sdk) then
+            spk = pklim*sdk
+          else
+            spk = spk
+          end if
           if (transitionmodel .eq. gammaretheta) then
             x1 = sqrt(scratch(i, j, k, ivorticity))
             if (x1 .lt. eps) then
@@ -1326,6 +1332,8 @@ contains
     use paramturb, only : rsstsigw2
     use inputphysics, only : use2003sst, transitionmodel
     use utils_d, only : smoothmin, smoothmin_d, smoothmax, smoothmax_d
+    use inputiteration, only : smoothsstphi
+    use inputdiscretization, only : approxturb
     implicit none
 !
 !      local variables.
@@ -1334,7 +1342,7 @@ contains
     integer(kind=inttype) :: isize, ibeg, iend
     integer(kind=inttype) :: jsize, jbeg, jend
     integer(kind=inttype) :: ksize, kbeg, kend
-    real(kind=realtype) :: t1, t2, arg1, myeps, f1, f3, ry, phi1, phi2
+    real(kind=realtype) :: t1, t2, arg1, myeps, f1, f3, ry
     real(kind=realtype) :: t1d, t2d, arg1d
     intrinsic sqrt
     intrinsic max
@@ -1355,9 +1363,6 @@ contains
     real(kind=realtype) :: temp3
     real(kind=realtype) :: temp4
     real(kind=realtype) :: temp5
-! control value for smooth min/max functions. needs to be declared in advance because of 'complexify'
-    phi1 = 1.0e3_realtype
-    phi2 = 1.0e4_realtype
     myeps = 1e-10_realtype/two/rsstsigw2
     ibeg = 1
     jbeg = 1
@@ -1418,7 +1423,7 @@ contains
 &           (i, j, k)))/temp4
           t2 = 500.0_realtype*temp5
 ! 1e3
-          call smoothmax_d(t1, t1d, t1, t1d, t2, t2d, phi1)
+          call smoothmax_d(t1, t1d, t1, t1d, t2, t2d, smoothsstphi(4))
           if (use2003sst) then
             if (myeps/w(i, j, k, irho) .lt. scratch(i, j, k, icd)) then
               max1d = scratchd(i, j, k, icd)
@@ -1449,7 +1454,8 @@ contains
           end if
 ! 1e4
           arg1d = 0.0_8
-          call smoothmin_d(arg1, arg1d, t1, t1d, t2, t2d, phi2)
+          call smoothmin_d(arg1, arg1d, t1, t1d, t2, t2d, smoothsstphi(4&
+&                    ))
           arg10 = arg1**4
           f1 = tanh(arg10)
           if (transitionmodel .eq. gammaretheta) then
@@ -1463,6 +1469,7 @@ contains
               f1 = f1
             end if
           end if
+! scratch(i, j, k, if1sst) = 1.0_realtype
           arg10d = 4*arg1**3*arg1d
           arg10 = arg1**4
           scratchd(i, j, k, if1sst) = (1.0-tanh(arg10)**2)*arg10d
@@ -1544,6 +1551,8 @@ bocos:do nn=1,nbocos
     use paramturb, only : rsstsigw2
     use inputphysics, only : use2003sst, transitionmodel
     use utils_d, only : smoothmin, smoothmax
+    use inputiteration, only : smoothsstphi
+    use inputdiscretization, only : approxturb
     implicit none
 !
 !      local variables.
@@ -1552,7 +1561,7 @@ bocos:do nn=1,nbocos
     integer(kind=inttype) :: isize, ibeg, iend
     integer(kind=inttype) :: jsize, jbeg, jend
     integer(kind=inttype) :: ksize, kbeg, kend
-    real(kind=realtype) :: t1, t2, arg1, myeps, f1, f3, ry, phi1, phi2
+    real(kind=realtype) :: t1, t2, arg1, myeps, f1, f3, ry
     intrinsic sqrt
     intrinsic max
     intrinsic tanh
@@ -1561,9 +1570,6 @@ bocos:do nn=1,nbocos
     real(kind=realtype) :: max2
     real(kind=realtype) :: result1
     real(kind=realtype) :: arg10
-! control value for smooth min/max functions. needs to be declared in advance because of 'complexify'
-    phi1 = 1.0e3_realtype
-    phi2 = 1.0e4_realtype
     myeps = 1e-10_realtype/two/rsstsigw2
     ibeg = 1
     jbeg = 1
@@ -1604,7 +1610,7 @@ bocos:do nn=1,nbocos
           t2 = 500.0_realtype*rlv(i, j, k)/(w(i, j, k, irho)*w(i, j, k, &
 &           itu2)*d2wall(i, j, k)**2)
 ! 1e3
-          call smoothmax(t1, t1, t2, phi1)
+          call smoothmax(t1, t1, t2, smoothsstphi(4))
           if (use2003sst) then
             if (myeps/w(i, j, k, irho) .lt. scratch(i, j, k, icd)) then
               max1 = scratch(i, j, k, icd)
@@ -1621,7 +1627,7 @@ bocos:do nn=1,nbocos
             t2 = two*w(i, j, k, itu1)/(max2*d2wall(i, j, k)**2)
           end if
 ! 1e4
-          call smoothmin(arg1, t1, t2, phi2)
+          call smoothmin(arg1, t1, t2, smoothsstphi(4))
           arg10 = arg1**4
           f1 = tanh(arg10)
           if (transitionmodel .eq. gammaretheta) then
@@ -1635,6 +1641,7 @@ bocos:do nn=1,nbocos
               f1 = f1
             end if
           end if
+! scratch(i, j, k, if1sst) = 1.0_realtype
           arg10 = arg1**4
           scratch(i, j, k, if1sst) = tanh(arg10)
         end do
