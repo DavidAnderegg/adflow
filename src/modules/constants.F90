@@ -135,12 +135,7 @@ module constants
         komegaModified = 5, &
         ktau = 6, &
         menterSST = 7, &
-        langtrymenterSST = 8, &
         v2f = 10
-
-    integer(kind=intType), parameter :: &
-        noTransitionModel = 0, & 
-        gammaretheta = 1
 
     integer(kind=intType), parameter :: &
         strain = 1, &
@@ -530,16 +525,3 @@ module constants
     integer(kind=intType), parameter :: MetricSkewness = 2
 
 end module constants
-
-module variableConstants
-    ! A variable Constant defeats the purpose of a constant. This module is here to somewhat retain 
-    ! backwards-compability
-
-    use precision
-
-    implicit none
-    save
-
-    integer(kind=intType) :: iTransition1 = -1
-    integer(kind=intType) :: iTransition2 = -1
-end module

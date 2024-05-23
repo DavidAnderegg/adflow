@@ -22,12 +22,10 @@ contains
         use blockPointers, only: nDom, il, jl, kl, scratch, bmtj1, bmtj2, &
                                  bmti1, bmti2, bmtk1, bmtk2
         use inputTimeSpectral
-        use inputPhysics, only: turbProd, transitionModel
+        use inputPhysics, only: turbProd
         use iteration
         use turbUtils, only: prodSmag2, prodWmag2, prodKatoLaunder, strainNorm2, &
                              turbAdvection, unsteadyTurbTerm, kwCDTerm
-
-        use GammaRethetaModel, only: GammaRethetaSource, GammaRethetaViscous, GammaRethetaResScale
         implicit none
 
         !
@@ -41,28 +39,6 @@ contains
 
         ! Alloc central jacobian memory
         allocate (qq(2:il, 2:jl, 2:kl, 2, 2))
-
-        ! run transition Model if desired
-        select case (transitionModel) 
-        case (gammaRetheta)
-            call strainNorm2(2, il, 2, jl, 2, kl, iStrain)
-            call prodWmag2(2, il, 2, jl, 2, kl, iVorticity)
-
-            call GammaRethetaSource
-            call turbAdvection(&
-                (/iTransition1,iTransition2/), &
-                (/isTransition1,isTransition2/), &
-                1 &! dummy argument
-            )
-            call unsteadyTurbTerm(&
-                (/iTransition1,iTransition2/), &
-                (/isTransition1,isTransition2/), &
-                1 &! dummy argument
-            )
-
-            call GammaRethetaViscous
-            call GammaRethetaResScale
-        end select
 
         ! Compute the cross diffusion term.
         call kwCDterm
@@ -105,33 +81,14 @@ contains
     subroutine SST_block_residuals_d
         use constants
         use variableConstants
-        use blockPointers!, only: il, jl, kl
-        use inputPhysics, only: turbProd, transitionModel
+        use blockPointers, only: il, jl, kl
+        use inputPhysics, only: turbProd
         use turbutils_d, only: turbAdvection_d, kwCDterm_d, prodSmag2_d, strainNorm2_d, &
                                prodWmag2_d, prodKatolaunder_d
         use sst_d, only: SSTSource_d, SSTViscous_d, SSTResScale_d, f1SST_d, qq
-        use GammaRethetaModel_d, only: GammaRethetaSource_d, GammaRethetaViscous_d, GammaRethetaResScale_d
-
         use turbUtils, only: prodSmag2, prodWmag2, prodKatoLaunder, strainNorm2
-        use genericisnan
 
         implicit none
-
-        ! Run the transition model
-        select case (transitionModel) 
-        case (gammaRetheta)
-            call strainNorm2_d(2, il, 2, jl, 2, kl, iStrain)
-            call prodWmag2_d(2, il, 2, jl, 2, kl, iVorticity)
-
-            call GammaRethetaSource_d
-            call turbAdvection_d(&
-                (/iTransition1,iTransition2/), &
-                (/isTransition1,isTransition2/), &
-                1 &! dummy argument
-            )
-            call GammaRethetaViscous_d
-            call GammaRethetaResScale_d
-        end select
 
         call kwCDterm_d
         call f1SST_d
@@ -261,8 +218,6 @@ contains
         use inputPhysics
         use inputDiscretization, only: approxTurb
         use paramTurb
-        use utils, only: smoothMin, smoothMax
-        use inputIteration, only: smoothSSTphi
         implicit none
         !
         !      Local variables.
@@ -336,36 +291,7 @@ contains
                         end if
                         sdk = rSSTBetas * w(i, j, k, itu1) * w(i, j, k, itu2)
 
-                        ! call smoothMin(spk, spk, pklim * sdk, smoothSSTphi(3))
                         spk = Min(spk, pklim * sdk)
-
-                        if (transitionModel .eq. gammaRetheta) then
-                            vort = max(sqrt(scratch(i, j, k, iVorticity)), eps)
-
-                            Re_w = w(i, j, k, irho) * w(i, j, k, itu2) * d2wall(i, j, k)**2 / rlv(i, j, k)
-
-                            U = sqrt(w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, ivz)**2)
-                            F_wake = exp(-(Re_w/100000.0)**2)
-
-                            R_t = w(i, j, k, irho) * w(i, j, k, itu1) / (rlv(i, j, k) * w(i, j, k, itu2)) ! todo: pull out of scratch
-                            Re_S = w(i, j, k, irho) * sqrt(scratch(i, j, k, iStrain)) * d2wall(i, j, k)**2 / rev(i, j, k) ! todo: pull out of scratch
-
-                            delta = 375.0*vort*w(i, j, k, iTransition2)*d2wall(i, j, k) / &
-                                (w(i, j, k, irho) * U)
-                            F_theta_t = min(max(F_wake*exp(-(d2wall(i, j, k)/delta)**4), & ! todo: pull out of scratch
-                                1.0 - ((rLMce2*w(i, j, k, iTransition1) - 1.0)/(rLMce2-1))**2), 1.0)
-
-                            Re_theta_c = 0.67*w(i, j, k, iTransition2) + 24.0*sin(w(i, j, k, iTransition2)/240.0 + 0.5) + 14.0 ! this comes from the smooth variant
-
-                            F_reattach = exp(-(R_t/20.0)**4)
-                            gamma_sep = min(rLMs1 * max(0.0, (Re_S/3.235*Re_theta_c) - 1.0)*F_reattach, 2.0)*F_theta_t
-                            gamma_eff = max(w(i, j, k, iTransition1), gamma_sep)
-
-                            ! if gamma_eff = 1, the original SST should come out
-
-                            spk = gamma_eff * spk
-                            sdk = min(max(gamma_eff, 0.1), 1.0)*sdk
-                        end if
 
                         scratch(i, j, k, idvt) = spk - sdk
                         if (use2003SST) then
@@ -879,9 +805,7 @@ contains
         use inputTimeSpectral
         use iteration
         use paramTurb, only: rSSTSigw2
-        use inputPhysics, only: use2003SST, transitionModel
-        use utils, only: smoothMin, smoothMax
-        use inputIteration, only: smoothSSTphi
+        use inputPhysics, only: use2003SST
         use inputDiscretization, only: approxTurb
         implicit none
         !
@@ -952,7 +876,7 @@ contains
                         end if
                         t2 = 500.0_realType * rlv(i, j, k) &
                              / (w(i, j, k, irho) * w(i, j, k, itu2) * d2Wall(i, j, k)**2)
-                        call smoothMax(t1, t1, t2, smoothSSTphi(4)) ! 1e3
+                        t1 = min(t1, t2)
 
                         if (use2003SST) then
                             t2 = two * w(i, j, k, itu1) &
@@ -962,17 +886,8 @@ contains
                                  / (max(eps, scratch(i, j, k, icd)) * d2Wall(i, j, k)**2)
                         end if
 
-                        call smoothMin(arg1, t1, t2, smoothSSTphi(4)) ! 1e4
+                        arg1 = min(t1, t2)
                         f1 = tanh(arg1**4)
-
-                        if (transitionModel .eq. gammaRetheta) then
-                            Ry = w(i, j, k, irho) * d2Wall(i, j, k) * sqrt(w(i, j, k, itu1)) / rlv(i, j, k)
-                            f3 = exp(-(Ry/120.0)**8)
-                            f1 = max(f1, f3)
-                        end if
-
-
-                        ! scratch(i, j, k, if1SST) = 1.0_realtype
 
                         scratch(i, j, k, if1SST) = tanh(arg1**4)
 

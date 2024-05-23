@@ -1264,7 +1264,7 @@ contains
 
             ! !===============================================================
 
-        case (menterSST, langtrymenterSST) ! this is a hack and should be implemented properly
+        case (menterSST)
             call readTurbKwType(nTypeMismatch)
 
             ! !===============================================================

@@ -63,7 +63,6 @@ ALL_RES_FILES =	$(SRC)/adjoint/adjointExtra.F90\
 		$(SRC)/turbulence/turbMod.F90\
 		$(SRC)/turbulence/sa.F90\
 		$(SRC)/turbulence/SST.F90\
-		$(SRC)/transition/gammaRetheta.F90\
 		$(SRC)/utils/flowUtils.F90\
 		$(SRC)/utils/utils.F90\
 		$(SRC)/utils/sorting.F90\
@@ -220,18 +219,6 @@ SST%SSTResScale(scratch, dw) > \
 \
 SST%f1SST(w, scratch, d2wall, rlv) > \
          (w, scratch, d2wall, rlv) \
-\
-gammaRetheta%solve_local_Re_thetat_eq(w, scratch, rev, rlv, vol, si, sj, sk, Re_thetat_eq) > \
-                                     (w, scratch, rev, rlv, vol, si, sj, sk, Re_thetat_eq) \
-\
-gammaRetheta%GammaRethetaSource(w, scratch, rev, rlv, vol, si, sj, sk, d2wall) > \
-                               (w, scratch, rev, rlv, vol, si, sj, sk, d2wall) \
-\
-gammaRetheta%GammaRethetaViscous(w, vol, si, sj, sk, rlv, rev, scratch) > \
-                                (w, vol, si, sj, sk, rlv, rev, scratch) \
-\
-gammaRetheta%GammaRethetaResScale(scratch, dw) > \
-               (scratch, dw) \
 \
 residuals%sourceTerms_block(w, pref, uref, plocal, dw, vol, actuatorRegions%force, actuatorRegions%heat, actuatorRegions%volume) > \
                            (w, pref, uref, plocal, dw, vol, actuatorRegions%force, actuatorRegions%heat, actuatorRegions%volume) \

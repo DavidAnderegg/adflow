@@ -17,7 +17,6 @@ dirs:=	adjoint\
 	slidingComm\
 	solver\
 	turbulence\
-	transition\
 	utils\
 	wallDistance\
 	warping\

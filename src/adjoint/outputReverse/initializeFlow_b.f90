@@ -46,14 +46,13 @@ contains
     use paramturb
     use inputphysics, only : equations, mach, machd, machcoef, &
 &   machcoefd, musuthdim, tsuthdim, veldirfreestream, veldirfreestreamd,&
-&   rgasdim, ssuthdim, eddyvisinfratio, turbmodel, turbintensityinf, &
-&   transitionmodel
+&   rgasdim, ssuthdim, eddyvisinfratio, turbmodel, turbintensityinf
     use flowvarrefstate, only : pinfdim, pinfdimd, tinfdim, tinfdimd, &
 &   rhoinfdim, rhoinfdimd, muinfdim, muinfdimd, pref, prefd, rhoref, &
 &   rhorefd, tref, trefd, muref, murefd, timeref, timerefd, uref, urefd,&
 &   href, hrefd, pinf, pinfd, pinfcorr, pinfcorrd, rhoinf, rhoinfd, uinf&
 &   , uinfd, rgas, rgasd, muinf, muinfd, gammainf, winf, winfd, nw, nwf,&
-&   kpresent, winf, winfd, tuinf, tuinfd
+&   kpresent, winf, winfd, tuinf
     use flowutils_b, only : computegamma, etot, etot_b
     use turbutils_b, only : sanuknowneddyratio, sanuknowneddyratio_b
     implicit none
@@ -67,7 +66,6 @@ contains
     real(kind=realtype) :: temp
     real(kind=realtype) :: tempd
     real(kind=realtype) :: temp0
-    real(kind=realtype) :: temp1
     real(kind=realtype) :: tempd0
     real(kind=realtype) :: tmp
     real(kind=realtype) :: tmpd
@@ -77,7 +75,6 @@ contains
     real(kind=realtype) :: tmpd1
     real(kind=realtype) :: tmp4
     real(kind=realtype) :: tmpd2
-    real(kind=realtype) :: tempd1
     integer :: branch
 ! compute the dimensional viscosity from sutherland's law
     muinfdim = musuthdim*((tsuthdim+ssuthdim)/(tinfdim+ssuthdim))*(&
@@ -140,7 +137,7 @@ contains
         winf(itu1) = sanuknowneddyratio(eddyvisinfratio, nuinf)
 !=============================================================
         call pushcontrol3b(1)
-      case (komegawilcox, komegamodified, mentersst, langtrymentersst) 
+      case (komegawilcox, komegamodified, mentersst) 
         winf(itu1) = 1.5_realtype*uinf2*turbintensityinf**2
         tmp = winf(itu1)/(eddyvisinfratio*nuinf)
         call pushreal8(winf(itu2))
@@ -174,26 +171,8 @@ contains
       case default
         call pushcontrol3b(0)
       end select
-      select case  (transitionmodel) 
-      case (gammaretheta) 
-        tuinf = 500*muinf/(rhoinf*uinf**2)
-        call pushreal8(winf(itransition1))
-        winf(itransition1) = 1.0
-        if (tuinf .gt. 1.3) then
-          call pushreal8(winf(itransition2))
-          winf(itransition2) = 331.50*(tuinf-0.5658)**(-0.671)
-          call pushcontrol2b(1)
-        else
-          call pushreal8(winf(itransition2))
-          winf(itransition2) = 1173.51 - 589.428*tuinf + 0.2196*tuinf**(&
-&           -2)
-          call pushcontrol2b(2)
-        end if
-      case default
-        call pushcontrol2b(0)
-      end select
     else
-      call pushcontrol2b(3)
+      call pushcontrol3b(5)
     end if
 ! set the value of pinfcorr. in case a k-equation is present
 ! add 2/3 times rho*k.
@@ -231,52 +210,26 @@ contains
       pinfcorrd = 0.0_8
     end if
     pinfd = pinfd + pinfcorrd
-    call popcontrol2b(branch)
-    if (branch .lt. 2) then
-      if (branch .eq. 0) then
-        goto 100
-      else
-        call popreal8(winf(itransition2))
-        tuinfd = -(0.671*(tuinf-0.5658)**(-1.671)*331.50*winfd(&
-&         itransition2))
-        winfd(itransition2) = 0.0_8
-      end if
-    else if (branch .eq. 2) then
-      call popreal8(winf(itransition2))
-      tuinfd = -((2*0.2196/tuinf**3+589.428)*winfd(itransition2))
-      winfd(itransition2) = 0.0_8
-    else
-      uinf2d = 0.0_8
-      goto 110
-    end if
-    call popreal8(winf(itransition1))
-    winfd(itransition1) = 0.0_8
-    temp1 = rhoinf*(uinf*uinf)
-    tempd1 = 500*tuinfd/temp1
-    muinfd = muinfd + tempd1
-    tempd0 = -(muinf*tempd1/temp1)
-    rhoinfd = rhoinfd + uinf**2*tempd0
-    uinfd = uinfd + 2*uinf*rhoinf*tempd0
- 100 call popcontrol3b(branch)
-    if (branch .lt. 2) then
+    call popcontrol3b(branch)
+    if (branch .lt. 3) then
       if (branch .eq. 0) then
         uinf2d = 0.0_8
         nuinfd = 0.0_8
-      else
+      else if (branch .eq. 1) then
         call sanuknowneddyratio_b(eddyvisinfratio, nuinf, nuinfd, winfd(&
 &                           itu1))
         winfd(itu1) = 0.0_8
         uinf2d = 0.0_8
+      else
+        call popreal8(winf(itu2))
+        tmpd = winfd(itu2)
+        winfd(itu2) = 0.0_8
+        tempd0 = tmpd/(eddyvisinfratio*nuinf)
+        winfd(itu1) = winfd(itu1) + tempd0
+        nuinfd = -(winf(itu1)*tempd0/nuinf)
+        uinf2d = 1.5_realtype*turbintensityinf**2*winfd(itu1)
+        winfd(itu1) = 0.0_8
       end if
-    else if (branch .eq. 2) then
-      call popreal8(winf(itu2))
-      tmpd = winfd(itu2)
-      winfd(itu2) = 0.0_8
-      tempd0 = tmpd/(eddyvisinfratio*nuinf)
-      winfd(itu1) = winfd(itu1) + tempd0
-      nuinfd = -(winf(itu1)*tempd0/nuinf)
-      uinf2d = 1.5_realtype*turbintensityinf**2*winfd(itu1)
-      winfd(itu1) = 0.0_8
     else if (branch .eq. 3) then
       call popreal8(winf(itu2))
       tmpd0 = winfd(itu2)
@@ -286,7 +239,7 @@ contains
       winfd(itu1) = winfd(itu1) - nuinf*tempd0/winf(itu1)
       uinf2d = 1.5_realtype*turbintensityinf**2*winfd(itu1)
       winfd(itu1) = 0.0_8
-    else
+    else if (branch .eq. 4) then
       call popreal8(winf(itu4))
       winfd(itu4) = 0.0_8
       call popreal8(winf(itu3))
@@ -301,10 +254,13 @@ contains
       nuinfd = -(winf(itu1)**2*tempd0/nuinf)
       uinf2d = 1.5_realtype*turbintensityinf**2*winfd(itu1)
       winfd(itu1) = 0.0_8
+    else
+      uinf2d = 0.0_8
+      goto 100
     end if
     muinfd = muinfd + nuinfd/rhoinf
     rhoinfd = rhoinfd - muinf*nuinfd/rhoinf**2
- 110 if (rhoref/pref .eq. 0.0_8) then
+ 100 if (rhoref/pref .eq. 0.0_8) then
       tempd = 0.0_8
     else
       tempd = timerefd/(pref*2.0*sqrt(rhoref/pref))
@@ -393,7 +349,7 @@ contains
     use paramturb
     use inputphysics, only : equations, mach, machcoef, musuthdim, &
 &   tsuthdim, veldirfreestream, rgasdim, ssuthdim, eddyvisinfratio, &
-&   turbmodel, turbintensityinf, transitionmodel
+&   turbmodel, turbintensityinf
     use flowvarrefstate, only : pinfdim, tinfdim, rhoinfdim, muinfdim,&
 &   pref, rhoref, tref, muref, timeref, uref, href, pinf, pinfcorr, &
 &   rhoinf, uinf, rgas, muinf, gammainf, winf, nw, nwf, kpresent, winf, &
@@ -470,7 +426,7 @@ contains
       case (spalartallmaras, spalartallmarasedwards) 
         winf(itu1) = sanuknowneddyratio(eddyvisinfratio, nuinf)
 !=============================================================
-      case (komegawilcox, komegamodified, mentersst, langtrymentersst) 
+      case (komegawilcox, komegamodified, mentersst) 
         winf(itu1) = 1.5_realtype*uinf2*turbintensityinf**2
         winf(itu2) = winf(itu1)/(eddyvisinfratio*nuinf)
 !both are consistent with https://www.cfd-online.com/wiki/turbulence_free-stream_boundary_conditions,
@@ -489,17 +445,6 @@ contains
         winf(itu2) = 0.09_realtype*winf(itu1)**2/(eddyvisinfratio*nuinf)
         winf(itu3) = 0.666666_realtype*winf(itu1)
         winf(itu4) = 0.0_realtype
-      end select
-      select case  (transitionmodel) 
-      case (gammaretheta) 
-        tuinf = 500*muinf/(rhoinf*uinf**2)
-        winf(itransition1) = 1.0
-        if (tuinf .gt. 1.3) then
-          winf(itransition2) = 331.50*(tuinf-0.5658)**(-0.671)
-        else
-          winf(itransition2) = 1173.51 - 589.428*tuinf + 0.2196*tuinf**(&
-&           -2)
-        end if
       end select
     end if
 ! set the value of pinfcorr. in case a k-equation is present

@@ -29,7 +29,6 @@ python module libadflow
          integer(kind=inttype) parameter,optional :: komegamodified=5_inttype
          integer(kind=inttype) parameter,optional :: ktau=6_inttype
          integer(kind=inttype) parameter,optional :: mentersst=7_inttype
-         integer(kind=inttype) parameter,optional :: langtrymentersst=8_inttype
          integer(kind=inttype) parameter,optional :: v2f=10_inttype
          integer(kind=inttype) parameter,optional :: strain=1_inttype
          integer(kind=inttype) parameter,optional :: vorticity=2_inttype

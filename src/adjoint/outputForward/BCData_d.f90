@@ -103,11 +103,6 @@ contains
       case (komegawilcox, komegamodified, mentersst) 
         bcvarnames(offset+1) = cgnsturbk
         bcvarnames(offset+2) = cgnsturbomega
-      case (langtrymentersst) 
-        bcvarnames(offset+1) = cgnsturbk
-        bcvarnames(offset+2) = cgnsturbomega
-        bcvarnames(offset+3) = cgnstransitiongamma
-        bcvarnames(offset+2) = cgnstransitionrethetat
       case (ktau) 
         bcvarnames(offset+1) = cgnsturbk
         bcvarnames(offset+2) = cgnsturbtau
@@ -2349,17 +2344,6 @@ contains
         temp0 = ref(itu1)/nuref
         refd(itu2) = (refd(itu1)-temp0*nurefd)/nuref
         ref(itu2) = temp0
-      case (langtrymentersst) 
-        refd = 0.0_8
-        refd(itu1) = (prefd-pref*rhorefd/rhoref)/rhoref
-        ref(itu1) = pref/rhoref
-        temp0 = ref(itu1)/nuref
-        refd(itu2) = (refd(itu1)-temp0*nurefd)/nuref
-        ref(itu2) = temp0
-        refd(itransition1) = 0.0_8
-        ref(itransition1) = 0
-        refd(itransition2) = 0.0_8
-        ref(itransition2) = 0
       case (ktau) 
         refd = 0.0_8
         refd(itu1) = (prefd-pref*rhorefd/rhoref)/rhoref
@@ -2461,11 +2445,6 @@ turbloop:do nn=nt1,nt2
       case (komegawilcox, komegamodified, mentersst) 
         ref(itu1) = pref/rhoref
         ref(itu2) = ref(itu1)/nuref
-      case (langtrymentersst) 
-        ref(itu1) = pref/rhoref
-        ref(itu2) = ref(itu1)/nuref
-        ref(itransition1) = 0
-        ref(itransition2) = 0
       case (ktau) 
         ref(itu1) = pref/rhoref
         ref(itu2) = nuref/ref(itu1)

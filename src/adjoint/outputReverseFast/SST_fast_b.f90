@@ -30,8 +30,6 @@ contains
     use inputphysics
     use inputdiscretization, only : approxturb
     use paramturb
-    use utils_fast_b, only : smoothmin, smoothmax
-    use inputiteration, only : smoothsstphi
     implicit none
 !
 !      local variables.
@@ -45,46 +43,21 @@ contains
     real(kind=realtype) :: rhoid, ssd, spkd, sdkd
     real(kind=realtype) :: xm, ym, zm, xp, yp, zp, xa, ya, za
     real(kind=realtype) :: re_w, u, f_wake, delta, r_t, re_s, f_theta_t
-    real(kind=realtype) :: re_wd, ud, f_waked, deltad, r_td, re_sd, &
-&   f_theta_td
     real(kind=realtype) :: re_theta_c, f_reattach, gamma_sep, gamma_eff
-    real(kind=realtype) :: re_theta_cd, f_reattachd, gamma_sepd, &
-&   gamma_effd
     real(kind=realtype) :: vort
-    real(kind=realtype) :: vortd
     intrinsic sqrt
     intrinsic mod
     intrinsic min
-    intrinsic max
-    intrinsic exp
-    intrinsic sin
-    real(kind=realtype) :: x1
-    real(kind=realtype) :: x1d
-    real(kind=realtype) :: x2
-    real(kind=realtype) :: x2d
-    real(kind=realtype) :: x3
-    real(kind=realtype) :: x3d
-    real(kind=realtype) :: x4
-    real(kind=realtype) :: x4d
-    real(kind=realtype) :: x5
-    real(kind=realtype) :: x5d
-    real(kind=realtype) :: min1
-    real(kind=realtype) :: min1d
-    real(kind=realtype) :: min2
-    real(kind=realtype) :: min2d
-    real(kind=realtype) :: max1
-    real(kind=realtype) :: max1d
     real(kind=realtype) :: temp
     real(kind=realtype) :: tempd
-    real(kind=realtype) :: temp0
-    real(kind=realtype) :: temp1
-    real(kind=realtype) :: temp2
-    real(kind=realtype) :: tempd0
-    real(kind=realtype) :: tempd1
     real(kind=realtype) :: tmp
     real(kind=realtype) :: tmpd
+    real(kind=realtype) :: temp0
+    real(kind=realtype) :: tempd0
+    real(kind=realtype) :: temp1
     real(kind=realtype) :: tmp0
     real(kind=realtype) :: tmpd0
+    real(kind=realtype) :: tempd1
     integer :: branch
     integer :: ii
 ! set model constants
@@ -137,274 +110,37 @@ myIntPtr = myIntPtr + 1
  myIntStack(myIntPtr) = 1
         spk = spk
       end if
-      if (transitionmodel .eq. gammaretheta) then
-        x1 = sqrt(scratch(i, j, k, ivorticity))
-        if (x1 .lt. eps) then
-          vort = eps
-myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 0
-        else
-          vort = x1
-myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 1
-        end if
-        re_w = w(i, j, k, irho)*w(i, j, k, itu2)*d2wall(i, j, k)**2/rlv(&
-&         i, j, k)
-        u = sqrt(w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, &
-&         ivz)**2)
-        f_wake = exp(-((re_w/100000.0)**2))
-! todo: pull out of scratch
-        r_t = w(i, j, k, irho)*w(i, j, k, itu1)/(rlv(i, j, k)*w(i, j, k&
-&         , itu2))
-! todo: pull out of scratch
-        re_s = w(i, j, k, irho)*sqrt(scratch(i, j, k, istrain))*d2wall(i&
-&         , j, k)**2/rev(i, j, k)
-        delta = 375.0*vort*w(i, j, k, itransition2)*d2wall(i, j, k)/(w(i&
-&         , j, k, irho)*u)
-        x5 = f_wake*exp(-((d2wall(i, j, k)/delta)**4))
-        if (x5 .lt. 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2&
-&           -1))**2) then
-          x2 = 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1))&
-&           **2
-myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 0
-        else
-          x2 = x5
-myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 1
-        end if
-        if (x2 .gt. 1.0) then
-          f_theta_t = 1.0
-myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 0
-        else
-          f_theta_t = x2
-myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 1
-        end if
-! this comes from the smooth variant
-        re_theta_c = 0.67*w(i, j, k, itransition2) + 24.0*sin(w(i, j, k&
-&         , itransition2)/240.0+0.5) + 14.0
-        f_reattach = exp(-((r_t/20.0)**4))
-        if (0.0 .lt. re_s/3.235*re_theta_c - 1.0) then
-          max1 = re_s/3.235*re_theta_c - 1.0
-myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 0
-        else
-          max1 = 0.0
-myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 1
-        end if
-        x3 = rlms1*max1*f_reattach
-        if (x3 .gt. 2.0) then
-          min1 = 2.0
-myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 0
-        else
-          min1 = x3
-myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 1
-        end if
-        gamma_sep = min1*f_theta_t
-        if (w(i, j, k, itransition1) .lt. gamma_sep) then
-          gamma_eff = gamma_sep
-myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 0
-        else
-          gamma_eff = w(i, j, k, itransition1)
-myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 1
-        end if
-! if gamma_eff = 1, the original sst should come out
-        call pushreal8(spk)
-        spk = gamma_eff*spk
-        if (gamma_eff .lt. 0.1) then
-          x4 = 0.1
-myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 0
-        else
-          x4 = gamma_eff
-myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 1
-        end if
-        if (x4 .gt. 1.0) then
-          min2 = 1.0
-myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 0
-        else
-          min2 = x4
-myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 1
-        end if
-        call pushreal8(sdk)
-        sdk = min2*sdk
-myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 0
-      else
-myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 1
-      end if
-      call pushreal8(scratch(i, j, k, idvt))
       scratch(i, j, k, idvt) = spk - sdk
       if (use2003sst) then
         tmpd = scratchd(i, j, k, idvt+1)
         scratchd(i, j, k, idvt+1) = 0.0_8
-        temp0 = w(i, j, k, itu2)
-        tempd0 = tmpd/rev(i, j, k)
-        tempd1 = two*rsstsigw2*tmpd
-        rsstbetad = -(temp0**2*tmpd)
-        wd(i, j, k, itu2) = wd(i, j, k, itu2) - 2*temp0*rsstbeta*tmpd
-        t2d = scratch(i, j, k, icd)*tempd1
-        scratchd(i, j, k, icd) = scratchd(i, j, k, icd) + t2*tempd1
-        rsstgamd = spk*tempd0
-        spkd = rsstgam*tempd0
-        revd(i, j, k) = revd(i, j, k) - rsstgam*spk*tempd0/rev(i, j, k)
+        temp1 = w(i, j, k, itu2)
+        tempd = tmpd/rev(i, j, k)
+        tempd0 = two*rsstsigw2*tmpd
+        rsstbetad = -(temp1**2*tmpd)
+        wd(i, j, k, itu2) = wd(i, j, k, itu2) - 2*temp1*rsstbeta*tmpd
+        t2d = scratch(i, j, k, icd)*tempd0
+        scratchd(i, j, k, icd) = scratchd(i, j, k, icd) + t2*tempd0
+        rsstgamd = spk*tempd
+        spkd = rsstgam*tempd
+        revd(i, j, k) = revd(i, j, k) - rsstgam*spk*tempd/rev(i, j, k)
         ssd = 0.0_8
       else
         tmpd0 = scratchd(i, j, k, idvt+1)
         scratchd(i, j, k, idvt+1) = 0.0_8
-        temp1 = w(i, j, k, itu2)
+        temp0 = w(i, j, k, itu2)
         rsstgamd = ss*tmpd0
         ssd = rsstgam*tmpd0
-        tempd0 = two*rsstsigw2*tmpd0
-        rsstbetad = -(temp1**2*tmpd0)
-        wd(i, j, k, itu2) = wd(i, j, k, itu2) - 2*temp1*rsstbeta*tmpd0
-        t2d = scratch(i, j, k, icd)*tempd0
-        scratchd(i, j, k, icd) = scratchd(i, j, k, icd) + t2*tempd0
+        tempd1 = two*rsstsigw2*tmpd0
+        rsstbetad = -(temp0**2*tmpd0)
+        wd(i, j, k, itu2) = wd(i, j, k, itu2) - 2*temp0*rsstbeta*tmpd0
+        t2d = scratch(i, j, k, icd)*tempd1
+        scratchd(i, j, k, icd) = scratchd(i, j, k, icd) + t2*tempd1
         spkd = 0.0_8
       end if
-      call popreal8(scratch(i, j, k, idvt))
       spkd = spkd + scratchd(i, j, k, idvt)
       sdkd = -scratchd(i, j, k, idvt)
       scratchd(i, j, k, idvt) = 0.0_8
-branch = myIntStack(myIntPtr)
- myIntPtr = myIntPtr - 1
-      if (branch .eq. 0) then
-        call popreal8(sdk)
-        min2d = sdk*sdkd
-        sdkd = min2*sdkd
-branch = myIntStack(myIntPtr)
- myIntPtr = myIntPtr - 1
-        if (branch .eq. 0) then
-          x4d = 0.0_8
-        else
-          x4d = min2d
-        end if
-branch = myIntStack(myIntPtr)
- myIntPtr = myIntPtr - 1
-        if (branch .eq. 0) then
-          gamma_effd = 0.0_8
-        else
-          gamma_effd = x4d
-        end if
-        call popreal8(spk)
-        gamma_effd = gamma_effd + spk*spkd
-        spkd = gamma_eff*spkd
-branch = myIntStack(myIntPtr)
- myIntPtr = myIntPtr - 1
-        if (branch .eq. 0) then
-          gamma_sepd = gamma_effd
-        else
-          wd(i, j, k, itransition1) = wd(i, j, k, itransition1) + &
-&           gamma_effd
-          gamma_sepd = 0.0_8
-        end if
-        min1d = f_theta_t*gamma_sepd
-        f_theta_td = min1*gamma_sepd
-branch = myIntStack(myIntPtr)
- myIntPtr = myIntPtr - 1
-        if (branch .eq. 0) then
-          x3d = 0.0_8
-        else
-          x3d = min1d
-        end if
-        max1d = f_reattach*rlms1*x3d
-        f_reattachd = max1*rlms1*x3d
-branch = myIntStack(myIntPtr)
- myIntPtr = myIntPtr - 1
-        if (branch .eq. 0) then
-          re_sd = re_theta_c*max1d/3.235
-          re_theta_cd = re_s*max1d/3.235
-        else
-          re_theta_cd = 0.0_8
-          re_sd = 0.0_8
-        end if
-        r_td = -(4*r_t**3*exp(-((r_t/20.0)**4))*f_reattachd/20.0**4)
-        wd(i, j, k, itransition2) = wd(i, j, k, itransition2) + (cos(w(i&
-&         , j, k, itransition2)/240.0+0.5)*24.0/240.0+0.67)*re_theta_cd
-branch = myIntStack(myIntPtr)
- myIntPtr = myIntPtr - 1
-        if (branch .eq. 0) then
-          x2d = 0.0_8
-        else
-          x2d = f_theta_td
-        end if
-branch = myIntStack(myIntPtr)
- myIntPtr = myIntPtr - 1
-        if (branch .eq. 0) then
-          wd(i, j, k, itransition1) = wd(i, j, k, itransition1) - rlmce2&
-&           *2*(rlmce2*w(i, j, k, itransition1)-1.0)*x2d/(rlmce2-1)**2
-          x5d = 0.0_8
-        else
-          x5d = x2d
-        end if
-        temp2 = d2wall(i, j, k)/delta
-        temp1 = -(temp2**4)
-        f_waked = exp(temp1)*x5d
-        deltad = temp2**4*4*exp(temp1)*f_wake*x5d/delta
-        temp2 = w(i, j, k, irho)
-        temp0 = w(i, j, k, itransition2)
-        tempd1 = d2wall(i, j, k)*375.0*deltad/(temp2*u)
-        vortd = temp0*tempd1
-        wd(i, j, k, itransition2) = wd(i, j, k, itransition2) + vort*&
-&         tempd1
-        tempd = -(vort*temp0*tempd1/(temp2*u))
-        wd(i, j, k, irho) = wd(i, j, k, irho) + u*tempd
-        ud = temp2*tempd
-        temp1 = scratch(i, j, k, istrain)
-        temp0 = sqrt(temp1)
-        temp = w(i, j, k, irho)/rev(i, j, k)
-        tempd0 = d2wall(i, j, k)**2*re_sd
-        tempd = temp0*tempd0/rev(i, j, k)
-        if (.not.temp1 .eq. 0.0_8) scratchd(i, j, k, istrain) = scratchd&
-&           (i, j, k, istrain) + temp*tempd0/(2.0*temp0)
-        revd(i, j, k) = revd(i, j, k) - temp*tempd
-        temp2 = rlv(i, j, k)*w(i, j, k, itu2)
-        temp0 = w(i, j, k, itu1)
-        temp = w(i, j, k, irho)
-        tempd1 = r_td/temp2
-        wd(i, j, k, irho) = wd(i, j, k, irho) + tempd + temp0*tempd1
-        wd(i, j, k, itu1) = wd(i, j, k, itu1) + temp*tempd1
-        wd(i, j, k, itu2) = wd(i, j, k, itu2) - rlv(i, j, k)*temp*temp0*&
-&         tempd1/temp2
-        re_wd = -(2*re_w*exp(-((re_w/100000.0)**2))*f_waked/100000.0**2)
-        temp = w(i, j, k, ivz)
-        temp0 = w(i, j, k, ivy)
-        temp1 = w(i, j, k, ivx)
-        if (temp1**2 + temp0**2 + temp**2 .eq. 0.0_8) then
-          tempd0 = 0.0_8
-        else
-          tempd0 = ud/(2.0*sqrt(temp1**2+temp0**2+temp**2))
-        end if
-        wd(i, j, k, ivx) = wd(i, j, k, ivx) + 2*temp1*tempd0
-        wd(i, j, k, ivy) = wd(i, j, k, ivy) + 2*temp0*tempd0
-        wd(i, j, k, ivz) = wd(i, j, k, ivz) + 2*temp*tempd0
-        tempd = d2wall(i, j, k)**2*re_wd
-        wd(i, j, k, irho) = wd(i, j, k, irho) + w(i, j, k, itu2)*tempd/&
-&         rlv(i, j, k)
-        wd(i, j, k, itu2) = wd(i, j, k, itu2) + w(i, j, k, irho)*tempd/&
-&         rlv(i, j, k)
-branch = myIntStack(myIntPtr)
- myIntPtr = myIntPtr - 1
-        if (branch .eq. 0) then
-          x1d = 0.0_8
-        else
-          x1d = vortd
-        end if
-        if (.not.scratch(i, j, k, ivorticity) .eq. 0.0_8) scratchd(i, j&
-&         , k, ivorticity) = scratchd(i, j, k, ivorticity) + x1d/(2.0*&
-&           sqrt(scratch(i, j, k, ivorticity)))
-      end if
 branch = myIntStack(myIntPtr)
  myIntPtr = myIntPtr - 1
       if (branch .eq. 0) then
@@ -446,8 +182,6 @@ branch = myIntStack(myIntPtr)
     use inputphysics
     use inputdiscretization, only : approxturb
     use paramturb
-    use utils_fast_b, only : smoothmin, smoothmax
-    use inputiteration, only : smoothsstphi
     implicit none
 !
 !      local variables.
@@ -463,17 +197,6 @@ branch = myIntStack(myIntPtr)
     intrinsic sqrt
     intrinsic mod
     intrinsic min
-    intrinsic max
-    intrinsic exp
-    intrinsic sin
-    real(kind=realtype) :: x1
-    real(kind=realtype) :: x2
-    real(kind=realtype) :: x3
-    real(kind=realtype) :: x4
-    real(kind=realtype) :: x5
-    real(kind=realtype) :: min1
-    real(kind=realtype) :: min2
-    real(kind=realtype) :: max1
     integer :: ii
 ! set model constants
     if (use2003sst) then
@@ -522,74 +245,6 @@ branch = myIntStack(myIntPtr)
         spk = pklim*sdk
       else
         spk = spk
-      end if
-      if (transitionmodel .eq. gammaretheta) then
-        x1 = sqrt(scratch(i, j, k, ivorticity))
-        if (x1 .lt. eps) then
-          vort = eps
-        else
-          vort = x1
-        end if
-        re_w = w(i, j, k, irho)*w(i, j, k, itu2)*d2wall(i, j, k)**2/rlv(&
-&         i, j, k)
-        u = sqrt(w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, &
-&         ivz)**2)
-        f_wake = exp(-((re_w/100000.0)**2))
-! todo: pull out of scratch
-        r_t = w(i, j, k, irho)*w(i, j, k, itu1)/(rlv(i, j, k)*w(i, j, k&
-&         , itu2))
-! todo: pull out of scratch
-        re_s = w(i, j, k, irho)*sqrt(scratch(i, j, k, istrain))*d2wall(i&
-&         , j, k)**2/rev(i, j, k)
-        delta = 375.0*vort*w(i, j, k, itransition2)*d2wall(i, j, k)/(w(i&
-&         , j, k, irho)*u)
-        x5 = f_wake*exp(-((d2wall(i, j, k)/delta)**4))
-        if (x5 .lt. 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2&
-&           -1))**2) then
-          x2 = 1.0 - ((rlmce2*w(i, j, k, itransition1)-1.0)/(rlmce2-1))&
-&           **2
-        else
-          x2 = x5
-        end if
-        if (x2 .gt. 1.0) then
-          f_theta_t = 1.0
-        else
-          f_theta_t = x2
-        end if
-! this comes from the smooth variant
-        re_theta_c = 0.67*w(i, j, k, itransition2) + 24.0*sin(w(i, j, k&
-&         , itransition2)/240.0+0.5) + 14.0
-        f_reattach = exp(-((r_t/20.0)**4))
-        if (0.0 .lt. re_s/3.235*re_theta_c - 1.0) then
-          max1 = re_s/3.235*re_theta_c - 1.0
-        else
-          max1 = 0.0
-        end if
-        x3 = rlms1*max1*f_reattach
-        if (x3 .gt. 2.0) then
-          min1 = 2.0
-        else
-          min1 = x3
-        end if
-        gamma_sep = min1*f_theta_t
-        if (w(i, j, k, itransition1) .lt. gamma_sep) then
-          gamma_eff = gamma_sep
-        else
-          gamma_eff = w(i, j, k, itransition1)
-        end if
-! if gamma_eff = 1, the original sst should come out
-        spk = gamma_eff*spk
-        if (gamma_eff .lt. 0.1) then
-          x4 = 0.1
-        else
-          x4 = gamma_eff
-        end if
-        if (x4 .gt. 1.0) then
-          min2 = 1.0
-        else
-          min2 = x4
-        end if
-        sdk = min2*sdk
       end if
       scratch(i, j, k, idvt) = spk - sdk
       if (use2003sst) then
@@ -1535,10 +1190,7 @@ branch = myIntStack(myIntPtr)
     use inputtimespectral
     use iteration
     use paramturb, only : rsstsigw2
-    use inputphysics, only : use2003sst, transitionmodel
-    use utils_fast_b, only : smoothmin, smoothmin_fast_b, smoothmax, &
-&   smoothmax_fast_b
-    use inputiteration, only : smoothsstphi
+    use inputphysics, only : use2003sst
     use inputdiscretization, only : approxturb
     implicit none
 !
@@ -1552,9 +1204,9 @@ branch = myIntStack(myIntPtr)
     real(kind=realtype) :: t1d, t2d, arg1d
     intrinsic mod
     intrinsic sqrt
+    intrinsic min
     intrinsic max
     intrinsic tanh
-    intrinsic exp
     real(kind=realtype) :: max1
     real(kind=realtype) :: max1d
     real(kind=realtype) :: max2
@@ -1812,16 +1464,23 @@ bocos:do nn=1,nbocos
         t1 = sqrt(w(i, j, k, itu1))/(0.09_realtype*w(i, j, k, itu2)*&
 &         d2wall(i, j, k))
 myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 0
+ myIntStack(myIntPtr) = 1
       else
 myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 1
+ myIntStack(myIntPtr) = 0
         t1 = 0_realtype
       end if
       t2 = 500.0_realtype*rlv(i, j, k)/(w(i, j, k, irho)*w(i, j, k, itu2&
 &       )*d2wall(i, j, k)**2)
-! 1e3
-      call smoothmax(t1, t1, t2, smoothsstphi(4))
+      if (t1 .gt. t2) then
+        t1 = t2
+myIntPtr = myIntPtr + 1
+ myIntStack(myIntPtr) = 0
+      else
+        t1 = t1
+myIntPtr = myIntPtr + 1
+ myIntStack(myIntPtr) = 1
+      end if
       if (use2003sst) then
         if (myeps/w(i, j, k, irho) .lt. scratch(i, j, k, icd)) then
           max1 = scratch(i, j, k, icd)
@@ -1832,10 +1491,9 @@ myIntPtr = myIntPtr + 1
 myIntPtr = myIntPtr + 1
  myIntStack(myIntPtr) = 1
         end if
-        call pushreal8(t2)
         t2 = two*w(i, j, k, itu1)/(max1*d2wall(i, j, k)**2)
 myIntPtr = myIntPtr + 1
- myIntStack(myIntPtr) = 0
+ myIntStack(myIntPtr) = 1
       else
         if (eps .lt. scratch(i, j, k, icd)) then
           max2 = scratch(i, j, k, icd)
@@ -1846,21 +1504,42 @@ myIntPtr = myIntPtr + 1
  myIntStack(myIntPtr) = 1
           max2 = eps
         end if
-        call pushreal8(t2)
         t2 = two*w(i, j, k, itu1)/(max2*d2wall(i, j, k)**2)
+myIntPtr = myIntPtr + 1
+ myIntStack(myIntPtr) = 0
+      end if
+      if (t1 .gt. t2) then
+        arg1 = t2
+myIntPtr = myIntPtr + 1
+ myIntStack(myIntPtr) = 0
+      else
+        arg1 = t1
 myIntPtr = myIntPtr + 1
  myIntStack(myIntPtr) = 1
       end if
-! 1e4
-      call smoothmin(arg1, t1, t2, smoothsstphi(4))
       arg1d = 4*arg1**3*(1.0-tanh(arg1**4)**2)*scratchd(i, j, k, if1sst)
       scratchd(i, j, k, if1sst) = 0.0_8
-      call smoothmin_fast_b(arg1, arg1d, t1, t1d, t2, t2d, smoothsstphi(&
-&                     4))
 branch = myIntStack(myIntPtr)
  myIntPtr = myIntPtr - 1
       if (branch .eq. 0) then
-        call popreal8(t2)
+        t2d = arg1d
+        t1d = 0.0_8
+      else
+        t1d = arg1d
+        t2d = 0.0_8
+      end if
+branch = myIntStack(myIntPtr)
+ myIntPtr = myIntPtr - 1
+      if (branch .eq. 0) then
+        temp5 = d2wall(i, j, k)*d2wall(i, j, k)
+        tempd = two*t2d/(temp5*max2)
+        wd(i, j, k, itu1) = wd(i, j, k, itu1) + tempd
+        max2d = -(w(i, j, k, itu1)*tempd/max2)
+branch = myIntStack(myIntPtr)
+ myIntPtr = myIntPtr - 1
+        if (branch .eq. 0) scratchd(i, j, k, icd) = scratchd(i, j, k, &
+&           icd) + max2d
+      else
         temp5 = d2wall(i, j, k)*d2wall(i, j, k)
         tempd = two*t2d/(temp5*max1)
         wd(i, j, k, itu1) = wd(i, j, k, itu1) + tempd
@@ -1873,19 +1552,15 @@ branch = myIntStack(myIntPtr)
           temp5 = w(i, j, k, irho)
           wd(i, j, k, irho) = wd(i, j, k, irho) - myeps*max1d/temp5**2
         end if
-      else
-        call popreal8(t2)
-        temp5 = d2wall(i, j, k)*d2wall(i, j, k)
-        tempd = two*t2d/(temp5*max2)
-        wd(i, j, k, itu1) = wd(i, j, k, itu1) + tempd
-        max2d = -(w(i, j, k, itu1)*tempd/max2)
+      end if
 branch = myIntStack(myIntPtr)
  myIntPtr = myIntPtr - 1
-        if (branch .eq. 0) scratchd(i, j, k, icd) = scratchd(i, j, k, &
-&           icd) + max2d
+      if (branch .eq. 0) then
+        t2d = t1d
+        t1d = 0.0_8
+      else
+        t2d = 0.0_8
       end if
-      call smoothmax_fast_b(t1, t1d, t1, t1d, t2, t2d, smoothsstphi(4))
-      t1d = 0.0_8
       temp2 = w(i, j, k, itu2)
       temp1 = w(i, j, k, irho)
       temp3 = d2wall(i, j, k)*d2wall(i, j, k)
@@ -1897,7 +1572,7 @@ branch = myIntStack(myIntPtr)
       wd(i, j, k, itu2) = wd(i, j, k, itu2) + temp1*tempd0
 branch = myIntStack(myIntPtr)
  myIntPtr = myIntPtr - 1
-      if (branch .eq. 0) then
+      if (branch .ne. 0) then
         temp = 0.09_realtype*d2wall(i, j, k)
         temp0 = temp*w(i, j, k, itu2)
         temp1 = w(i, j, k, itu1)
@@ -1925,9 +1600,7 @@ branch = myIntStack(myIntPtr)
     use inputtimespectral
     use iteration
     use paramturb, only : rsstsigw2
-    use inputphysics, only : use2003sst, transitionmodel
-    use utils_fast_b, only : smoothmin, smoothmax
-    use inputiteration, only : smoothsstphi
+    use inputphysics, only : use2003sst
     use inputdiscretization, only : approxturb
     implicit none
 !
@@ -1940,9 +1613,9 @@ branch = myIntStack(myIntPtr)
     real(kind=realtype) :: t1, t2, arg1, myeps, f1, f3, ry
     intrinsic mod
     intrinsic sqrt
+    intrinsic min
     intrinsic max
     intrinsic tanh
-    intrinsic exp
     real(kind=realtype) :: max1
     real(kind=realtype) :: max2
     myeps = 1e-10_realtype/two/rsstsigw2
@@ -1988,8 +1661,11 @@ branch = myIntStack(myIntPtr)
       end if
       t2 = 500.0_realtype*rlv(i, j, k)/(w(i, j, k, irho)*w(i, j, k, itu2&
 &       )*d2wall(i, j, k)**2)
-! 1e3
-      call smoothmax(t1, t1, t2, smoothsstphi(4))
+      if (t1 .gt. t2) then
+        t1 = t2
+      else
+        t1 = t1
+      end if
       if (use2003sst) then
         if (myeps/w(i, j, k, irho) .lt. scratch(i, j, k, icd)) then
           max1 = scratch(i, j, k, icd)
@@ -2005,20 +1681,12 @@ branch = myIntStack(myIntPtr)
         end if
         t2 = two*w(i, j, k, itu1)/(max2*d2wall(i, j, k)**2)
       end if
-! 1e4
-      call smoothmin(arg1, t1, t2, smoothsstphi(4))
-      f1 = tanh(arg1**4)
-      if (transitionmodel .eq. gammaretheta) then
-        ry = w(i, j, k, irho)*d2wall(i, j, k)*sqrt(w(i, j, k, itu1))/rlv&
-&         (i, j, k)
-        f3 = exp(-((ry/120.0)**8))
-        if (f1 .lt. f3) then
-          f1 = f3
-        else
-          f1 = f1
-        end if
+      if (t1 .gt. t2) then
+        arg1 = t2
+      else
+        arg1 = t1
       end if
-! scratch(i, j, k, if1sst) = 1.0_realtype
+      f1 = tanh(arg1**4)
       scratch(i, j, k, if1sst) = tanh(arg1**4)
     end do
 ! loop over the boundary conditions to set f1 in the boundary

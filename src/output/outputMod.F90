@@ -358,12 +358,6 @@ contains
                 solNames(itu1) = cgnsTurbK
                 solNames(itu2) = cgnsTurbOmega
 
-            case (langtryMenterSST)
-                solNames(itu1) = cgnsTurbK
-                solNames(itu2) = cgnsTurbOmega
-                solNames(iTransition1) = cgnsTransitionGamma
-                solNames(iTransition2) = cgnsTransitionReThetat
-
             case (ktau)
                 solNames(itu1) = cgnsTurbK
                 solNames(itu2) = cgnsTurbTau
@@ -858,24 +852,6 @@ contains
                 do j = jBeg, jEnd
                     do i = iBeg, iEnd
                         wIO(i, j, k, 1) = w(i, j, k, itu4)
-                    end do
-                end do
-            end do
-
-        case (cgnsTransitionGamma)
-            do k = kBeg, kEnd
-                do j = jBeg, jEnd
-                    do i = iBeg, iEnd
-                        wIO(i, j, k, 1) = w(i, j, k, iTransition1)
-                    end do
-                end do
-            end do
-
-        case (cgnsTransitionReThetat)
-            do k = kBeg, kEnd
-                do j = jBeg, jEnd
-                    do i = iBeg, iEnd
-                        wIO(i, j, k, 1) = w(i, j, k, iTransition2)
                     end do
                 end do
             end do

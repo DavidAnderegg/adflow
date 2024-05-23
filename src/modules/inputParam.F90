@@ -523,7 +523,6 @@ module inputPhysics
     ! turbProd:            Which production term to use in the transport
     !                      turbulence equations, strain, vorticity or
     !                      kato-launder.
-    ! transitionModel      Which transition Model to use
     ! rvfN:                Determines the version of v2f turbulence model.
     ! rvfB:                Whether or not to solve v2f with an
     !                      upper bound.
@@ -577,7 +576,7 @@ module inputPhysics
     !                      KS-aggregation, but rather an exact min computation.
 
     integer(kind=intType) :: equations, equationMode, flowType
-    integer(kind=intType) :: turbModel, cpModel, turbProd, transitionModel
+    integer(kind=intType) :: turbModel, cpModel, turbProd
     integer(kind=intType) :: rvfN
     logical :: rvfB
     logical :: useQCR, useRotationSA, useft2SA, use2003SST
