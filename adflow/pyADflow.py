@@ -18,21 +18,24 @@ History
 v. 1.0  - Original pyAero Framework Implementation (RP,SM 2008)
 """
 
+import copy
+import hashlib
+
 # =============================================================================
 # Imports
 # =============================================================================
 import os
-import time
-import copy
-import types
-import numpy
 import sys
-from mpi4py import MPI
-from baseclasses import AeroSolver, AeroProblem, getPy3SafeString
-from baseclasses.utils import Error, CaseInsensitiveDict
-from . import MExt
-import hashlib
+import time
+import types
 from collections import OrderedDict
+
+import numpy
+from baseclasses import AeroProblem, AeroSolver, getPy3SafeString
+from baseclasses.utils import CaseInsensitiveDict, Error
+from mpi4py import MPI
+
+from . import MExt
 
 
 class ADFLOWWarning(object):
@@ -337,6 +340,18 @@ class ADFLOW(AeroSolver):
         initFlowTime = time.time()
 
         self.coords0 = self.getSurfaceCoordinates(self.allFamilies, includeZipper=False)
+
+        # Create coordinate masks for the critical section method
+        self.critSectCoord = self.getOption("criticalSectionCoord")
+        self.critSectIndex = self.getOption("criticalSectionIndex")
+        self.critSectMode = self.getOption("criticalSectionMode")
+        self.critSectZeroMask = None
+        self.critSectOneMask = None
+
+        if self.critSectMode:
+            coords = self.mapVector(self.coords0, self.allFamilies, self.designFamilyGroup, includeZipper=False)
+            self.critSectZeroMask = coords[:, self.critSectIndex] == 0.0
+            self.critSectOneMask = coords[:, self.critSectIndex] == 1.0
 
         finalInitTime = time.time()
 
@@ -3301,6 +3316,12 @@ class ADFLOW(AeroSolver):
             # DVGeo appeared and we have not embedded points!
             if ptSetName not in self.DVGeo.points:
                 coords0 = self.mapVector(self.coords0, self.allFamilies, self.designFamilyGroup, includeZipper=False)
+
+                # In critical section mode we want to collape the pointset to a single plane
+                # based on the critical section index and coordinate
+                if self.critSectMode:
+                    coords0[:, self.critSectIndex] = self.critSectCoord
+
                 self.DVGeo.addPointSet(coords0, ptSetName, **self.pointSetKwargs)
 
             # also check if we need to embed blanking surface points
@@ -3337,6 +3358,10 @@ class ADFLOW(AeroSolver):
             # Check if our point-set is up to date:
             if not self.DVGeo.pointSetUpToDate(ptSetName) or aeroProblem.adflowData.disp is not None:
                 coords = self.DVGeo.update(ptSetName, config=aeroProblem.name)
+
+                if self.critSectMode:
+                    coords[self.critSectZeroMask, self.critSectIndex] = 0.0
+                    coords[self.critSectOneMask, self.critSectIndex] = 1.0
 
                 # Potentially add a fixed set of displacements to it.
                 if aeroProblem.adflowData.disp is not None:
@@ -5914,6 +5939,9 @@ class ADFLOW(AeroSolver):
             "cavSensorSharpness": [float, 10.0],
             "cavExponent": [int, 0],
             "computeCavitation": [bool, False],
+            "criticalSectionMode": [bool, False],
+            "criticalSectionIndex": [int, 1],
+            "criticalSectionCoord": [float, 0.0],
         }
 
         return defOpts
@@ -6376,6 +6404,9 @@ class ADFLOW(AeroSolver):
             "useexternaldynamicmesh",
             "printalloptions",
             "printintro",
+            "criticalsectionmode",
+            "criticalsectioncoord",
+            "criticalsectionindex",
         }
 
         # Deprecated options that may be in old scripts and should not be used.
