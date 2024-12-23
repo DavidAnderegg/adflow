@@ -1659,3 +1659,81 @@ subroutine getTNSWall(tnsw, npts, sps)
         end do bocos
     end do domains
 end subroutine getTNSWall
+
+
+subroutine getWallVelocity(velocity, npts, sps)
+
+    use constants
+    use blockPointers, only: nDom, nBocos, BCData, BCType
+    use flowVarRefState, only: uRef
+    use utils, only: setPointers
+    implicit none
+
+    ! Input Variables
+    integer(kind=intType), intent(in) :: npts, sps
+    real(kind=realType), intent(inout) :: velocity(3, npts)
+
+    ! Local Variables
+    integer(kind=intType) :: mm, nn, i, j, ii
+    integer(kind=intType) :: iBeg, iEnd, jBeg, jEnd
+
+    ii = 0
+    do nn = 1, nDom
+        call setPointers(nn, 1_intType, sps)
+        ! Loop over the number of viscous boundary subfaces of this block.
+        do mm = 1, nBocos
+            if (BCType(mm) /= NSWallAdiabatic .and. BCType(mm) /= NSWallIsothermal) then
+                cycle
+            end if
+
+            jBeg = BCdata(mm)%jnBeg; jEnd = BCData(mm)%jnEnd
+            iBeg = BCData(mm)%inBeg; iEnd = BCData(mm)%inEnd
+            do j = jBeg, jEnd
+                do i = iBeg, iEnd
+                    ii = ii + 1
+                    velocity(:, ii) = BCData(mm)%uSlip(i, j, :) * uRef
+                end do
+            end do
+
+        end do
+    end do
+end subroutine getWallVelocity
+
+
+subroutine setWallVelocity(velocity, npts, sps)
+
+    use constants
+    use blockPointers, only: nDom, nBocos, BCData, BCType
+    use flowVarRefState, only: uRef
+    use utils, only: setPointers
+    implicit none
+
+    ! Input Variables
+    integer(kind=intType), intent(in) :: npts, sps
+    real(kind=realType), intent(in) :: velocity(3, npts)
+
+    ! Local Variables
+    integer(kind=intType) :: mm, nn, i, j, ii
+    integer(kind=intType) :: iBeg, iEnd, jBeg, jEnd
+
+    ii = 0
+    do nn = 1, nDom
+        call setPointers(nn, 1_intType, sps)
+        ! Loop over the number of viscous boundary subfaces of this block.
+        do mm = 1, nBocos
+            if (BCType(mm) /= NSWallAdiabatic .and. BCType(mm) /= NSWallIsothermal) then
+                cycle
+            end if
+
+            jBeg = BCdata(mm)%jnBeg; jEnd = BCData(mm)%jnEnd
+            iBeg = BCData(mm)%inBeg; iEnd = BCData(mm)%inEnd
+            do j = jBeg, jEnd
+                do i = iBeg, iEnd
+                    ii = ii + 1
+                    BCData(mm)%uSlip(i, j, :) = velocity(:, ii) / uRef
+                end do
+            end do
+
+        end do
+    end do
+end subroutine setWallVelocity

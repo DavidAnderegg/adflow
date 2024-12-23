@@ -3831,6 +3831,78 @@ class ADFLOW(AeroSolver):
         fullTemp = self.mapVector(temperature, groupName, self.allWallsGroup, fullTemp)
         self.adflow.settnswall(fullTemp, TS + 1)
 
+    def getWallVelocity(self, groupName=None, TS=0):
+        """Return the heat fluxes for isothermal walls on the families
+        defined by group name on this processor.
+
+        Parameters
+        ----------
+        groupName : str
+            Group identifier to get only heat fluxes cooresponding to
+            the desired group. The group must be a family or a
+            user-supplied group of families. The default is None which
+            corresponds to all wall-type surfaces.
+
+        TS : int
+            Spectral instance for which to get the fluxes.
+
+        Returns
+        -------
+        heatFluxes : array (N)
+            HeatFluxes on this processor. Note that N may be 0, and an
+            empty array of shape (0) can be returned.
+
+        """
+
+        # Get the values on all walls
+        npts, ncell = self._getSurfaceSize(self.allWallsGroup)
+        velocity = numpy.zeros((npts, 3), self.dtype)
+        self.adflow.getwallvelocity(velocity.T, TS + 1)
+
+        # figure out what family we are interested in
+        if groupName is None:
+            groupName = self.allWallsGroup
+
+        # only return values for the family we are interested in
+        velocity = self.mapVector(velocity, self.allWallsGroup, groupName)
+
+        return velocity
+
+
+    def setWallVelocity(self, velocity, groupName=None, TS=0):
+        """Set the velocity of the walls.
+
+        Parameters
+        ----------
+        velocity : numpy array
+
+            Dimensional velocity to set for wall. This size must
+            correspond to the size of the heat flux obtained using the
+            same groupName.
+
+        groupName : str
+
+            Group identifier to set only temperatures corresponding to
+            the desired group. The group must be a family or a
+            user-supplied group of families. The default is None which
+            corresponds to all wall-type surfaces.
+
+        TS : int
+            Time spectral instance to set.
+        """
+        if groupName is None:
+            groupName = self.allWallsGroup
+
+        # Retrieve existing values on all walls
+        fullVelocity = self.getWallVelocity(self.allWallsGroup)
+
+        # overwrite the existing values with the one defined for the family we are interested in
+        fullVelocity = self.mapVector(velocity, groupName, self.allWallsGroup, fullVelocity)
+
+        # write the whole vector into fortran
+        self.adflow.setwallvelocity(fullVelocity.T, TS + 1)
+
+
     def setTargetCp(self, CpTargets, groupName=None, TS=0):
         """Set the CpTarget distribution for am inverse design problem.
 

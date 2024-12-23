@@ -1481,6 +1481,18 @@ python module libadflow
          integer(kind=inttype) intent(in) :: sps
        end subroutine gettnswall
 
+       subroutine getwallvelocity(velocity,npts,sps) ! in :test:getForces.F90
+          real(kind=realtype) dimension(3,npts),intent(inout) :: velocity
+          integer(kind=inttype), optional,intent(in),check(shape(velocity,1)==npts),depend(velocity) :: npts=shape(velocity,1)
+          integer(kind=inttype) intent(in) :: sps
+       end subroutine getwallvelocity
+
+       subroutine setwallvelocity(velocity,npts,sps_in) ! in :test:getForces.F90
+          real(kind=realtype) dimension(3,npts),intent(in) :: velocity
+          integer(kind=inttype), optional,intent(in),check(shape(velocity,1)==npts),depend(velocity) :: npts=shape(velocity,1)
+          integer(kind=inttype) intent(in) :: sps_in
+       end subroutine setwallvelocity
+
        subroutine setcptargets(cptarget,npts,sps_in) ! in :test:setCpTarget.f90
          real(kind=realtype) dimension(npts),intent(in) :: cptarget
          integer(kind=inttype) optional,intent(in),check(len(cptarget)>=npts),depend(cptarget) :: npts=len(cptarget)

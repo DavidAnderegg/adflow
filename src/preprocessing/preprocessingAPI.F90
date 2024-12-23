@@ -4064,8 +4064,9 @@ contains
             call gridVelocitiesCoarseLevels(mm)
             call normalVelocitiesAllLevels(mm)
 
-            call slipVelocitiesFineLevel(.false., t, mm)
-            call slipVelocitiesCoarseLevels(mm)
+            ! TODO: Handle this properly
+            ! call slipVelocitiesFineLevel(.false., t, mm)
+            ! call slipVelocitiesCoarseLevels(mm)
 
         end do
 
