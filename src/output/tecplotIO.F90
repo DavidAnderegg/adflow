@@ -1890,9 +1890,8 @@ contains
         ! Working variables
         integer(kind=intType) :: i, j, i1, i2
         real(kind=realType), dimension(3) :: x1, x2, pT1, pT2, vT1, vT2, pF, vF, pF_elem, vF_elem
-        real(kind=realType), dimension(3) :: pF_normal, vF_normal
-        real(kind=realType) :: pF_magnitude, vF_magnitude, pF_proj_magnitude, vF_proj_magnitude
-        real(kind=realType) :: len, dmax, dmin, dist, fact, M(3, 3), tmp(6)
+        real(kind=realType), dimension(3) :: elem_normal, elem_dir
+        real(kind=realType) :: len, dmax, dmin, dist, fact, M(3, 3), tmp(6), normal_len
         real(kind=realType) :: r(3), r_new(3), hyp, te(3), le(3), theta, w1, w2
         integer(kind=intType) :: bestPair(2), normal_ind, iProc, ierr, iSize
         real(kind=realtype), dimension(:, :), allocatable :: tempCoords
@@ -2079,38 +2078,27 @@ contains
             pF_elem = half * (pT1 + pT2) * len
             vF_elem = half * (vT1 + vT2) * len
 
-            ! these forces may be misaligned with the slice surface. rotate them.
-            ! To do this, we take out the component of the forces normal to the plane to get the force direction.
-            ! Then we scale the resulting vector to have its original length.
-            ! if we dont do this, lift integrations will not be accurate.
-            pF_magnitude = sqrt(pF_elem(1)**2 + pF_elem(2)**2 + pF_elem(3)**2)
-            vF_magnitude = sqrt(vF_elem(1)**2 + vF_elem(2)**2 + vF_elem(3)**2)
+            ! These are forces applied to the 3d element. we need to get the element normal aligned in the slice plane, and get the contribution of these forces in this plane
 
-            ! get the normal contribution to the plane
-            pF_normal = (pF_elem(1) * lslc%normal(1) + &
-                         pF_elem(2) * lslc%normal(2) + &
-                         pF_elem(3) * lslc%normal(3)) * pF_elem
-            vF_normal = (vF_elem(1) * lslc%normal(1) + &
-                         vF_elem(2) * lslc%normal(2) + &
-                         vF_elem(3) * lslc%normal(3)) * vF_elem
+            ! get the element tangent:
+            elem_dir = (x2 - x1) / len
 
-            ! remove the normal contribution from the vector. This is the vector projected
-            ! onto the slicing plane
-            pF_elem(1) = pF_elem(1) - pF_normal(1)
-            pF_elem(2) = pF_elem(2) - pF_normal(2)
-            pF_elem(3) = pF_elem(3) - pF_normal(3)
+            ! get the cross product of the element direction with the slice normal.
+            ! this gives the element normal direction in the slice plane.
+            elem_normal(1) = elem_dir(2) * lslc%normal(3) - elem_dir(3) * lslc%normal(2)
+            elem_normal(2) = elem_dir(3) * lslc%normal(1) - elem_dir(1) * lslc%normal(3)
+            elem_normal(3) = elem_dir(1) * lslc%normal(2) - elem_dir(2) * lslc%normal(1)
 
-            vF_elem(1) = vF_elem(1) - vF_normal(1)
-            vF_elem(2) = vF_elem(2) - vF_normal(2)
-            vF_elem(3) = vF_elem(3) - vF_normal(3)
+            ! normalize the normal vector
+            normal_len = sqrt(elem_normal(1) * elem_normal(1) + &
+                              elem_normal(2) * elem_normal(2) + &
+                              elem_normal(3) * elem_normal(3))
 
-            ! get the length of this projection
-            pF_proj_magnitude = sqrt(pF_elem(1)**2 + pF_elem(2)**2 + pF_elem(3)**2)
-            vF_proj_magnitude = sqrt(vF_elem(1)**2 + vF_elem(2)**2 + vF_elem(3)**2)
-
-            ! finally, scale the vectors to their old mag. divide by their new mag and mult by old mag.
-            pF_elem = pF_elem * pF_magnitude / pF_proj_magnitude
-            vF_elem = vF_elem * vF_magnitude / vF_proj_magnitude
+            ! get the component of forces in the elem_normal direction
+            pF_elem = ((elem_normal(1) * pF_elem(1)) + (elem_normal(2) * pF_elem(2)) + &
+                     (elem_normal(3) * pF_elem(3))) * elem_normal / normal_len
+            vF_elem = ((elem_normal(1) * vF_elem(1)) + (elem_normal(2) * vF_elem(2)) + &
+                     (elem_normal(3) * vF_elem(3))) * elem_normal / normal_len
 
             ! Integrate the pressure and viscous forces separately
             pF = pF + pF_elem
