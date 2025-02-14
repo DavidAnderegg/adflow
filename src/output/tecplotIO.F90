@@ -17,8 +17,8 @@ module tecplotIO
         ! CLp, CLv, CDp, CDv, CMp, CMv : Coefficients of pressure and viscous lift, drag, and moment
         ! chord: chord of section
         ! pt, normal: The point and the normal that defines the slicing plane
-        ! dir_vec: a direction vector that we use to filter sliced line elements.
-        ! use_dir: flag to determine if we use the dir vec or not. if we are doing
+        ! dirVec: a direction vector that we use to filter sliced line elements.
+        ! useDir: flag to determine if we use the dir vec or not. if we are doing
         !          a regular slice, e.g. wing section, we dont want to use the dir
         !          and want to use the full slice. if we are doing a cylindrical slice
         !          we then want to pick which direction since we would get 2 slices
@@ -32,8 +32,8 @@ module tecplotIO
         real(kind=realType) :: pL, vL, pD, vD, pM, vM, CLp, CLv, CDp, CDv, CMp, CMv
         real(kind=realType) :: chord, twist, thickness
         real(kind=realType), dimension(3) :: le, te
-        real(kind=realType), dimension(3) :: pt, normal, dir_vec
-        logical :: use_dir
+        real(kind=realType), dimension(3) :: pt, normal, dirVec
+        logical :: useDir
         integer(kind=intType), allocatable, dimension(:) :: famList
         ! here we declare that 'slice'-types also now have fx,fy and fz:
         real(kind=realType) :: fx, fy, fz
@@ -42,13 +42,13 @@ module tecplotIO
     type liftDist
         ! nSegments: Number of nodes to use for distribution
         ! normal: Slice direction (normal of the plane)
-        ! normal_ind: Index of direction..1 for x, 2 for y, 3 for z
+        ! normalInd: Index of direction..1 for x, 2 for y, 3 for z
         ! distName: Name of lift distribution
         ! slices: The list of slices this distribution will use
         ! delta: The current delta spacing for the distribution
         ! slicePoints: The list of points where the slices are taken
         character(len=maxStringLen) :: distName
-        integer(kind=intType) :: nSegments, normal_ind
+        integer(kind=intType) :: nSegments, normalInd
         integer(kind=intType), dimension(:), allocatable :: famList
         real(kind=realType) :: normal(3)
         real(kind=realType) :: delta
@@ -74,7 +74,7 @@ module tecplotIO
     integer(kind=intType), parameter :: nLiftDistVar = 26
 
 contains
-    subroutine addParaSlice(sliceName, pt, normal, dir_vec, use_dir, famList, n)
+    subroutine addParaSlice(sliceName, pt, normal, dirVec, useDir, famList, n)
         !
         !       This subroutine is intended to be called from python.
         !       This routine will add a parametric slice to the list of user
@@ -88,8 +88,8 @@ contains
 
         ! Input parameters
         character(len=*), intent(in) :: sliceName
-        real(kind=realType), dimension(3), intent(in) :: pt, normal, dir_vec
-        logical, intent(in) :: use_dir
+        real(kind=realType), dimension(3), intent(in) :: pt, normal, dirVec
+        logical, intent(in) :: useDir
         integer(kind=intType), intent(in) :: n, famList(n)
 
         ! Working
@@ -122,8 +122,8 @@ contains
             call getSurfaceFamily(elemFam, sizeCell, wallList, size(wallList), .True.)
 
             ! Create actual slice
-            call createSlice(pts, conn, elemFam, paraSlices(nParaSlices, sps), pt, normal, dir_vec, &
-                             use_dir, sliceName, famList)
+            call createSlice(pts, conn, elemFam, paraSlices(nParaSlices, sps), pt, normal, dirVec, &
+                             useDir, sliceName, famList)
 
             ! Clean up memory.
             deallocate (pts, conn, elemFam)
@@ -131,7 +131,7 @@ contains
 
     end subroutine addParaSlice
 
-    subroutine addAbsSlice(sliceName, pt, normal, dir_vec, use_dir, famList, n)
+    subroutine addAbsSlice(sliceName, pt, normal, dirVec, useDir, famList, n)
         !
         !       This subroutine is intended to be called from python.
         !       This routine will add an absolute slice to the list of user
@@ -145,8 +145,8 @@ contains
 
         ! Input parameters
         character(len=*), intent(in) :: sliceName
-        real(kind=realType), dimension(3), intent(in) :: pt, normal, dir_vec
-        logical, intent(in) :: use_dir
+        real(kind=realType), dimension(3), intent(in) :: pt, normal, dirVec
+        logical, intent(in) :: useDir
         integer(kind=intType), intent(in) :: n, famList(n)
 
         ! Working
@@ -174,8 +174,8 @@ contains
             call getSurfaceConnectivity(conn, cgnsBlockID, sizeCell, wallList, size(wallList), .True.)
             call getSurfacePoints(pts, sizeNode, sps, wallList, size(wallList), .True.)
             call getSurfaceFamily(elemFam, sizeCell, wallList, size(wallList), .True.)
-            call createSlice(pts, conn, elemFam, absSlices(nAbsSlices, sps), pt, normal, dir_vec, &
-                             use_dir, sliceName, famList)
+            call createSlice(pts, conn, elemFam, absSlices(nAbsSlices, sps), pt, normal, dirVec, &
+                             useDir, sliceName, famList)
 
             ! Clean up memory.
             deallocate (pts, conn, elemFam)
@@ -183,7 +183,7 @@ contains
 
     end subroutine addAbsSlice
 
-    subroutine addLiftDistribution(nSegments, normal, normal_ind, distName, famList, n)
+    subroutine addLiftDistribution(nSegments, normal, normalInd, distName, famList, n)
         !
         !       This subroutine is intended to be called from python.
         !       This routine will add the description of a lift distribution
@@ -197,7 +197,7 @@ contains
         character(len=*), intent(in) :: distName
         integer(kind=intType), intent(in) :: nSegments
         real(kind=realType), dimension(3) :: normal
-        integer(kind=intType), intent(in) :: normal_ind
+        integer(kind=intType), intent(in) :: normalInd
         integer(kind=intType), intent(in) :: n, famList(n)
 
         nLiftDists = nLiftDists + 1
@@ -209,7 +209,7 @@ contains
 
         liftDists(nLIftDists)%nSegments = nSegments
         liftDists(nLiftDists)%normal = normal
-        liftDists(nLIftDists)%normal_ind = normal_ind
+        liftDists(nLIftDists)%normalInd = normalInd
         liftDists(nLiftDists)%distName = distName
 
         allocate (liftDists(nLiftDists)%famList(n))
@@ -389,8 +389,8 @@ contains
 
                     ! Make new one in the same location
                     call createSlice(pts, conn, elemFam, absSlices(i, sps), &
-                                     absSlices(i, sps)%pt, absSlices(i, sps)%normal, absSlices(i, sps)%dir_vec, &
-                                     absSlices(i, sps)%use_dir, absSlices(i, sps)%sliceName, famList)
+                                     absSlices(i, sps)%pt, absSlices(i, sps)%normal, absSlices(i, sps)%dirVec, &
+                                     absSlices(i, sps)%useDir, absSlices(i, sps)%sliceName, famList)
 
                     call integrateSlice(absSlices(i, sps), globalSlice, &
                                         nodalValues(:, :, sps), nSolVar, .True.)
@@ -504,7 +504,7 @@ contains
         integer(kind=intType), intent(in) :: sps, fileID
         real(kind=realType), dimension(:, :), intent(in) :: nodalValues
 
-        real(kind=realType), dimension(3) :: xmin, xmax, xmin_local, xmax_local
+        real(kind=realType), dimension(3) :: xmin, xmax, xMinLocal, xMaxLocal
         real(kind=realType), parameter :: tol = 1e-8
         type(liftDist), pointer :: d
         integer(kind=intType) :: i, j, ii, jj, iDist, ierr
@@ -530,8 +530,8 @@ contains
         do iDist = 1, nLiftDists
 
             d => liftDists(iDist)
-            xmin_local = huge(real(zero))
-            xmax_local = -huge(real(zero))
+            xMinLocal = huge(real(zero))
+            xMaxLocal = -huge(real(zero))
 
             ! Get the bounding box for the entire geometry we have been slicing.
             elemLoop: do i = 1, size(conn, 2)
@@ -542,23 +542,23 @@ contains
                         xCur = pts(:, conn(jj, i))
                         ! Check the max/min on each index
                         do ii = 1, 3
-                            xmin_local(ii) = min(xmin_local(ii), xCur(ii))
-                            xmax_local(ii) = max(xmax_local(ii), xCur(ii))
+                            xMinLocal(ii) = min(xMinLocal(ii), xCur(ii))
+                            xMaxLocal(ii) = max(xMaxLocal(ii), xCur(ii))
                         end do
                     end do
                 end if
             end do elemLoop
 
             ! Globalize all min/max values.
-            call mpi_allreduce(xmin_local, xmin, 3, adflow_real, MPI_MIN, &
+            call mpi_allreduce(xMinLocal, xmin, 3, adflow_real, MPI_MIN, &
                                adflow_comm_world, ierr)
             call EChk(ierr, __FILE__, __LINE__)
 
-            call mpi_allreduce(xmax_local, xmax, 3, adflow_real, MPI_MAX, &
+            call mpi_allreduce(xMaxLocal, xmax, 3, adflow_real, MPI_MAX, &
                                adflow_comm_world, ierr)
             call EChk(ierr, __FILE__, __LINE__)
 
-            d%delta = (xMax(d%normal_ind) - xMin(d%normal_ind)) / dble((d%nSegments - 1))
+            d%delta = (xMax(d%normalInd) - xMin(d%normalInd)) / dble((d%nSegments - 1))
             allocate (d%slicePts(3, d%nSegments))
 
             ! Zero out all segments
@@ -615,28 +615,28 @@ contains
 
             do i = 1, d%nSegments
                 if (i == 1) then
-                    d%slicePts(d%normal_ind, i) = xMin(d%normal_ind) + tol
+                    d%slicePts(d%normalInd, i) = xMin(d%normalInd) + tol
                 else if (i == d%nSegments) then
-                    d%slicePts(d%normal_ind, i) = xMin(d%normal_ind) + (i - 1) * d%delta - tol
+                    d%slicePts(d%normalInd, i) = xMin(d%normalInd) + (i - 1) * d%delta - tol
                 else
-                    d%slicePts(d%normal_ind, i) = xMin(d%normal_ind) + (i - 1) * d%delta
+                    d%slicePts(d%normalInd, i) = xMin(d%normalInd) + (i - 1) * d%delta
                 end if
             end do
 
             ! Scaled Eta values
-            dmin = minVal(d%slicePts(d%normal_ind, :))
-            dmax = maxval(d%slicePts(d%normal_ind, :))
+            dmin = minVal(d%slicePts(d%normalInd, :))
+            dmax = maxval(d%slicePts(d%normalInd, :))
 
             ! next line we save ETA as the first column. This corresponds to
             ! when we open a lift file, e.g. fc_000_lift.dat where we find
             ! ETA as the first entry... (also visible through tec360)
-            values(:, 1) = (d%slicePts(d%normal_ind, :) - dmin) / (dmax - dmin)
+            values(:, 1) = (d%slicePts(d%normalInd, :) - dmin) / (dmax - dmin)
             ! Coordinate Varaibles
-            if (d%normal_ind == 1) then! X slices
+            if (d%normalInd == 1) then! X slices
                 values(:, 2) = d%slicePts(1, :)
-            else if (d%normal_ind == 2) then ! Y slices
+            else if (d%normalInd == 2) then ! Y slices
                 values(:, 3) = d%slicePts(2, :)
-            else if (d%normal_ind == 3) then ! Z slices
+            else if (d%normalInd == 3) then ! Z slices
                 values(:, 4) = d%slicePts(3, :)
             end if
 
@@ -721,6 +721,9 @@ contains
                 ! elliptical value
                 values(i, 20) = four / pi / span * sqrt(one - (values(i, 1) - dmin)**2 / span**2)
             end do
+
+            print *, "lift", sumL * (xmax(3) - xmin(3))
+            print *, "drag", sumD * (xmax(3) - xmin(3))
 
             ! Write all variables in block format
             if (myid == 0) then
@@ -1662,7 +1665,7 @@ contains
 
     end subroutine computeSurfaceOutputNodalData
 
-    subroutine createSlice(pts, conn, elemFam, slc, pt, normal, dir_vec, use_dir, sliceName, famList)
+    subroutine createSlice(pts, conn, elemFam, slc, pt, normal, dirVec, useDir, sliceName, famList)
         !
         !       This subroutine creates a slice on a plane defined by pt and
         !       and dir. It only uses the families specified in the famList.
@@ -1678,8 +1681,8 @@ contains
         integer(kind=intType), dimension(:, :), intent(in) :: conn
         integer(kind=intType), dimension(:), intent(in) :: elemFam
         type(slice), intent(inout) :: slc
-        real(kind=realType), dimension(3), intent(in) :: pt, dir_vec, normal
-        logical, intent(in) :: use_dir
+        real(kind=realType), dimension(3), intent(in) :: pt, dirVec, normal
+        logical, intent(in) :: useDir
         character(len=*), intent(in) :: sliceName
         integer(kind=intType), dimension(:), intent(in) :: famList
 
@@ -1699,8 +1702,8 @@ contains
         ! Set the info for the slice:
         slc%pt = pt
         slc%normal = normal
-        slc%dir_vec = dir_vec
-        slc%use_dir = use_dir
+        slc%dirVec = dirVec
+        slc%useDir = useDir
         slc%nNodes = 0
         allocate (slc%famList(size(famList)))
         slc%famList = famList
@@ -1743,13 +1746,13 @@ contains
                 end do
 
                 ! check if we are using the direction to pick sliced elements
-                if (use_dir) then
+                if (useDir) then
                     ! check if the centroid of this element is in the correct direction
                     vec = elemc - pt
                     ! normalize vector
                     len_vec = sqrt(vec(1) * vec(1) + vec(2) * vec(2) + vec(3) * vec(3))
                     vec = vec / len_vec
-                    if ((vec(1) * dir_vec(1) + vec(2) * dir_vec(2) + vec(3) * dir_vec(3)) .lt. zero) then
+                    if ((vec(1) * dirVec(1) + vec(2) * dirVec(2) + vec(3) * dirVec(3)) .lt. zero) then
                         ! we reject this element; just set all signed distances to 1.0
                         do jj = 1, 4
                             f(jj) = one
@@ -1892,8 +1895,9 @@ contains
         real(kind=realType), dimension(3) :: x1, x2, pT1, pT2, vT1, vT2, pF, vF, pF_elem, vF_elem
         real(kind=realType), dimension(3) :: elem_normal, elem_dir
         real(kind=realType) :: len, dmax, dmin, dist, fact, M(3, 3), tmp(6), normal_len
-        real(kind=realType) :: r(3), r_new(3), hyp, te(3), le(3), theta, w1, w2
-        integer(kind=intType) :: bestPair(2), normal_ind, iProc, ierr, iSize
+        real(kind=realType) :: PfMag, VfMag, PfSign, VfSign
+        real(kind=realType) :: r(3), rNew(3), hyp, te(3), le(3), theta, w1, w2
+        integer(kind=intType) :: bestPair(2), normalInd, iProc, ierr, iSize
         real(kind=realtype), dimension(:, :), allocatable :: tempCoords
         real(kind=realtype), dimension(:, :), allocatable :: localVals
         integer(kind=intType), dimension(:), allocatable :: sliceNodeSizes, sliceCellSizes
@@ -1911,7 +1915,7 @@ contains
         ! Back out what is the main index of the slice, x, y or z based on
         ! the direction. Not the best approach, but that's ok
         ! TODO this can be improved since we are now doing arbitrary slice directions
-        normal_ind = maxloc(abs(gSlc%normal), 1)
+        normalInd = maxloc(abs(gSlc%normal), 1)
 
         pF = zero
         vF = zero
@@ -2094,11 +2098,16 @@ contains
                               elem_normal(2) * elem_normal(2) + &
                               elem_normal(3) * elem_normal(3))
 
+            PfMag = sqrt(pF_elem(1) * pF_elem(1) + pF_elem(2) * pF_elem(2) + pF_elem(3) * pF_elem(3))
+            VfMag = sqrt(vF_elem(1) * vF_elem(1) + vF_elem(2) * vF_elem(2) + vF_elem(3) * vF_elem(3))
+
+            ! get the signs for the line element reference
+            PfSign = sign(1.0, elem_normal(1)*pf_elem(1) + elem_normal(2)*pf_elem(2) + elem_normal(3)*pf_elem(3))
+            VfSign = sign(1.0, elem_dir(1)*vf_elem(1) + elem_dir(2)*vf_elem(2) + elem_dir(3)*vf_elem(3))
+
             ! get the component of forces in the elem_normal direction
-            pF_elem = ((elem_normal(1) * pF_elem(1)) + (elem_normal(2) * pF_elem(2)) + &
-                     (elem_normal(3) * pF_elem(3))) * elem_normal / normal_len
-            vF_elem = ((elem_normal(1) * vF_elem(1)) + (elem_normal(2) * vF_elem(2)) + &
-                     (elem_normal(3) * vF_elem(3))) * elem_normal / normal_len
+            pF_elem = elem_normal * PfMag * PfSign
+            vF_elem = elem_dir * VfMag * VfSign
 
             ! Integrate the pressure and viscous forces separately
             pF = pF + pF_elem
@@ -2133,8 +2142,8 @@ contains
         ! the moments are a bit different than lift and drag. we keep the 3 components of the moment
         ! in pM in this routine but then the slc%pM variable only has the component of the moment
         ! we are interested in. we use the direction index to get this value out and set it in the slice
-        lSlc%pM = pM(normal_ind)
-        lSlc%vM = vM(normal_ind)
+        lSlc%pM = pM(normalInd)
+        lSlc%vM = vM(normalInd)
 
         ! save the x,y,z-forces into the appropriate real-container
         ! from their type(slice) definition (see the top of this file)
@@ -2216,11 +2225,11 @@ contains
             ! Length of hyptoneuse is the same
             hyp = sqrt((x1(1) - x2(1))**2 + (x1(2) - x2(2))**2 + (x1(3) - x2(3))**2)
 
-            if (normal_ind == 1) then
+            if (normalInd == 1) then
                 ! Xslice...we don't how what to do here..could be y or z. Don't
                 ! do anything.
                 gSlc%twist = zero
-            else if (normal_ind == 2) then
+            else if (normalInd == 2) then
                 ! Yslice
                 theta = asin((le(3) - te(3)) / hyp)
                 gSlc%twist = theta * 180.0 / pi
@@ -2230,11 +2239,11 @@ contains
                 gSlc%twist = theta * 180.0 / pi
             end if
 
-            if (normal_ind == 1) then
+            if (normalInd == 1) then
                 M(1, 1) = one; M(1, 2) = zero; M(1, 3) = zero;
                 M(2, 1) = zero; M(2, 2) = one; M(2, 3) = zero;
                 M(3, 1) = zero; M(3, 2) = zero; M(3, 3) = one;
-            else if (normal_ind == 2) then
+            else if (normalInd == 2) then
                 ! Y-rotation matrix
                 M(1, 1) = cos(-theta); M(1, 2) = zero; M(1, 3) = sin(-theta);
                 M(2, 1) = zero; M(2, 2) = one; M(2, 3) = zero;
@@ -2250,18 +2259,18 @@ contains
             do i = 1, size(gSlc%vars, 2)
                 ! extract node:
                 r = gSlc%vars(1:3, i) - te
-                r_new = matmul(M, r)
-                tempCoords(:, i) = r_new + te
+                rNew = matmul(M, r)
+                tempCoords(:, i) = rNew + te
             end do
 
             ! Now get the max and the min and divide by the chord for t/c
-            if (normal_ind == 1) then
+            if (normalInd == 1) then
                 gSlc%thickness = 0 ! Again, don't know what to do here
-            else if (normal_ind == 2) then
+            else if (normalInd == 2) then
                 dmax = maxval(tempCoords(3, :))
                 dmin = minval(tempCoords(3, :))
                 gSlc%thickness = (dmax - dmin) / hyp
-            else if (normal_ind == 3) then
+            else if (normalInd == 3) then
                 dmax = maxval(tempCoords(2, :))
                 dmin = minval(tempCoords(2, :))
                 gSlc%thickness = (dmax - dmin) / hyp
