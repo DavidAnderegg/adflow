@@ -722,9 +722,6 @@ contains
                 values(i, 20) = four / pi / span * sqrt(one - (values(i, 1) - dmin)**2 / span**2)
             end do
 
-            print *, "lift", sumL * (xmax(3) - xmin(3))
-            print *, "drag", sumD * (xmax(3) - xmin(3))
-
             ! Write all variables in block format
             if (myid == 0) then
                 do j = 1, nLiftDistVar
@@ -1892,9 +1889,9 @@ contains
         real(kind=realType), dimension(:, :), intent(in) :: nodalValues
         ! Working variables
         integer(kind=intType) :: i, j, i1, i2
-        real(kind=realType), dimension(3) :: x1, x2, pT1, pT2, vT1, vT2, pF, vF, pF_elem, vF_elem
-        real(kind=realType), dimension(3) :: elem_normal, elem_dir
-        real(kind=realType) :: len, dmax, dmin, dist, fact, M(3, 3), tmp(6), normal_len
+        real(kind=realType), dimension(3) :: x1, x2, pT1, pT2, vT1, vT2, pF, vF, pFElem, vFElem
+        real(kind=realType), dimension(3) :: elemNormal, elemDir
+        real(kind=realType) :: len, dmax, dmin, dist, fact, M(3, 3), tmp(6), normalLen
         real(kind=realType) :: PfMag, VfMag, PfSign, VfSign
         real(kind=realType) :: r(3), rNew(3), hyp, te(3), le(3), theta, w1, w2
         integer(kind=intType) :: bestPair(2), normalInd, iProc, ierr, iSize
@@ -2079,39 +2076,39 @@ contains
             len = sqrt((x1(1) - x2(1))**2 + (x1(2) - x2(2))**2 + (x1(3) - x2(3))**2)
 
             ! compute the pressure and viscous forces on this element
-            pF_elem = half * (pT1 + pT2) * len
-            vF_elem = half * (vT1 + vT2) * len
+            pFElem = half * (pT1 + pT2) * len
+            vFElem = half * (vT1 + vT2) * len
 
             ! These are forces applied to the 3d element. we need to get the element normal aligned in the slice plane, and get the contribution of these forces in this plane
 
             ! get the element tangent:
-            elem_dir = (x2 - x1) / len
+            elemDir = (x2 - x1) / len
 
             ! get the cross product of the element direction with the slice normal.
             ! this gives the element normal direction in the slice plane.
-            elem_normal(1) = elem_dir(2) * lslc%normal(3) - elem_dir(3) * lslc%normal(2)
-            elem_normal(2) = elem_dir(3) * lslc%normal(1) - elem_dir(1) * lslc%normal(3)
-            elem_normal(3) = elem_dir(1) * lslc%normal(2) - elem_dir(2) * lslc%normal(1)
+            elemNormal(1) = elemDir(2) * lslc%normal(3) - elemDir(3) * lslc%normal(2)
+            elemNormal(2) = elemDir(3) * lslc%normal(1) - elemDir(1) * lslc%normal(3)
+            elemNormal(3) = elemDir(1) * lslc%normal(2) - elemDir(2) * lslc%normal(1)
 
             ! normalize the normal vector
-            normal_len = sqrt(elem_normal(1) * elem_normal(1) + &
-                              elem_normal(2) * elem_normal(2) + &
-                              elem_normal(3) * elem_normal(3))
+            normalLen = sqrt(elemNormal(1) * elemNormal(1) + &
+                              elemNormal(2) * elemNormal(2) + &
+                              elemNormal(3) * elemNormal(3))
 
-            PfMag = sqrt(pF_elem(1) * pF_elem(1) + pF_elem(2) * pF_elem(2) + pF_elem(3) * pF_elem(3))
-            VfMag = sqrt(vF_elem(1) * vF_elem(1) + vF_elem(2) * vF_elem(2) + vF_elem(3) * vF_elem(3))
+            PfMag = sqrt(pFElem(1) * pFElem(1) + pFElem(2) * pFElem(2) + pFElem(3) * pFElem(3))
+            VfMag = sqrt(vFElem(1) * vFElem(1) + vFElem(2) * vFElem(2) + vFElem(3) * vFElem(3))
 
             ! get the signs for the line element reference
-            PfSign = sign(1.0, elem_normal(1)*pf_elem(1) + elem_normal(2)*pf_elem(2) + elem_normal(3)*pf_elem(3))
-            VfSign = sign(1.0, elem_dir(1)*vf_elem(1) + elem_dir(2)*vf_elem(2) + elem_dir(3)*vf_elem(3))
+            PfSign = sign(1.0, elemNormal(1)*pFElem(1) + elemNormal(2)*pFElem(2) + elemNormal(3)*pFElem(3))
+            VfSign = sign(1.0, elemDir(1)*vFElem(1) + elemDir(2)*vFElem(2) + elemDir(3)*vFElem(3))
 
-            ! get the component of forces in the elem_normal direction
-            pF_elem = elem_normal * PfMag * PfSign
-            vF_elem = elem_dir * VfMag * VfSign
+            ! get the component of forces in the elemNormal direction
+            pFElem = elemNormal * PfMag * PfSign
+            vFElem = elemDir * VfMag * VfSign
 
             ! Integrate the pressure and viscous forces separately
-            pF = pF + pF_elem
-            vF = vF + vF_elem
+            pF = pF + pFElem
+            vF = vF + vFElem
 
             ! compute moment about the global reference locations
             xc = half * (x1(1) + x2(1)) - refPoint(1)
@@ -2119,14 +2116,14 @@ contains
             zc = half * (x1(3) + x2(3)) - refPoint(3)
 
             ! pressure components
-            pM(1) = pM(1) + yc * pF_elem(3) - zc * pF_elem(2)
-            pM(2) = pM(2) + zc * pF_elem(1) - xc * pF_elem(3)
-            pM(3) = pM(3) + xc * pF_elem(2) - yc * pF_elem(1)
+            pM(1) = pM(1) + yc * pFElem(3) - zc * pFElem(2)
+            pM(2) = pM(2) + zc * pFElem(1) - xc * pFElem(3)
+            pM(3) = pM(3) + xc * pFElem(2) - yc * pFElem(1)
 
             ! viscous components
-            vM(1) = vM(1) + yc * vF_elem(3) - zc * vF_elem(2)
-            vM(2) = vM(2) + zc * vF_elem(1) - xc * vF_elem(3)
-            vM(3) = vM(3) + xc * vF_elem(2) - yc * vF_elem(1)
+            vM(1) = vM(1) + yc * vFElem(3) - zc * vFElem(2)
+            vM(2) = vM(2) + zc * vFElem(1) - xc * vFElem(3)
+            vM(3) = vM(3) + xc * vFElem(2) - yc * vFElem(1)
 
         end do
 
