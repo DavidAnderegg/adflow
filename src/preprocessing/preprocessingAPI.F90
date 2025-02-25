@@ -1892,6 +1892,39 @@ contains
         end do spectral
     end subroutine setReferenceVolume
 
+    subroutine setIntermittency(inputIntermittency, n)
+
+        use constants
+        use blockPointers, only: nDom, il, jl, kl, intermittency
+        use inputTimeSpectral, only: nTimeIntervalsSpectral
+        use utils, only: setPointers
+        implicit none
+        integer :: ierr
+
+        integer(kind=intType), intent(in) :: n
+        real(kind=realType), dimension(n) :: inputIntermittency
+
+        integer(kind=intType) :: nn, sps
+        integer(kind=intType) :: i, j, k, ii
+
+        ii = 0
+        domains: do nn = 1, nDom
+            spectral: do sps = 1, nTimeIntervalsSpectral
+                call setPointers(nn, 1, sps)
+
+                do k = 2, kl
+                    do j = 2, jl
+                        do i = 2, il
+                            ii = ii + 1
+                            intermittency(i, j, k) = inputIntermittency(ii)
+                        end do
+                    end do
+                end do
+            end do spectral
+        end do domains
+    end subroutine setIntermittency
+
+
     subroutine setGlobalCellsAndNodes(level)
         !
         !      Determine the global node numbering that is used to assemble

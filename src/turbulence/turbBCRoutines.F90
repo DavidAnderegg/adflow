@@ -245,6 +245,7 @@ contains
         !
         use constants
         use blockPointers
+        use inputPhysics, only: prescribeTransitionLocation
         implicit none
         !
         !      Subroutine arguments.
@@ -262,6 +263,9 @@ contains
             do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
                 do i = BCData(nn)%icBeg, BCData(nn)%icEnd
                     rev(1, i, j) = rev(2, i, j)
+                    if(prescribeTransitionLocation)then
+                        intermittency(1, i, j) = intermittency(2, i, j)
+                    endif
                 end do
             end do
 
@@ -269,6 +273,9 @@ contains
             do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
                 do i = BCData(nn)%icBeg, BCData(nn)%icEnd
                     rev(ie, i, j) = rev(il, i, j)
+                    if(prescribeTransitionLocation)then
+                        intermittency(ie, i, j) = intermittency(il, i, j)
+                    endif
                 end do
             end do
 
@@ -276,6 +283,9 @@ contains
             do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
                 do i = BCData(nn)%icBeg, BCData(nn)%icEnd
                     rev(i, 1, j) = rev(i, 2, j)
+                    if(prescribeTransitionLocation)then
+                        intermittency(i, 1, j) = intermittency(i, 2, j)
+                    endif
                 end do
             end do
 
@@ -283,6 +293,9 @@ contains
             do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
                 do i = BCData(nn)%icBeg, BCData(nn)%icEnd
                     rev(i, je, j) = rev(i, jl, j)
+                    if(prescribeTransitionLocation)then
+                        intermittency(i, je, j) = intermittency(i, jl, j)
+                    endif
                 end do
             end do
 
@@ -290,6 +303,9 @@ contains
             do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
                 do i = BCData(nn)%icBeg, BCData(nn)%icEnd
                     rev(i, j, 1) = rev(i, j, 2)
+                    if(prescribeTransitionLocation)then
+                        intermittency(i, j, 1) = intermittency(i, j, 2)
+                    endif
                 end do
             end do
 
@@ -297,6 +313,9 @@ contains
             do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
                 do i = BCData(nn)%icBeg, BCData(nn)%icEnd
                     rev(i, j, ke) = rev(i, j, kl)
+                    if(prescribeTransitionLocation)then
+                        intermittency(i, j, ke) = intermittency(i, j, kl)
+                    endif
                 end do
             end do
         end select
@@ -311,6 +330,7 @@ contains
         !
         use constants
         use blockPointers
+        use inputPhysics, only: prescribeTransitionLocation
         implicit none
         !
         !      Subroutine arguments.
@@ -330,6 +350,9 @@ contains
             do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
                 do i = BCData(nn)%icBeg, BCData(nn)%icEnd
                     rev(1, i, j) = -rev(2, i, j)
+                    if(prescribeTransitionLocation)then
+                        intermittency(1, i, j) = -intermittency(2, i, j)
+                    endif
                 end do
             end do
 
@@ -337,6 +360,9 @@ contains
             do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
                 do i = BCData(nn)%icBeg, BCData(nn)%icEnd
                     rev(ie, i, j) = -rev(il, i, j)
+                    if(prescribeTransitionLocation)then
+                        intermittency(ie, i, j) = -intermittency(il, i, j)
+                    endif
                 end do
             end do
 
@@ -344,6 +370,9 @@ contains
             do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
                 do i = BCData(nn)%icBeg, BCData(nn)%icEnd
                     rev(i, 1, j) = -rev(i, 2, j)
+                    if(prescribeTransitionLocation)then
+                        intermittency(i, 1, j) = -intermittency(i, 2, j)
+                    endif
                 end do
             end do
 
@@ -351,6 +380,9 @@ contains
             do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
                 do i = BCData(nn)%icBeg, BCData(nn)%icEnd
                     rev(i, je, j) = -rev(i, jl, j)
+                    if(prescribeTransitionLocation)then
+                        intermittency(i, je, j) = -intermittency(i, jl, j)
+                    endif
                 end do
             end do
 
@@ -358,6 +390,9 @@ contains
             do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
                 do i = BCData(nn)%icBeg, BCData(nn)%icEnd
                     rev(i, j, 1) = -rev(i, j, 2)
+                    if(prescribeTransitionLocation)then
+                        intermittency(i, j, 1) = -intermittency(i, j, 2)
+                    endif
                 end do
             end do
 
@@ -365,6 +400,9 @@ contains
             do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
                 do i = BCData(nn)%icBeg, BCData(nn)%icEnd
                     rev(i, j, ke) = -rev(i, j, kl)
+                    if(prescribeTransitionLocation)then
+                        intermittency(i, j, ke) = -intermittency(i, j, kl)
+                    endif
                 end do
             end do
         end select
@@ -1137,6 +1175,7 @@ contains
         use constants
         use blockPointers
         use flowVarRefState
+        use inputPhysics, only: prescribeTransitionLocation
         implicit none
         !
         !      Subroutine arguments.
@@ -1161,6 +1200,9 @@ contains
                         w(0, i, j, l) = w(1, i, j, l)
                     end do
                     if (eddyModel) rev(0, i, j) = rev(1, i, j)
+                    if(prescribeTransitionLocation)then
+                        intermittency(0, i, j) = intermittency(1, i, j)
+                    endif
                 end do
             end do
 
@@ -1173,6 +1215,10 @@ contains
                         w(ib, i, j, l) = w(ie, i, j, l)
                     end do
                     if (eddyModel) rev(ib, i, j) = rev(ie, i, j)
+
+                    if(prescribeTransitionLocation)then
+                        intermittency(ib, i, j) = intermittency(ie, i, j)
+                    endif
                 end do
             end do
 
@@ -1185,6 +1231,9 @@ contains
                         w(i, 0, j, l) = w(i, 1, j, l)
                     end do
                     if (eddyModel) rev(i, 0, j) = rev(i, 1, j)
+                    if(prescribeTransitionLocation)then
+                        intermittency(i, 0, j) = intermittency(i, 1, j)
+                    endif
                 end do
             end do
 
@@ -1197,6 +1246,9 @@ contains
                         w(i, jb, j, l) = w(i, je, j, l)
                     end do
                     if (eddyModel) rev(i, jb, j) = rev(i, je, j)
+                    if(prescribeTransitionLocation)then
+                        intermittency(i, jb, j) = intermittency(i, je, j)
+                    endif
                 end do
             end do
 
@@ -1209,6 +1261,9 @@ contains
                         w(i, j, 0, l) = w(i, j, 1, l)
                     end do
                     if (eddyModel) rev(i, j, 0) = rev(i, j, 1)
+                    if(prescribeTransitionLocation)then
+                        intermittency(i, j, 0) = intermittency(i, j, 1)
+                    endif
                 end do
             end do
 
@@ -1222,6 +1277,9 @@ contains
                         w(i, j, kb, l) = w(i, j, ke, l)
                     end do
                     if (eddyModel) rev(i, j, kb) = rev(i, j, ke)
+                    if(prescribeTransitionLocation)then
+                        intermittency(i, j, kb) = intermittency(i, j, ke)
+                    endif
                 end do
             end do
 

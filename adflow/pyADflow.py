@@ -334,6 +334,12 @@ class ADFLOW(AeroSolver):
         self.adflow.initializeflow.updatebcdataalllevels()
         self.adflow.initializeflow.initflow()
 
+
+        intermittency = numpy.ones(n)
+        self._transitionLocationCallback(intermittency)
+        self.adflow.preprocessingapi.setintermittency(intermittency)
+
+
         initFlowTime = time.time()
 
         self.coords0 = self.getSurfaceCoordinates(self.allFamilies, includeZipper=False)
@@ -4390,6 +4396,30 @@ class ADFLOW(AeroSolver):
             cellIDs = self.adflow.utils.getcellcgnsblockids(1, n)
             cutCallBack(xCen, self.CGNSZoneNameIDs, cellIDs, flag)
 
+    def _transitionLocationCallback(self, intermittency):
+        """
+
+        Parameters
+        ----------
+        flag : ndarray
+            Array that is used as a mask to select the explicitly blanked cells.
+            This is modified in place.
+        """
+        if not self.getOption("prescribetransitionlocation"):
+            raise Exception("The option 'prescribeTransitionLocation' must be set to True for " + \
+                            "the 'transitionLocationCallback' to work.")
+
+        transitionLocationCallback = self.getOption("transitionLocationCallback")
+        n = len(intermittency)
+        if transitionLocationCallback is None:
+            return intermittency
+
+        xCen = self.adflow.utils.getcellcenters(1, n).T
+        distance2Wall = self.adflow.utils.getdistance2wall(1, n).T
+        cellIDs = self.adflow.utils.getcellcgnsblockids(1, n)
+        transitionLocationCallback(xCen, distance2Wall, self.CGNSZoneNameIDs, cellIDs, intermittency)
+
+
     def _initializeExplicitSurfaceCallback(self):
         """Routine that loads the external surfaces provided by the user for explicit blanking.
         We can do this just once because there may be subsequent calls with the same surfaces.
@@ -5705,6 +5735,7 @@ class ADFLOW(AeroSolver):
             "infChangeCorrectionType": [str, ["offset", "rotate"]],
             "cavitationNumber": [float, 1.4],
             "cpMinRho": [float, 100.0],
+            "prescribeTransitionLocation": [bool, False],
             # Common Parameters
             "nCycles": [int, 2000],
             "timeLimit": [float, -1.0],
@@ -5733,6 +5764,7 @@ class ADFLOW(AeroSolver):
             "debugZipper": [bool, False],
             "zipperSurfaceFamily": [(str, type(None)), None],
             "cutCallback": [(types.FunctionType, type(None)), None],
+            "transitionLocationcallback": [(types.FunctionType, type(None)), None],
             "explicitSurfaceCallback": [(types.FunctionType, type(None)), None],
             "oversetUpdateMode": [str, ["frozen", "fast", "full"]],
             "nRefine": [int, 10],
@@ -5953,6 +5985,8 @@ class ADFLOW(AeroSolver):
             "closedsurfacefamilies",
             "zippersurfacefamily",
             "cutcallback",
+            "prescribetransitionlocation",
+            "transitionlocationcallback",
             "explicitsurfacecallback",
             "useskewnesscheck",
         )
@@ -6104,6 +6138,7 @@ class ADFLOW(AeroSolver):
             "lowspeedpreconditioner": ["discr", "lowspeedpreconditioner"],
             "cavitationnumber": ["physics", "cavitationnumber"],
             "cpminrho": ["physics", "cpmin_rho"],
+            "prescribetransitionlocation": ["physics", "prescribetransitionlocation"],
             # Common Parameters
             "ncycles": ["iter", "ncycles"],
             "timelimit": ["iter", "timelimit"],
@@ -6379,6 +6414,7 @@ class ADFLOW(AeroSolver):
             "zippersurfacefamily",
             "outputsurfacefamily",
             "cutcallback",
+            "transitionlocationcallback",
             "explicitsurfacecallback",
             "infchangecorrection",
             "infchangecorrectiontol",

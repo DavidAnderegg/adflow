@@ -12,6 +12,7 @@ module BCPointers
     real(kind=realType), dimension(:, :), pointer :: rlv0, rlv1, rlv2, rlv3
     real(kind=realType), dimension(:, :), pointer :: rev0, rev1, rev2, rev3
     real(kind=realType), dimension(:, :), pointer :: gamma0, gamma1, gamma2, gamma3
+    real(kind=realType), dimension(:, :), pointer :: intermittency0, intermittency1, intermittency2, intermittency3
     real(kind=realType), dimension(:, :, :), pointer :: ssi, ssj, ssk
     real(kind=realType), dimension(:, :, :), pointer :: ss, xx
     real(kind=realType), dimension(:, :), pointer :: dd2wall, sFace

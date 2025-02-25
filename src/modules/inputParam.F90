@@ -173,8 +173,6 @@ module inputIO
     character(len=maxStringLen) :: forcedSurfaceFile, forcedVolumeFile
     character(len=maxStringLen) :: forcedLiftFile, forcedSliceFile
     character(len=maxStringLen) :: convSolFileBasename
-    ! logical to control the us of the transition model
-    logical :: laminarToTurbulent
 
 end module inputIO
 
@@ -579,6 +577,8 @@ module inputPhysics
     ! sepSenMaxRho           The rho parameter used with the KS-based separation sensor.
     ! sepSenMaxFamily     The maximum sepsensor value for a given surface family that does not use
     !                      KS-aggregation, but rather an exact max computation.
+    ! prescribeTransitionLocation   Whether to fix the transition. This is achieved 
+    !                         through a callback function similar to "cutCallBack"
 
     integer(kind=intType) :: equations, equationMode, flowType
     integer(kind=intType) :: turbModel, cpModel, turbProd
@@ -627,6 +627,7 @@ module inputPhysics
 
     ! Return forces as tractions instead of forces:
     logical :: forcesAsTractions
+    logical :: prescribeTransitionLocation
 
 end module inputPhysics
 

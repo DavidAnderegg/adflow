@@ -260,6 +260,10 @@ contains
                             ft2 = zero
                         end if
 
+                        if(prescribeTransitionLocation .and. useft2SA)then
+                            ft2 = (1-intermittency(i,j,k))*rsaCt3*exp(-0.05*chi2)
+                        endif
+
                         ! Correct the production term to account for the influence
                         ! of the wall.
 
@@ -296,6 +300,11 @@ contains
                         else
                             term1 = rsaCb1 * (one - ft2) * ss
                         end if
+
+                        if(prescribeTransitionLocation .and. .not.(useft2SA))then
+                            term1 = term1 * intermittency(i,j,k)
+                        endif
+
                         term2 = dist2Inv * (kar2Inv * rsaCb1 * ((one - ft2) * fv2 + ft2) &
                                             - rsaCw1 * fwSa)
 
@@ -1256,6 +1265,9 @@ contains
                 do i = 2, il
                     w(i, j, k, itu1) = w(i, j, k, itu1) + factor * scratch(i, j, k, idvt)
                     w(i, j, k, itu1) = max(w(i, j, k, itu1), zero)
+                    if(prescribeTransitionLocation .and. (useft2SA))then
+                        w(i,j,k,itu1) = intermittency(i,j,k)*w(i,j,k,itu1)
+                    endif
                 end do
             end do
         end do

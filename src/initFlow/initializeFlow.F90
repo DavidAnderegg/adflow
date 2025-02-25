@@ -410,7 +410,7 @@ contains
         use constants
         use block, only: flowDoms, nDOm
         use flowVarRefState, only: nw, nwf, nt1, nt2
-        use inputPhysics, only: equationMode, gammaConstant
+        use inputPhysics, only: equationMode, gammaConstant, prescribeTransitionLocation
         use inputUnsteady, only: timeIntegrationScheme
         use inputIteration, only: mgStartLevel, turbTreatment
         use iteration, only: nOldLevels
@@ -462,6 +462,14 @@ contains
             if (ierr /= 0) &
                 call terminate("allocMemFlovarPart1", &
                                "Memory allocation failure for w")
+
+            !  Allocate the intermittency for transition
+            if (prescribeTransitionLocation) then
+                allocate(flowDoms(nn,level,sps)%intermittency(0:ib,0:jb,0:kb))
+                if(ierr /= 0)                           &
+                    call terminate("allocMemFlovarPart1", &
+                    "Memory allocation failure for intermittency")
+            end if
 
             ! Alloc mem for nodal gradients
             allocate (flowDoms(nn, level, sps)%ux(il, jl, kl), stat=ierr)
