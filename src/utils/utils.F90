@@ -885,13 +885,15 @@ contains
         !       routines are only implemented once instead of 6 times.
         !
         use constants
-        use blockPointers, only: w, p, rlv, rev, gamma, x, d2wall, &
+        use blockPointers, only: w, p, rlv, rev, gamma, x, d2wall, intermittency,&
                                  si, sj, sk, s, globalCell, BCData, nx, il, ie, ib, &
                                  ny, jl, je, jb, nz, kl, ke, kb, BCFaceID, &
                                  addgridvelocities, sFaceI, sFaceJ, sFaceK, addGridVelocities
         use BCPointers, only: ww0, ww1, ww2, ww3, pp0, pp1, pp2, pp3, &
                               rlv0, rlv1, rlv2, rlv3, rev0, rev1, rev2, rev3, &
-                              gamma0, gamma1, gamma2, gamma3, gcp, xx, ss, ssi, ssj, ssk, dd2wall, &
+                              gamma0, gamma1, gamma2, gamma3, intermittency0, &
+                              intermittency1, intermittency2, intermittency3, &
+                              gcp, xx, ss, ssi, ssj, ssk, dd2wall, &
                               sFace, iStart, iEnd, jStart, jEnd, iSize, jSize
         use inputPhysics, only: cpModel, equations
         implicit none
@@ -944,6 +946,11 @@ contains
             gamma1 => gamma(1, 1:, 1:)
             gamma0 => gamma(0, 1:, 1:)
 
+            intermittency3 => intermittency(3, 1:, 1:)
+            intermittency2 => intermittency(2, 1:, 1:)
+            intermittency1 => intermittency(1, 1:, 1:)
+            intermittency0 => intermittency(0, 1:, 1:)
+
             gcp => globalCell(2, 1:, 1:)
             !---------------------------------------------------------------------------
 
@@ -973,6 +980,12 @@ contains
             gamma2 => gamma(il, 1:, 1:)
             gamma1 => gamma(ie, 1:, 1:)
             gamma0 => gamma(ib, 1:, 1:)
+
+            intermittency3 => intermittency(nx, 1:, 1:)
+            intermittency2 => intermittency(il, 1:, 1:)
+            intermittency1 => intermittency(ie, 1:, 1:)
+            intermittency0 => intermittency(ib, 1:, 1:)
+
 
             gcp => globalCell(il, 1:, 1:)
             !---------------------------------------------------------------------------
@@ -1004,6 +1017,11 @@ contains
             gamma1 => gamma(1:, 1, 1:)
             gamma0 => gamma(1:, 0, 1:)
 
+            intermittency3 => intermittency(1:, 3, 1:)
+            intermittency2 => intermittency(1:, 2, 1:)
+            intermittency1 => intermittency(1:, 1, 1:)
+            intermittency0 => intermittency(1:, 0, 1:)
+
             gcp => globalCell(1:, 2, 1:)
             !---------------------------------------------------------------------------
 
@@ -1033,6 +1051,11 @@ contains
             gamma2 => gamma(1:, jl, 1:)
             gamma1 => gamma(1:, je, 1:)
             gamma0 => gamma(1:, jb, 1:)
+
+            intermittency3 => intermittency(1:, ny, 1:)
+            intermittency2 => intermittency(1:, jl, 1:)
+            intermittency1 => intermittency(1:, je, 1:)
+            intermittency0 => intermittency(1:, jb, 1:)
 
             gcp => globalCell(1:, jl, 1:)
             !---------------------------------------------------------------------------
@@ -1064,6 +1087,11 @@ contains
             gamma1 => gamma(1:, 1:, 1)
             gamma0 => gamma(1:, 1:, 0)
 
+            intermittency3 => intermittency(1:, 1:, 3)
+            intermittency2 => intermittency(1:, 1:, 2)
+            intermittency1 => intermittency(1:, 1:, 1)
+            intermittency0 => intermittency(1:, 1:, 0)
+            
             gcp => globalCell(1:, 1:, 2)
             !---------------------------------------------------------------------------
 
@@ -1093,6 +1121,11 @@ contains
             gamma2 => gamma(1:, 1:, kl)
             gamma1 => gamma(1:, 1:, ke)
             gamma0 => gamma(1:, 1:, kb)
+
+            intermittency3 => intermittency(1:, 1:, nz)
+            intermittency2 => intermittency(1:, 1:, kl)
+            intermittency1 => intermittency(1:, 1:, ke)
+            intermittency0 => intermittency(1:, 1:, kb)
 
             gcp => globalCell(1:, 1:, kl)
         end select
@@ -2727,6 +2760,8 @@ contains
 
         nullify (flowDoms(nn, level, sps)%d2Wall)
 
+        nullify(flowDoms(nn,level,sps)%intermittency)
+
         nullify (flowDoms(nn, level, sps)%bmti1)
         nullify (flowDoms(nn, level, sps)%bmti2)
         nullify (flowDoms(nn, level, sps)%bmtj1)
@@ -3480,6 +3515,8 @@ contains
 
         d2Wall => flowDoms(nn, mm, ll)%d2Wall
         filterDES => flowDoms(nn, mm, ll)%filterDES  ! eran-des
+
+        intermittency => flowDoms(nn,mm,ll)%intermittency
 
         ! Arrays used for the implicit treatment of the turbulent wall
         ! boundary conditions. As these variables are only allocated for
@@ -5455,6 +5492,10 @@ contains
             deallocate (flowDoms(nn, level, sps)%d2Wall, stat=ierr)
         if (ierr /= 0) deallocationFailure = .true.
 
+        if( associated(flowDoms(nn,level,sps)%intermittency) ) &
+            deallocate(flowDoms(nn,level,sps)%intermittency, stat=ierr)
+        if(ierr /= 0) deallocationFailure = .true.
+
         if (associated(flowDoms(nn, level, sps)%bmti1)) &
             deallocate (flowDoms(nn, level, sps)%bmti1, stat=ierr)
         if (ierr /= 0) deallocationFailure = .true.
@@ -6534,6 +6575,39 @@ contains
             end do
         end do
     end subroutine getCellCenters
+
+    subroutine getDistance2Wall(level, n, distance2wall)
+
+        use constants
+        use inputTimeSpectral, only: nTimeIntervalsSpectral
+        use blockPointers, only: nDom, il, jl, kl, d2wall
+
+        implicit none
+
+        ! Input/Output
+        integer(kind=intType), intent(in) :: level, n
+        real(kind=realType), dimension(n), intent(out) :: distance2wall
+
+        ! Working
+        integer(kind=intType) :: i, j, k, ii, nn, sps
+
+        ii = 0
+        do nn = 1, nDom
+            do sps = 1, nTimeIntervalsSpectral
+                call setPointers(nn, level, sps)
+
+                do k = 2, kl
+                    do j = 2, jl
+                        do i = 2, il
+                            ii = ii + 1
+                            distance2wall(ii) = d2wall(i, j, k)
+                        end do
+                    end do
+                end do
+            end do
+        end do
+    end subroutine getDistance2Wall
+
 
     subroutine getCellCGNSBlockIDs(level, n, cellID)
 

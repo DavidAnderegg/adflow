@@ -758,7 +758,6 @@ contains
         use flowUtils, only: computePTot
         use utils, only: terminate
         use oversetData, only: oversetPresent
-        use inputIO, only: laminarToTurbulent
         implicit none
         !
         !      Subroutine arguments.
@@ -1312,14 +1311,11 @@ contains
             end do
 
         case (cgnsintermittency)
-            if (laminartoturbulent) then
+            if (prescribeTransitionLocation) then
                 do k = kBeg, kEnd
-                    kk = max(2_intType, k); kk = min(kl, kk)
                     do j = jBeg, jEnd
-                        jj = max(2_intType, j); jj = min(jl, jj)
                         do i = iBeg, iEnd
-                            ii = max(2_intType, i); ii = min(il, ii)
-                            wIO(i, j, k, 1) = intermittency(ii, jj, kk)
+                            wIO(i, j, k, 1) = intermittency(i, j, k)
                         end do
                     end do
                 end do

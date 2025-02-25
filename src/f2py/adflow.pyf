@@ -224,6 +224,12 @@ python module libadflow
            real(kind=realtype) dimension(3,n),intent(out),depend(n) :: xcen
          end subroutine getcellcenters
 
+         subroutine getdistance2wall(level, n, distance2wall) ! in :test:utils.F90:utils
+           integer(kind=inttype) intent(in) :: level
+           integer(kind=inttype) intent(in) :: n
+           real(kind=realtype) dimension(n),intent(out),depend(n) :: distance2wall
+         end subroutine getdistance2wall
+
          subroutine getcellcgnsblockids(level,n,cellid) ! in :test:utils.F90:utils
            integer(kind=inttype) intent(in) :: level
            integer(kind=inttype) intent(in) :: n
@@ -765,6 +771,11 @@ python module libadflow
            integer(kind=inttype), optional,intent(in),check(len(closedfamlist)>=nfam),depend(closedfamlist) :: nfam=len(closedfamlist)
          end subroutine preprocessingoverset
 
+         subroutine setintermittency(inputintermittency, n) ! in :test:preprocessingAPI.F90:preprocessingapi
+           real(kind=realtype) dimension(n) :: inputintermittency
+           integer(kind=inttype), optional,intent(in),check(len(inputintermittency)>=n),depend(inputintermittency) :: n=len(inputintermittency)
+         end subroutine setintermittency
+
        end module preprocessingapi
 
        module oversetapi
@@ -1206,6 +1217,7 @@ python module libadflow
          real(kind=realtype) :: cavitationnumber
          real(kind=realtype) :: cpmin_rho
          real(kind=realtype) :: sepsenmaxrho
+         logical :: prescribetransitionlocation
        end module inputphysics
 
        module inputadjoint ! in :adflow:../modules/inputParam.f90
