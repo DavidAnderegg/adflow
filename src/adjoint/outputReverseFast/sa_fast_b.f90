@@ -187,7 +187,15 @@ contains
 myIntPtr = myIntPtr + 1
  myIntStack(myIntPtr) = 0
         else
+myIntPtr = myIntPtr + 1
+ myIntStack(myIntPtr) = 1
           ft2 = zero
+        end if
+        if (prescribetransitionlocation .and. useft2sa) then
+          ft2 = (1-intermittency(i, j, k))*rsact3*exp(-(0.05*chi2))
+myIntPtr = myIntPtr + 1
+ myIntStack(myIntPtr) = 0
+        else
 myIntPtr = myIntPtr + 1
  myIntStack(myIntPtr) = 1
         end if
@@ -250,6 +258,14 @@ myIntPtr = myIntPtr + 1
 myIntPtr = myIntPtr + 1
  myIntStack(myIntPtr) = 1
         end if
+        if (prescribetransitionlocation .and. (.not.useft2sa)) then
+          term1 = term1*intermittency(i, j, k)
+myIntPtr = myIntPtr + 1
+ myIntStack(myIntPtr) = 0
+        else
+myIntPtr = myIntPtr + 1
+ myIntStack(myIntPtr) = 1
+        end if
         term2 = dist2inv*(kar2inv*rsacb1*((one-ft2)*fv2+ft2)-rsacw1*fwsa&
 &         )
         temp = w(i, j, k, itu1)
@@ -263,6 +279,9 @@ myIntPtr = myIntPtr + 1
         fwsad = -(rsacw1*dist2inv*term2d)
         ft2d = (1.0-fv2)*tempd0
         fv2d = (one-ft2)*tempd0
+branch = myIntStack(myIntPtr)
+ myIntPtr = myIntPtr - 1
+        if (branch .eq. 0) term1d = intermittency(i, j, k)*term1d
 branch = myIntStack(myIntPtr)
  myIntPtr = myIntPtr - 1
         if (branch .ne. 0) then
@@ -309,10 +328,16 @@ branch = myIntStack(myIntPtr)
 branch = myIntStack(myIntPtr)
  myIntPtr = myIntPtr - 1
         if (branch .eq. 0) then
-          chi2d = -(rsact4*exp(-(rsact4*chi2))*rsact3*ft2d)
+          chi2d = -(0.05*exp(-(0.05*chi2))*(1-intermittency(i, j, k))*&
+&           rsact3*ft2d)
+          ft2d = 0.0_8
         else
           chi2d = 0.0_8
         end if
+branch = myIntStack(myIntPtr)
+ myIntPtr = myIntPtr - 1
+        if (branch .eq. 0) chi2d = chi2d - rsact4*exp(-(rsact4*chi2))*&
+&           rsact3*ft2d
         tempd = -(fv2d/(one+chi*fv1))
         chid = tempd
         tempd0 = -(chi*tempd/(one+chi*fv1))
@@ -574,6 +599,8 @@ branch = myIntStack(myIntPtr)
         else
           ft2 = zero
         end if
+        if (prescribetransitionlocation .and. useft2sa) ft2 = (1-&
+&           intermittency(i, j, k))*rsact3*exp(-(0.05*chi2))
 ! correct the production term to account for the influence
 ! of the wall.
         sst = ss + w(i, j, k, itu1)*fv2*kar2inv*dist2inv
@@ -612,6 +639,8 @@ branch = myIntStack(myIntPtr)
         else
           term1 = rsacb1*(one-ft2)*ss
         end if
+        if (prescribetransitionlocation .and. (.not.useft2sa)) term1 = &
+&           term1*intermittency(i, j, k)
         term2 = dist2inv*(kar2inv*rsacb1*((one-ft2)*fv2+ft2)-rsacw1*fwsa&
 &         )
         scratch(i, j, k, idvt) = (term1+term2*w(i, j, k, itu1))*w(i, j, &
