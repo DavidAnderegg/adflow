@@ -729,13 +729,14 @@ contains
 !       routines are only implemented once instead of 6 times.
 !
     use constants
-    use blockpointers, only : w, p, rlv, rev, gamma, x, d2wall, si, sj&
-&   , sk, s, globalcell, bcdata, nx, il, ie, ib, ny, jl, je, jb, nz, kl,&
-&   ke, kb, bcfaceid, addgridvelocities, sfacei, sfacej, sfacek, &
-&   addgridvelocities
+    use blockpointers, only : w, p, rlv, rev, gamma, x, d2wall, &
+&   intermittency, si, sj, sk, s, globalcell, bcdata, nx, il, ie, ib, ny&
+&   , jl, je, jb, nz, kl, ke, kb, bcfaceid, addgridvelocities, sfacei, &
+&   sfacej, sfacek, addgridvelocities
     use bcpointers_d, only : ww0, ww1, ww2, ww3, pp0, pp1, pp2, pp3, &
 &   rlv0, rlv1, rlv2, rlv3, rev0, rev1, rev2, rev3, gamma0, gamma1, &
-&   gamma2, gamma3, gcp, xx, ss, ssi, ssj, ssk, dd2wall, sface, istart, &
+&   gamma2, gamma3, intermittency0, intermittency1, intermittency2, &
+&   intermittency3, gcp, xx, ss, ssi, ssj, ssk, dd2wall, sface, istart, &
 &   iend, jstart, jend, isize, jsize
     use inputphysics, only : cpmodel, equations
     implicit none
@@ -776,6 +777,10 @@ contains
       gamma2 => gamma(2, 1:, 1:)
       gamma1 => gamma(1, 1:, 1:)
       gamma0 => gamma(0, 1:, 1:)
+      intermittency3 => intermittency(3, 1:, 1:)
+      intermittency2 => intermittency(2, 1:, 1:)
+      intermittency1 => intermittency(1, 1:, 1:)
+      intermittency0 => intermittency(0, 1:, 1:)
       gcp => globalcell(2, 1:, 1:)
 !---------------------------------------------------------------------------
     case (imax) 
@@ -799,6 +804,10 @@ contains
       gamma2 => gamma(il, 1:, 1:)
       gamma1 => gamma(ie, 1:, 1:)
       gamma0 => gamma(ib, 1:, 1:)
+      intermittency3 => intermittency(nx, 1:, 1:)
+      intermittency2 => intermittency(il, 1:, 1:)
+      intermittency1 => intermittency(ie, 1:, 1:)
+      intermittency0 => intermittency(ib, 1:, 1:)
       gcp => globalcell(il, 1:, 1:)
 !---------------------------------------------------------------------------
     case (jmin) 
@@ -822,6 +831,10 @@ contains
       gamma2 => gamma(1:, 2, 1:)
       gamma1 => gamma(1:, 1, 1:)
       gamma0 => gamma(1:, 0, 1:)
+      intermittency3 => intermittency(1:, 3, 1:)
+      intermittency2 => intermittency(1:, 2, 1:)
+      intermittency1 => intermittency(1:, 1, 1:)
+      intermittency0 => intermittency(1:, 0, 1:)
       gcp => globalcell(1:, 2, 1:)
 !---------------------------------------------------------------------------
     case (jmax) 
@@ -845,6 +858,10 @@ contains
       gamma2 => gamma(1:, jl, 1:)
       gamma1 => gamma(1:, je, 1:)
       gamma0 => gamma(1:, jb, 1:)
+      intermittency3 => intermittency(1:, ny, 1:)
+      intermittency2 => intermittency(1:, jl, 1:)
+      intermittency1 => intermittency(1:, je, 1:)
+      intermittency0 => intermittency(1:, jb, 1:)
       gcp => globalcell(1:, jl, 1:)
 !---------------------------------------------------------------------------
     case (kmin) 
@@ -868,6 +885,10 @@ contains
       gamma2 => gamma(1:, 1:, 2)
       gamma1 => gamma(1:, 1:, 1)
       gamma0 => gamma(1:, 1:, 0)
+      intermittency3 => intermittency(1:, 1:, 3)
+      intermittency2 => intermittency(1:, 1:, 2)
+      intermittency1 => intermittency(1:, 1:, 1)
+      intermittency0 => intermittency(1:, 1:, 0)
       gcp => globalcell(1:, 1:, 2)
 !---------------------------------------------------------------------------
     case (kmax) 
@@ -891,6 +912,10 @@ contains
       gamma2 => gamma(1:, 1:, kl)
       gamma1 => gamma(1:, 1:, ke)
       gamma0 => gamma(1:, 1:, kb)
+      intermittency3 => intermittency(1:, 1:, nz)
+      intermittency2 => intermittency(1:, 1:, kl)
+      intermittency1 => intermittency(1:, 1:, ke)
+      intermittency0 => intermittency(1:, 1:, kb)
       gcp => globalcell(1:, 1:, kl)
     end select
     if (spatialpointers) then

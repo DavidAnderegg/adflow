@@ -289,6 +289,7 @@ bocos:do nn=1,nbocos
 !
     use constants
     use blockpointers
+    use inputphysics, only : prescribetransitionlocation
     implicit none
 !
 !      subroutine arguments.
@@ -305,6 +306,8 @@ bocos:do nn=1,nbocos
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           revd(1, i, j) = revd(2, i, j)
           rev(1, i, j) = rev(2, i, j)
+          if (prescribetransitionlocation) intermittency(1, i, j) = &
+&             intermittency(2, i, j)
         end do
       end do
     case (imax) 
@@ -312,6 +315,8 @@ bocos:do nn=1,nbocos
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           revd(ie, i, j) = revd(il, i, j)
           rev(ie, i, j) = rev(il, i, j)
+          if (prescribetransitionlocation) intermittency(ie, i, j) = &
+&             intermittency(il, i, j)
         end do
       end do
     case (jmin) 
@@ -319,6 +324,8 @@ bocos:do nn=1,nbocos
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           revd(i, 1, j) = revd(i, 2, j)
           rev(i, 1, j) = rev(i, 2, j)
+          if (prescribetransitionlocation) intermittency(i, 1, j) = &
+&             intermittency(i, 2, j)
         end do
       end do
     case (jmax) 
@@ -326,6 +333,8 @@ bocos:do nn=1,nbocos
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           revd(i, je, j) = revd(i, jl, j)
           rev(i, je, j) = rev(i, jl, j)
+          if (prescribetransitionlocation) intermittency(i, je, j) = &
+&             intermittency(i, jl, j)
         end do
       end do
     case (kmin) 
@@ -333,6 +342,8 @@ bocos:do nn=1,nbocos
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           revd(i, j, 1) = revd(i, j, 2)
           rev(i, j, 1) = rev(i, j, 2)
+          if (prescribetransitionlocation) intermittency(i, j, 1) = &
+&             intermittency(i, j, 2)
         end do
       end do
     case (kmax) 
@@ -340,6 +351,8 @@ bocos:do nn=1,nbocos
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           revd(i, j, ke) = revd(i, j, kl)
           rev(i, j, ke) = rev(i, j, kl)
+          if (prescribetransitionlocation) intermittency(i, j, ke) = &
+&             intermittency(i, j, kl)
         end do
       end do
     end select
@@ -355,6 +368,7 @@ bocos:do nn=1,nbocos
 !
     use constants
     use blockpointers
+    use inputphysics, only : prescribetransitionlocation
     implicit none
 !
 !      subroutine arguments.
@@ -370,36 +384,48 @@ bocos:do nn=1,nbocos
       do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           rev(1, i, j) = rev(2, i, j)
+          if (prescribetransitionlocation) intermittency(1, i, j) = &
+&             intermittency(2, i, j)
         end do
       end do
     case (imax) 
       do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           rev(ie, i, j) = rev(il, i, j)
+          if (prescribetransitionlocation) intermittency(ie, i, j) = &
+&             intermittency(il, i, j)
         end do
       end do
     case (jmin) 
       do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           rev(i, 1, j) = rev(i, 2, j)
+          if (prescribetransitionlocation) intermittency(i, 1, j) = &
+&             intermittency(i, 2, j)
         end do
       end do
     case (jmax) 
       do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           rev(i, je, j) = rev(i, jl, j)
+          if (prescribetransitionlocation) intermittency(i, je, j) = &
+&             intermittency(i, jl, j)
         end do
       end do
     case (kmin) 
       do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           rev(i, j, 1) = rev(i, j, 2)
+          if (prescribetransitionlocation) intermittency(i, j, 1) = &
+&             intermittency(i, j, 2)
         end do
       end do
     case (kmax) 
       do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           rev(i, j, ke) = rev(i, j, kl)
+          if (prescribetransitionlocation) intermittency(i, j, ke) = &
+&             intermittency(i, j, kl)
         end do
       end do
     end select
@@ -418,6 +444,7 @@ bocos:do nn=1,nbocos
 !
     use constants
     use blockpointers
+    use inputphysics, only : prescribetransitionlocation
     implicit none
 !
 !      subroutine arguments.
@@ -436,6 +463,8 @@ bocos:do nn=1,nbocos
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           revd(1, i, j) = -revd(2, i, j)
           rev(1, i, j) = -rev(2, i, j)
+          if (prescribetransitionlocation) intermittency(1, i, j) = -&
+&             intermittency(2, i, j)
         end do
       end do
     case (imax) 
@@ -443,6 +472,8 @@ bocos:do nn=1,nbocos
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           revd(ie, i, j) = -revd(il, i, j)
           rev(ie, i, j) = -rev(il, i, j)
+          if (prescribetransitionlocation) intermittency(ie, i, j) = -&
+&             intermittency(il, i, j)
         end do
       end do
     case (jmin) 
@@ -450,6 +481,8 @@ bocos:do nn=1,nbocos
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           revd(i, 1, j) = -revd(i, 2, j)
           rev(i, 1, j) = -rev(i, 2, j)
+          if (prescribetransitionlocation) intermittency(i, 1, j) = -&
+&             intermittency(i, 2, j)
         end do
       end do
     case (jmax) 
@@ -457,6 +490,8 @@ bocos:do nn=1,nbocos
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           revd(i, je, j) = -revd(i, jl, j)
           rev(i, je, j) = -rev(i, jl, j)
+          if (prescribetransitionlocation) intermittency(i, je, j) = -&
+&             intermittency(i, jl, j)
         end do
       end do
     case (kmin) 
@@ -464,6 +499,8 @@ bocos:do nn=1,nbocos
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           revd(i, j, 1) = -revd(i, j, 2)
           rev(i, j, 1) = -rev(i, j, 2)
+          if (prescribetransitionlocation) intermittency(i, j, 1) = -&
+&             intermittency(i, j, 2)
         end do
       end do
     case (kmax) 
@@ -471,6 +508,8 @@ bocos:do nn=1,nbocos
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           revd(i, j, ke) = -revd(i, j, kl)
           rev(i, j, ke) = -rev(i, j, kl)
+          if (prescribetransitionlocation) intermittency(i, j, ke) = -&
+&             intermittency(i, j, kl)
         end do
       end do
     end select
@@ -485,6 +524,7 @@ bocos:do nn=1,nbocos
 !
     use constants
     use blockpointers
+    use inputphysics, only : prescribetransitionlocation
     implicit none
 !
 !      subroutine arguments.
@@ -502,36 +542,48 @@ bocos:do nn=1,nbocos
       do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           rev(1, i, j) = -rev(2, i, j)
+          if (prescribetransitionlocation) intermittency(1, i, j) = -&
+&             intermittency(2, i, j)
         end do
       end do
     case (imax) 
       do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           rev(ie, i, j) = -rev(il, i, j)
+          if (prescribetransitionlocation) intermittency(ie, i, j) = -&
+&             intermittency(il, i, j)
         end do
       end do
     case (jmin) 
       do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           rev(i, 1, j) = -rev(i, 2, j)
+          if (prescribetransitionlocation) intermittency(i, 1, j) = -&
+&             intermittency(i, 2, j)
         end do
       end do
     case (jmax) 
       do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           rev(i, je, j) = -rev(i, jl, j)
+          if (prescribetransitionlocation) intermittency(i, je, j) = -&
+&             intermittency(i, jl, j)
         end do
       end do
     case (kmin) 
       do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           rev(i, j, 1) = -rev(i, j, 2)
+          if (prescribetransitionlocation) intermittency(i, j, 1) = -&
+&             intermittency(i, j, 2)
         end do
       end do
     case (kmax) 
       do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
         do i=bcdata(nn)%icbeg,bcdata(nn)%icend
           rev(i, j, ke) = -rev(i, j, kl)
+          if (prescribetransitionlocation) intermittency(i, j, ke) = -&
+&             intermittency(i, j, kl)
         end do
       end do
     end select
@@ -1907,6 +1959,7 @@ bocos:do nn=1,nbocos
     use constants
     use blockpointers
     use flowvarrefstate
+    use inputphysics, only : prescribetransitionlocation
     implicit none
 !
 !      subroutine arguments.
@@ -1932,6 +1985,8 @@ bocos:do nn=1,nbocos
             revd(0, i, j) = revd(1, i, j)
             rev(0, i, j) = rev(1, i, j)
           end if
+          if (prescribetransitionlocation) intermittency(0, i, j) = &
+&             intermittency(1, i, j)
         end do
       end do
     case (imax) 
@@ -1946,6 +2001,8 @@ bocos:do nn=1,nbocos
             revd(ib, i, j) = revd(ie, i, j)
             rev(ib, i, j) = rev(ie, i, j)
           end if
+          if (prescribetransitionlocation) intermittency(ib, i, j) = &
+&             intermittency(ie, i, j)
         end do
       end do
     case (jmin) 
@@ -1960,6 +2017,8 @@ bocos:do nn=1,nbocos
             revd(i, 0, j) = revd(i, 1, j)
             rev(i, 0, j) = rev(i, 1, j)
           end if
+          if (prescribetransitionlocation) intermittency(i, 0, j) = &
+&             intermittency(i, 1, j)
         end do
       end do
     case (jmax) 
@@ -1974,6 +2033,8 @@ bocos:do nn=1,nbocos
             revd(i, jb, j) = revd(i, je, j)
             rev(i, jb, j) = rev(i, je, j)
           end if
+          if (prescribetransitionlocation) intermittency(i, jb, j) = &
+&             intermittency(i, je, j)
         end do
       end do
     case (kmin) 
@@ -1988,6 +2049,8 @@ bocos:do nn=1,nbocos
             revd(i, j, 0) = revd(i, j, 1)
             rev(i, j, 0) = rev(i, j, 1)
           end if
+          if (prescribetransitionlocation) intermittency(i, j, 0) = &
+&             intermittency(i, j, 1)
         end do
       end do
     case (kmax) 
@@ -2002,6 +2065,8 @@ bocos:do nn=1,nbocos
             revd(i, j, kb) = revd(i, j, ke)
             rev(i, j, kb) = rev(i, j, ke)
           end if
+          if (prescribetransitionlocation) intermittency(i, j, kb) = &
+&             intermittency(i, j, ke)
         end do
       end do
     end select
@@ -2016,6 +2081,7 @@ bocos:do nn=1,nbocos
     use constants
     use blockpointers
     use flowvarrefstate
+    use inputphysics, only : prescribetransitionlocation
     implicit none
 !
 !      subroutine arguments.
@@ -2037,6 +2103,8 @@ bocos:do nn=1,nbocos
             w(0, i, j, l) = w(1, i, j, l)
           end do
           if (eddymodel) rev(0, i, j) = rev(1, i, j)
+          if (prescribetransitionlocation) intermittency(0, i, j) = &
+&             intermittency(1, i, j)
         end do
       end do
     case (imax) 
@@ -2047,6 +2115,8 @@ bocos:do nn=1,nbocos
             w(ib, i, j, l) = w(ie, i, j, l)
           end do
           if (eddymodel) rev(ib, i, j) = rev(ie, i, j)
+          if (prescribetransitionlocation) intermittency(ib, i, j) = &
+&             intermittency(ie, i, j)
         end do
       end do
     case (jmin) 
@@ -2057,6 +2127,8 @@ bocos:do nn=1,nbocos
             w(i, 0, j, l) = w(i, 1, j, l)
           end do
           if (eddymodel) rev(i, 0, j) = rev(i, 1, j)
+          if (prescribetransitionlocation) intermittency(i, 0, j) = &
+&             intermittency(i, 1, j)
         end do
       end do
     case (jmax) 
@@ -2067,6 +2139,8 @@ bocos:do nn=1,nbocos
             w(i, jb, j, l) = w(i, je, j, l)
           end do
           if (eddymodel) rev(i, jb, j) = rev(i, je, j)
+          if (prescribetransitionlocation) intermittency(i, jb, j) = &
+&             intermittency(i, je, j)
         end do
       end do
     case (kmin) 
@@ -2077,6 +2151,8 @@ bocos:do nn=1,nbocos
             w(i, j, 0, l) = w(i, j, 1, l)
           end do
           if (eddymodel) rev(i, j, 0) = rev(i, j, 1)
+          if (prescribetransitionlocation) intermittency(i, j, 0) = &
+&             intermittency(i, j, 1)
         end do
       end do
     case (kmax) 
@@ -2087,6 +2163,8 @@ bocos:do nn=1,nbocos
             w(i, j, kb, l) = w(i, j, ke, l)
           end do
           if (eddymodel) rev(i, j, kb) = rev(i, j, ke)
+          if (prescribetransitionlocation) intermittency(i, j, kb) = &
+&             intermittency(i, j, ke)
         end do
       end do
     end select

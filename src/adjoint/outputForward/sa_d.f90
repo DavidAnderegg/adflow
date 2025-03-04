@@ -389,6 +389,11 @@ contains
               ft2 = zero
               ft2d = 0.0_8
             end if
+            if (prescribetransitionlocation .and. useft2sa) then
+              temp10 = (-intermittency(i, j, k)+1)*rsact3
+              ft2d = -(temp10*exp(-(0.05*chi2))*0.05*chi2d)
+              ft2 = temp10*exp(-(0.05*chi2))
+            end if
 ! correct the production term to account for the influence
 ! of the wall.
             temp10 = w(i, j, k, itu1)
@@ -457,6 +462,10 @@ contains
             else
               term1d = rsacb1*((one-ft2)*ssd-ss*ft2d)
               term1 = rsacb1*(one-ft2)*ss
+            end if
+            if (prescribetransitionlocation .and. (.not.useft2sa)) then
+              term1d = intermittency(i, j, k)*term1d
+              term1 = term1*intermittency(i, j, k)
             end if
             temp10 = kar2inv*rsacb1*((one-ft2)*fv2+ft2) - rsacw1*fwsa
             term2d = temp10*dist2invd + dist2inv*(kar2inv*rsacb1*((one-&
@@ -618,6 +627,8 @@ contains
             else
               ft2 = zero
             end if
+            if (prescribetransitionlocation .and. useft2sa) ft2 = (1-&
+&               intermittency(i, j, k))*rsact3*exp(-(0.05*chi2))
 ! correct the production term to account for the influence
 ! of the wall.
             sst = ss + w(i, j, k, itu1)*fv2*kar2inv*dist2inv
@@ -656,6 +667,8 @@ contains
             else
               term1 = rsacb1*(one-ft2)*ss
             end if
+            if (prescribetransitionlocation .and. (.not.useft2sa)) term1&
+&              = term1*intermittency(i, j, k)
             term2 = dist2inv*(kar2inv*rsacb1*((one-ft2)*fv2+ft2)-rsacw1*&
 &             fwsa)
             scratch(i, j, k, idvt) = (term1+term2*w(i, j, k, itu1))*w(i&
