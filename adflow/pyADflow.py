@@ -335,9 +335,10 @@ class ADFLOW(AeroSolver):
         self.adflow.initializeflow.initflow()
 
 
-        intermittency = numpy.ones(n)
-        self._transitionLocationCallback(intermittency)
-        self.adflow.preprocessingapi.setintermittency(intermittency)
+        if self.getOption("prescribetransitionlocation"):
+            intermittency = numpy.ones(n)
+            self._transitionLocationCallback(intermittency)
+            self.adflow.preprocessingapi.setintermittency(intermittency)
 
 
         initFlowTime = time.time()
@@ -4405,14 +4406,12 @@ class ADFLOW(AeroSolver):
             Array that is used as a mask to select the explicitly blanked cells.
             This is modified in place.
         """
-        if not self.getOption("prescribetransitionlocation"):
-            raise Exception("The option 'prescribeTransitionLocation' must be set to True for " + \
-                            "the 'transitionLocationCallback' to work.")
 
-        transitionLocationCallback = self.getOption("transitionLocationCallback")
+        if self.getOption('useBlockettes'):
+            raise Exception('Transition location can only be prescribed with "useBlockettes" = False!')
+
         n = len(intermittency)
-        if transitionLocationCallback is None:
-            return intermittency
+        transitionLocationCallback = self.getOption("transitionLocationCallback")
 
         xCen = self.adflow.utils.getcellcenters(1, n).T
         distance2Wall = self.adflow.utils.getdistance2wall(1, n).T
