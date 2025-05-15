@@ -33,11 +33,8 @@ module NKSolver
     integer(kind=intType) :: NK_jacobianLag
     integer(kind=intType) :: NK_subspace
     integer(kind=intType) :: NK_asmOverlap
-    integer(kind=intType) :: NK_asmOverlapCoarse
     integer(kind=intType) :: NK_iluFill
-    integer(kind=intType) :: NK_iluFillCoarse
     integer(kind=intType) :: NK_innerPreConIts
-    integer(kind=intType) :: NK_innerPreConItsCoarse
     integer(kind=intType) :: NK_outerPreConIts
     integer(kind=intType) :: NK_AMGLevels
     integer(kind=intType) :: NK_AMGNSmooth
@@ -424,8 +421,7 @@ contains
         else
             call setupStandardMultigrid(NK_KSP, kspObjectType, NK_subSpace, &
                                         preConSide, NK_asmOverlap, NK_outerPreConIts, &
-                                        localOrdering, NK_iluFill, NK_innerPreConIts, &
-                                        NK_asmOverlapCoarse, NK_iluFillCoarse, NK_innerPreConItsCoarse)
+                                        localOrdering, NK_iluFill, NK_innerPreConIts)
         end if
 
         ! Don't do iterative refinement
@@ -1360,6 +1356,7 @@ contains
                             ! Clip the turb to prevent negative turb SA
                             ! values. This is similar to the pressure
                             ! clip. Need to check this for other Turb models.
+                            ! issue !99: This seems to be ok for SST at least.
                             do l = nt1, nt2
                                 w(i, j, k, l) = max(1e-6 * winf(l), wvec_pointer(ii))
                                 ii = ii + 1
@@ -1664,11 +1661,8 @@ module ANKSolver
     integer(kind=intType) :: ANK_subSpace
     integer(kind=intType) :: ANK_maxIter
     integer(kind=intType) :: ANK_asmOverlap
-    integer(kind=intType) :: ANK_asmOverlapCoarse
     integer(kind=intType) :: ANK_iluFill
-    integer(kind=intType) :: ANK_iluFillCoarse
     integer(kind=intType) :: ANK_innerPreConIts
-    integer(kind=intType) :: ANK_innerPreConItsCoarse
     integer(kind=intType) :: ANK_outerPreConIts
     integer(kind=intType) :: ANK_AMGLevels
     integer(kind=intType) :: ANK_AMGNSmooth
@@ -1679,7 +1673,7 @@ module ANKSolver
     real(kind=realType) :: ANK_switchTol
     real(kind=realType) :: ANK_divTol = 10
     logical :: ANK_useTurbDADI
-    logical :: ANK_useApproxSA
+    logical :: ANK_useApproxTurb
     real(kind=realType) :: ANK_turbcflscale
     logical :: ANK_useFullVisc
     logical :: ANK_ADPC
@@ -1940,7 +1934,7 @@ contains
         use inputTimeSpectral, only: nTimeIntervalsSpectral
         use inputIteration, only: turbResScale
         use inputADjoint, only: viscPC
-        use inputDiscretization, only: approxSA
+        use inputDiscretization, only: approxTurb
         use iteration, only: totalR0, totalR
         use utils, only: EChk, setPointers
         use adjointUtils, only: setupStateResidualMatrix, setupStandardKSP, setupStandardMultigrid
@@ -1975,7 +1969,7 @@ contains
         viscPC = .False.
 
         if (totalR > ANK_secondOrdSwitchTol * totalR0) &
-            approxSA = .True.
+            approxTurb = .True.
 
         ! Create the preconditoner matrix
         call setupStateResidualMatrix(dRdwPre, useAD, usePC, useTranspose, &
@@ -1983,7 +1977,7 @@ contains
 
         ! Reset saved value
         viscPC = tmp
-        approxSA = .False.
+        approxTurb = .False.
 
         ! Begin PETSc matrix assembly
         call MatAssemblyBegin(dRdwPre, MAT_FINAL_ASSEMBLY, ierr)
@@ -2028,8 +2022,7 @@ contains
         else if (ANK_precondType == 'mg') then
             call setupStandardMultigrid(ANK_KSP, kspObjectType, subSpace, &
                                         preConSide, ANK_asmOverlap, outerPreConIts, &
-                                        localOrdering, ANK_iluFill, ANK_innerPreConIts, &
-                                        ANK_asmOverlapCoarse, ANK_iluFillCoarse, ANK_innerPreConItsCoarse)
+                                        localOrdering, ANK_iluFill, ANK_innerPreConIts)
         end if
 
         ! Don't do iterative refinement
@@ -2119,7 +2112,7 @@ contains
         use constants
         use inputPhysics, only: machInf => mach
         use blockPointers, only: volRef, w, dtl, gamma, p, aa
-        use flowVarRefState, only: viscous, nt1
+        use flowVarRefState, only: viscous, nt1, nt2
         use inputIteration, only: turbResScale
         use communication
         implicit none
@@ -2135,6 +2128,8 @@ contains
         real(kind=realType) :: speed, speedOfSound, mach, machSqr, machSqrTrunc, alpha, beta, tau, gammaMinusOne
         real(kind=realType) :: speedXY, sinTheta, cosTheta, sinAlpha, cosAlpha
         real(kind=realType), dimension(nState, nState) :: streamToCart, symmToCons, consToSymm, stateToCons
+
+        integer(kind=intType) :: l
 
         ! Zero the block matrices
         timeStepBlock = zero
@@ -2171,7 +2166,10 @@ contains
         if (ANK_coupled) then
             ! The turbulence variable can get a different CFL number, so we scale it by ANK_turbCFLScale.
             ! In addition, turbResScale is required because the turbulent residuals are scaled with it.
-            stateToCons(nt1, nt1) = turbResScale(1) / ANK_turbCFLScale
+
+            do l = nt1, nt2
+                stateToCons(l, l) = turbResScale(l - nt1 + 1) / ANK_turbCFLScale
+            end do
         end if
 
         if (ANK_charTimeStepType == 'None') then
@@ -2187,8 +2185,8 @@ contains
             if (ANK_coupled) then
                 timeStepBlock(6, 6) = one
                 streamToCart(6, 6) = one
-                symmToCons(nt1, 6) = one
-                consToSymm(6, nt1) = one
+                symmToCons(nt1:nt2, 6) = one
+                consToSymm(6, nt1:nt2) = one
             end if
 
             ! Compute the speed of sound squared for inviscid flow
@@ -2336,7 +2334,7 @@ contains
         use inputTimeSpectral, only: nTimeIntervalsSpectral
         use inputIteration, only: turbResScale
         use inputADjoint, only: viscPC
-        use inputDiscretization, only: approxSA
+        use inputDiscretization, only: approxTurb
         use iteration, only: totalR0, totalR
         use utils, only: EChk, setPointers
         use adjointUtils, only: setupStateResidualMatrix, setupStandardKSP
@@ -2361,7 +2359,7 @@ contains
         viscPC = .False.
 
         if (totalR > ANK_secondOrdSwitchTol * totalR0) &
-            approxSA = .True.
+            approxTurb = .True.
 
         ! Create the preconditoner matrix
         call setupStateResidualMatrix(dRdwPreTurb, useAD, usePC, useTranspose, &
@@ -2369,7 +2367,7 @@ contains
 
         ! Reset saved value
         viscPC = tmp
-        approxSA = .False.
+        approxTurb = .False.
 
         ! Add the contribution from the time step term
 
@@ -2959,7 +2957,7 @@ contains
                             ovv = one / volRef(i, j, k)
                             do l = nt1, nt2
                                 ii = ii + 1
-                                rvec_pointer(ii) = dw(i, j, k, l) * ovv * turbResScale(1)
+                                rvec_pointer(ii) = dw(i, j, k, l) * ovv * turbResScale(l - nt1 + 1)
                             end do
                         end do
                     end do
@@ -3136,43 +3134,39 @@ contains
                                 lambdaL = min(lambdaL, ratio)
                                 ii = ii + 1
 
-                                ! if coupled ank is used, nstate = nw and this loop is executed
-                                ! if no turbulence variables, this loop will be automatically skipped
-                                ! check turbulence variable
+                                ! check turbulence variables
+                                do l = nt1, nt2
+
+                                    ! if coupled ank is used, nstate = nw and this loop is executed
+                                    ! if no turbulence variables, this loop will be automatically skipped
+                                    ! check turbulence variable
 #ifndef USE_COMPLEX
-                                ratio = (wvec_pointer(ii) / (dvec_pointer(ii) + eps)) * ANK_physLSTolTurb
+                                    ratio = (wvec_pointer(ii) / (dvec_pointer(ii) + eps)) * ANK_physLSTolTurb
 #else
-                                ratio = (real(wvec_pointer(ii)) &
-                                         / real(dvec_pointer(ii) + eps)) * real(ANK_physLSTolTurb)
+                                    ratio = (real(wvec_pointer(ii)) &
+                                             / real(dvec_pointer(ii) + eps)) * real(ANK_physLSTolTurb)
 #endif
-                                ! if the ratio is less than min step, the update is either
-                                ! in the positive direction, therefore we do not clip it,
-                                ! or the update is very limiting, so we just clip the
-                                ! individual update for this cell.
-                                if (ratio .lt. ANK_stepFactor * ANK_stepMin) then
-                                    ! The update was very limiting, so just clip this
-                                    ! individual update and dont change the overall
-                                    ! step size. To select the new update, instead of
-                                    ! clipping to zero, we clip to 1 percent of the original.
-                                    if (ratio .gt. zero) &
-                                        dvec_pointer(ii) = wvec_pointer(ii) * ANK_physLSTolTurb
+                                    ! if the ratio is less than min step, the update is either
+                                    ! in the positive direction, therefore we do not clip it,
+                                    ! or the update is very limiting, so we just clip the
+                                    ! individual update for this cell.
+                                    if (ratio .lt. ANK_stepFactor * ANK_stepMin) then
+                                        ! The update was very limiting, so just clip this
+                                        ! individual update and dont change the overall
+                                        ! step size. To select the new update, instead of
+                                        ! clipping to zero, we clip to 1 percent of the original.
+                                        if (ratio .gt. zero) &
+                                            dvec_pointer(ii) = wvec_pointer(ii) * ANK_physLSTolTurb
 
-                                    ! Either case, set the ratio to one. Positive updates
-                                    ! do not limit the step, negative updates below minimum
-                                    ! step were already clipped.
-                                    ratio = one
-                                end if
-                                lambdaL = min(lambdaL, ratio)
-                                ii = ii + 1
+                                        ! Either case, set the ratio to one. Positive updates
+                                        ! do not limit the step, negative updates below minimum
+                                        ! step were already clipped.
+                                        ratio = one
+                                    end if
+                                    lambdaL = min(lambdaL, ratio)
+                                    ii = ii + 1
 
-                                ! TODO: Do we need physicality checks for the additional turbulence model variables?
-                                !  do l=nt1+1, nt2
-                                !     ii = ii + 1
-                                !  end do
-                                ! do this instead of the above loop for now...
-                                ! Will need to modify this if we want physicality check
-                                ! for the new turb model variables.
-                                ii = ii + (nt2 - nt1)
+                                end do
                             end do
                         end do
                     end do
@@ -3259,46 +3253,42 @@ contains
                 do k = 2, kl
                     do j = 2, jl
                         do i = 2, il
-                            ! multiply the ratios by 10 to check if the change in a
-                            ! variable is greater than 10% of the variable itself.
+                            do l = nt1, nt2
+                                ! multiply the ratios by 10 to check if the change in a
+                                ! variable is greater than 10% of the variable itself.
 
-                            ! needs to be modified
-                            ! if coupled ank is used, nstate = nw and this loop is executed
-                            ! if no turbulence variables, this loop will be automatically skipped
-                            ! check turbulence variable
+                                ! needs to be modified
+                                ! if coupled ank is used, nstate = nw and this loop is executed
+                                ! if no turbulence variables, this loop will be automatically skipped
+                                ! check turbulence variable
 #ifndef USE_COMPLEX
-                            ratio = (wvec_pointer(ii) / (dvec_pointer(ii) + eps)) * ANK_physLSTolTurb
+                                ratio = (wvec_pointer(ii) / (dvec_pointer(ii) + eps)) * ANK_physLSTolTurb
 #else
-                            ratio = (real(wvec_pointer(ii)) / real(dvec_pointer(ii) + eps)) * real(ANK_physLSTolTurb)
+                                ratio = (real(wvec_pointer(ii)) / real(dvec_pointer(ii) + eps)) * &
+                                        real(ANK_physLSTolTurb)
 #endif
-                            ! if the ratio is less than min step, the update is either
-                            ! in the positive direction, therefore we do not clip it,
-                            ! or the update is very limiting, so we just clip the
-                            ! individual update for this cell.
-                            if (ratio .lt. ANK_stepFactor * ANK_stepMin) then
-                                ! The update was very limiting, so just clip this
-                                ! individual update and dont change the overall
-                                ! step size. To select the new update, instead of
-                                ! clipping to zero, we clip to 1 percent of the original.
-                                if (ratio .gt. zero) &
-                                    dvec_pointer(ii) = wvec_pointer(ii) * ANK_physLSTolTurb
+                                ! if the ratio is less than min step, the update is either
+                                ! in the positive direction, therefore we do not clip it,
+                                ! or the update is very limiting, so we just clip the
+                                ! individual update for this cell.
+                                if (ratio .lt. ANK_stepFactor * ANK_stepMin) then
+                                    ! The update was very limiting, so just clip this
+                                    ! individual update and dont change the overall
+                                    ! step size. To select the new update, instead of
+                                    ! clipping to zero, we clip to 1 percent of the original.
+                                    if (ratio .gt. zero) then
+                                        dvec_pointer(ii) = wvec_pointer(ii) * ANK_physLSTolTurb
+                                    end if
 
-                                ! Either case, set the ratio to one. Positive updates
-                                ! do not limit the step, negative updates below minimum
-                                ! step were already clipped.
-                                ratio = one
-                            end if
-                            lambdaL = min(lambdaL, ratio)
-                            ii = ii + 1
+                                    ! Either case, set the ratio to one. Positive updates
+                                    ! do not limit the step, negative updates below minimum
+                                    ! step were already clipped.
+                                    ratio = one
+                                end if
+                                lambdaL = min(lambdaL, ratio)
+                                ii = ii + 1
 
-                            ! TODO: Do we need physicality checks for the additional turbulence model variables?
-                            !  do l=nt1+1, nt2
-                            !     ii = ii + 1
-                            !  end do
-                            ! do this instead of the above loop for now...
-                            ! Will need to modify this if we want physicality check
-                            ! for the new turb model variables.
-                            ii = ii + (nt2 - nt1)
+                            end do
                         end do
                     end do
                 end do
@@ -3343,7 +3333,7 @@ contains
         use blockPointers, only: nDom, flowDoms
         use inputIteration, only: L2conv
         use inputTimeSpectral, only: nTimeIntervalsSpectral
-        use inputDiscretization, only: approxSA, orderturb
+        use inputDiscretization, only: approxTurb, orderturb
         use iteration, only: approxTotalIts, totalR0, totalR, currentLevel
         use utils, only: EChk, setPointers
         use genericISNAN, only: myisnan
@@ -3407,7 +3397,7 @@ contains
 
             if (totalR > ANK_secondOrdSwitchTol * totalR0) then
                 ! Save if second order turbulence is used, we will only use 1st order during ANK (only matters for the coupled solver)
-                approxSA = .True.
+                approxTurb = .True.
                 orderturbsave = orderturb
                 orderturb = firstOrder
 
@@ -3424,8 +3414,8 @@ contains
             end if
 
             ! also check if we are using approxSA always
-            if (ANK_useApproxSA) &
-                approxSA = .True.
+            if (ANK_useApproxTurb) &
+                approxTurb = .True.
 
             ! Record the total residual and relative convergence for next iteration
             totalR_old = totalR
@@ -3483,12 +3473,12 @@ contains
             if (totalR > ANK_secondOrdSwitchTol * totalR0) then
                 ! Replace the second order turbulence option
                 orderturb = orderturbsave
-                approxSA = .False.
+                approxTurb = .False.
             end if
 
             ! put back the approxsa flag if we were using it
-            if (ANK_useApproxSA) &
-                approxSA = .False.
+            if (ANK_useApproxTurb) &
+                approxTurb = .False.
 
             ! Compute the maximum step that will limit the change
             ! in SA variable to some user defined fraction.
@@ -3633,7 +3623,7 @@ contains
         use inputPhysics, only: equations
         use inputIteration, only: L2conv
         use inputTimeSpectral, only: nTimeIntervalsSpectral
-        use inputDiscretization, only: lumpedDiss, approxSA, orderturb
+        use inputDiscretization, only: lumpedDiss, approxTurb, orderturb
         use iteration, only: approxTotalIts, totalR0, totalR, stepMonitor, linResMonitor, currentLevel, iterType
         use utils, only: EChk, setPointers
         use genericISNAN, only: myisnan
@@ -3695,7 +3685,8 @@ contains
             call setwVecANK(wVec, 1, nstate)
 
             ! Evaluate the residual before we start
-            call blocketteRes(useUpdateIntermed=.True.)
+            call blocketteRes(useUpdateIntermed=.True., useTurbRes=ANK_coupled)
+
             if (ANK_coupled) then
                 call setRvec(rVec)
             else
@@ -3849,7 +3840,7 @@ contains
             ! Setting lumped dissipation to true gives approximate fluxes
             ANK_useDissApprox = .True.
             lumpedDiss = .True.
-            approxSA = .True.
+            approxTurb = .True.
 
             ! Save the turbulence order, we will only use 1st order during ANK (only matters for the coupled solver)
             orderturbsave = orderturb
@@ -3872,8 +3863,8 @@ contains
         end if
 
         ! also check if we are using approxSA always
-        if (ANK_useApproxSA) &
-            approxSA = .True.
+        if (ANK_useApproxTurb) &
+            approxTurb = .True.
 
         ! Record the total residual and relative convergence for next iteration
         totalR_old = totalR
@@ -3932,7 +3923,7 @@ contains
             ! Set ANK_useDissApprox back to False to go back to using actual flux routines
             ANK_useDissApprox = .False.
             lumpedDiss = .False.
-            approxSA = .False.
+            approxTurb = .False.
 
             ! Replace turbulence order
             orderturb = orderturbsave
@@ -3940,8 +3931,8 @@ contains
         end if
 
         ! put back the approxsa flag if we were using it
-        if (ANK_useApproxSA) &
-            approxSA = .False.
+        if (ANK_useApproxTurb) &
+            approxTurb = .False.
 
         ! Compute the maximum step that will limit the change in pressure
         ! and energy to some user defined fraction.

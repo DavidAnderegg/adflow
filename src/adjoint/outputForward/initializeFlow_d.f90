@@ -38,16 +38,18 @@ contains
 !         (non-dimensionalized values used in actual computations)
 !
     use constants
+    use variableconstants
     use paramturb
     use inputphysics, only : equations, mach, machd, machcoef, &
 &   machcoefd, musuthdim, tsuthdim, veldirfreestream, veldirfreestreamd,&
-&   rgasdim, ssuthdim, eddyvisinfratio, turbmodel, turbintensityinf
+&   rgasdim, ssuthdim, eddyvisinfratio, turbmodel, turbintensityinf, &
+&   transitionmodel
     use flowvarrefstate, only : pinfdim, pinfdimd, tinfdim, tinfdimd, &
 &   rhoinfdim, rhoinfdimd, muinfdim, muinfdimd, pref, prefd, rhoref, &
 &   rhorefd, tref, trefd, muref, murefd, timeref, timerefd, uref, urefd,&
 &   href, hrefd, pinf, pinfd, pinfcorr, pinfcorrd, rhoinf, rhoinfd, uinf&
 &   , uinfd, rgas, rgasd, muinf, muinfd, gammainf, winf, winfd, nw, nwf,&
-&   kpresent, winf, winfd
+&   kpresent, winf, winfd, tuinf
     use flowutils_d, only : computegamma, etot, etot_d
     use turbutils_d, only : sanuknowneddyratio, sanuknowneddyratio_d
     implicit none
@@ -171,13 +173,19 @@ contains
         winfd(itu1) = sanuknowneddyratio_d(eddyvisinfratio, nuinf, &
 &         nuinfd, winf(itu1))
 !=============================================================
-      case (komegawilcox, komegamodified, mentersst) 
+      case (komegawilcox, komegamodified, mentersst, langtrymentersst) 
         winfd(itu1) = turbintensityinf**2*1.5_realtype*uinf2d
         winf(itu1) = 1.5_realtype*uinf2*turbintensityinf**2
         temp0 = winf(itu1)/(eddyvisinfratio*nuinf)
         winfd(itu2) = (winfd(itu1)-temp0*eddyvisinfratio*nuinfd)/(&
 &         eddyvisinfratio*nuinf)
         winf(itu2) = temp0
+!both are consistent with https://www.cfd-online.com/wiki/turbulence_free-stream_boundary_conditions,
+! nasa https://turbmodels.larc.nasa.gov/sst.html has slightly different values
+!the nasa ref specify that the freestream turbulent viscosity should be between 10-5 and 10-2 times freestream laminar viscosity.
+! not clear why eddyvisinfratio default to 0.009
+!this ref suggests similar things: k determined so that nutinf = nuinf * 0.009
+! https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.901.7078&rep=rep1&type=pdf
 !=============================================================
       case (ktau) 
         winfd(itu1) = turbintensityinf**2*1.5_realtype*uinf2d
@@ -198,6 +206,21 @@ contains
         winf(itu3) = 0.666666_realtype*winf(itu1)
         winfd(itu4) = 0.0_8
         winf(itu4) = 0.0_realtype
+      end select
+      select case  (transitionmodel) 
+      case (gammaretheta) 
+!tuinf = 500 * muinf / (rhoinf * uinf**2)
+        tuinf = turbintensityinf
+        winfd(itransition1) = 0.0_8
+        winf(itransition1) = 1.0
+        if (tuinf .gt. 1.3) then
+          winfd(itransition2) = 0.0_8
+          winf(itransition2) = 331.50*(tuinf-0.5658)**(-0.671)
+        else
+          winfd(itransition2) = 0.0_8
+          winf(itransition2) = 1173.51 - 589.428*tuinf + 0.2196*tuinf**(&
+&           -2)
+        end if
       end select
     end if
 ! set the value of pinfcorr. in case a k-equation is present
@@ -247,13 +270,15 @@ contains
 !         (non-dimensionalized values used in actual computations)
 !
     use constants
+    use variableconstants
     use paramturb
     use inputphysics, only : equations, mach, machcoef, musuthdim, &
 &   tsuthdim, veldirfreestream, rgasdim, ssuthdim, eddyvisinfratio, &
-&   turbmodel, turbintensityinf
+&   turbmodel, turbintensityinf, transitionmodel
     use flowvarrefstate, only : pinfdim, tinfdim, rhoinfdim, muinfdim,&
 &   pref, rhoref, tref, muref, timeref, uref, href, pinf, pinfcorr, &
-&   rhoinf, uinf, rgas, muinf, gammainf, winf, nw, nwf, kpresent, winf
+&   rhoinf, uinf, rgas, muinf, gammainf, winf, nw, nwf, kpresent, winf, &
+&   tuinf
     use flowutils_d, only : computegamma, etot
     use turbutils_d, only : sanuknowneddyratio
     implicit none
@@ -330,9 +355,15 @@ contains
       case (spalartallmaras, spalartallmarasedwards) 
         winf(itu1) = sanuknowneddyratio(eddyvisinfratio, nuinf)
 !=============================================================
-      case (komegawilcox, komegamodified, mentersst) 
+      case (komegawilcox, komegamodified, mentersst, langtrymentersst) 
         winf(itu1) = 1.5_realtype*uinf2*turbintensityinf**2
         winf(itu2) = winf(itu1)/(eddyvisinfratio*nuinf)
+!both are consistent with https://www.cfd-online.com/wiki/turbulence_free-stream_boundary_conditions,
+! nasa https://turbmodels.larc.nasa.gov/sst.html has slightly different values
+!the nasa ref specify that the freestream turbulent viscosity should be between 10-5 and 10-2 times freestream laminar viscosity.
+! not clear why eddyvisinfratio default to 0.009
+!this ref suggests similar things: k determined so that nutinf = nuinf * 0.009
+! https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.901.7078&rep=rep1&type=pdf
 !=============================================================
       case (ktau) 
         winf(itu1) = 1.5_realtype*uinf2*turbintensityinf**2
@@ -343,6 +374,18 @@ contains
         winf(itu2) = 0.09_realtype*winf(itu1)**2/(eddyvisinfratio*nuinf)
         winf(itu3) = 0.666666_realtype*winf(itu1)
         winf(itu4) = 0.0_realtype
+      end select
+      select case  (transitionmodel) 
+      case (gammaretheta) 
+!tuinf = 500 * muinf / (rhoinf * uinf**2)
+        tuinf = turbintensityinf
+        winf(itransition1) = 1.0
+        if (tuinf .gt. 1.3) then
+          winf(itransition2) = 331.50*(tuinf-0.5658)**(-0.671)
+        else
+          winf(itransition2) = 1173.51 - 589.428*tuinf + 0.2196*tuinf**(&
+&           -2)
+        end if
       end select
     end if
 ! set the value of pinfcorr. in case a k-equation is present

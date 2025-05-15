@@ -86,7 +86,7 @@ contains
         use initializeFlow, only: referenceState
         use section, only: sections, nSections
         use iteration, only: rFil, currentLevel
-        use haloExchange, only: exchangeCoor, whalo2
+        use haloExchange, only: exchangeCoor, whalo2, exchanged2Wall
         use wallDistance, only: updateWallDistancesQuickly
         use utils, only: setPointers, EChk
         use turbUtils, only: computeEddyViscosity
@@ -181,11 +181,19 @@ contains
                 do nn = 1, nDom
                     call setPointers(nn, currentLevel, sps)
                     call xhalo_block()
+
+                    if (equations == RANSEquations .and. useApproxWallDistance) then
+                        call updateWallDistancesQuickly(nn, 1, sps)
+                    end if
                 end do
             end do
 
             ! Now exchange the coordinates (fine level only)
             call exchangecoor(1)
+
+            if (equations == RANSEquations .and. useApproxWallDistance) then
+                call exchanged2Wall(1)
+            end if
 
             do sps = 1, nTimeIntervalsSpectral
                 ! Update overset connectivity if necessary
@@ -204,10 +212,6 @@ contains
                     call volume_block
                     call metric_block
                     call boundaryNormals
-
-                    if (equations == RANSEquations .and. useApproxWallDistance) then
-                        call updateWallDistancesQuickly(nn, 1, sps)
-                    end if
                 end if
 
                 ! Compute the pressures/viscositites
@@ -223,6 +227,7 @@ contains
                     call BCTurbTreatment
                     call applyAllTurbBCthisblock(.True.)
                 end if
+
                 call applyAllBC_block(.True.)
 
             end do
@@ -242,7 +247,7 @@ contains
             lEnd = nt2
         end if
 
-        ! Exchange values
+        ! Exchange values: make sure all values, including halos, are up to date everywhere
         call whalo2(1_intType, lStart, lEnd, .True., .True., .True.)
 
         ! Need to re-apply the BCs. The reason is that BC halos behind
@@ -625,6 +630,25 @@ contains
                             !call unsteadyTurbTerm(1_intType, 1_intType, itu1-1, qq)
                             call saViscous
                             call saResScale
+
+                            !  case (komegaWilcox, komegaModified)
+                            !     call kwSolve(.True.) !-> this needs a blockette implementation
+
+                            !  case (menterSST)
+                            !     call SSTSolve(.True.) !-> this needs a blockette implementation
+
+                            !  case (ktau)
+                            !     call ktSolve(.True.) !-> this needs a blockette implementation
+
+                            !  case (v2f)
+                            !     !see vf_block for comments
+                            !     call vfScale !-> this needs a blockette implementation
+                            !     call keSolve(.True.) !-> this needs a blockette implementation
+                            !     call vfSolve(.True.) !-> this needs a blockette implementation
+                            !      !dgfix
+                        case DEFAULT
+                            print *, 'ERROR: no other turbulence model than SA is implemented when useBlockettes=True'
+                            call EChk(1, __FILE__, __LINE__)
                         end select
                     end if
 
@@ -767,7 +791,12 @@ contains
         use flowVarRefState, only: nwf, nw, viscous, nt1, nt2
         use inputPhysics, only: equationMode, equations, turbModel
         use residuals, only: initres_block
-        use sa, only: sa_block
+        use sa, only: sa_block_residuals
+        use SST, only: sst_block_residuals
+        use kt, only: kt_block
+        use kw, only: kw_block
+        use vf, only: vf_block
+        use utils, only: EChk
         use adjointExtra, only: sumDwAndFw_block => sumDwAndFw
         use inputDiscretization, only: spaceDiscr
         use flowUtils, only: allNodalGradients_block => allNodalGradients, &
@@ -810,7 +839,24 @@ contains
             ! Now call the selected turbulence model
             select case (turbModel)
             case (spalartAllmaras)
-                call sa_block(.true.)
+                call sa_block_residuals(.true.)
+
+            case (komegaWilcox, komegaModified)
+                call kw_block(.True.)
+
+            case (menterSST, langtryMenterSST)
+                call SST_block_residuals(.True.)
+
+            case (ktau)
+                call kt_block(.True.)
+
+            case (v2f)
+                call vf_block(.True.)
+
+            case DEFAULT
+                print *, 'ERROR: requested turbulence model not implemented'
+                call EChk(1, __FILE__, __LINE__)
+
             end select
         end if
 
@@ -982,7 +1028,7 @@ contains
         use paramTurb
         use blockPointers, only: sectionID
         use inputPhysics, only: useft2SA, useRotationSA, turbProd, equations
-        use inputDiscretization, only: approxSA
+        use inputDiscretization, only: approxTurb
         use section, only: sections
         use sa, only: cv13, kar2Inv, cw36, cb3Inv
         use flowvarRefState, only: timeRef
@@ -1012,7 +1058,7 @@ contains
 
         ! set the approximate multiplier here
         term1Fact = one
-        if (approxSA) term1Fact = zero
+        if (approxTurb) term1Fact = zero
 
         ! Determine the non-dimensional wheel speed of this block.
 

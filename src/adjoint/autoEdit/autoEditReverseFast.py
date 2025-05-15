@@ -22,10 +22,13 @@ patt_module = re.compile(r"\s*module\s\w*")
 patt_module_start = re.compile("(\s*module\s)(\w*)(_b)\s*")
 patt_module_end = re.compile("(\s*end module\s)(\w*)(_b)\s*")
 del_patterns = [
-    re.compile(r"(\s*call pushreal8)"),
-    re.compile(r"(\s*call popreal8)"),
-    re.compile(r"(\s*call pushinteger4)"),
-    re.compile(r"(\s*call popinteger4)"),
+    # the following lines are commented temporarily because the resulting code
+    # does not work with SST.
+    # re.compile(r"(\s*call pushreal8)"),
+    # re.compile(r"(\s*call popreal8)"),
+    # re.compile(r"(\s*call pushinteger4)"),
+    # re.compile(r"(\s*call popinteger4)"),
+    # re.compile(r"&\s*size\(scratch, 3\)\*size\(scratch, 4\)\)"), # get rid off garbage in SST
 ]
 patt_pushcontrol1b = re.compile(r"(\s*call pushcontrol1b\()(.*)\)")
 patt_popcontrol1b = re.compile(r"(\s*call popcontrol1b\()(.*)\)")

@@ -35,7 +35,7 @@ contains
     use paramturb
     use section
     use inputphysics
-    use inputdiscretization, only : approxsa
+    use inputdiscretization, only : approxturb
     use flowvarrefstate
     implicit none
 ! local parameters
@@ -242,7 +242,7 @@ contains
         fwsa = gg*termfw
 ! compute the source term; some terms are saved for the
 ! linearization. the source term is stored in dvt.
-        if (approxsa) then
+        if (approxturb) then
           call pushcontrol1b(0)
           term1 = zero
         else
@@ -504,7 +504,7 @@ contains
     use paramturb
     use section
     use inputphysics
-    use inputdiscretization, only : approxsa
+    use inputdiscretization, only : approxturb
     use flowvarrefstate
     implicit none
 ! local parameters
@@ -674,7 +674,7 @@ contains
         fwsa = gg*termfw
 ! compute the source term; some terms are saved for the
 ! linearization. the source term is stored in dvt.
-        if (approxsa) then
+        if (approxturb) then
           term1 = zero
         else
           term1 = rsacb1*(one-ft2)*ss
@@ -1403,9 +1403,9 @@ contains
   end subroutine saviscous
 
 !  differentiation of saresscale in reverse (adjoint) mode (with options noisize i4 dr8 r8):
-!   gradient     of useful results: *dw
+!   gradient     of useful results: *dw *scratch
 !   with respect to varying inputs: *dw *scratch
-!   rw status of diff variables: *dw:in-out *scratch:out
+!   rw status of diff variables: *dw:in-out *scratch:incr
 !   plus diff mem management of: dw:in scratch:in
   subroutine saresscale_b()
 !
@@ -1424,7 +1424,6 @@ contains
     intrinsic real
     intrinsic max
     real(realtype) :: x1
-    if (associated(scratchd)) scratchd = 0.0_8
 !$bwd-of ii-loop 
     do ii=0,nx*ny*nz-1
       i = mod(ii, nx) + 2

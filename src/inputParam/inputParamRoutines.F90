@@ -97,6 +97,13 @@ contains
                 monNames(nMon - 1) = cgnsL2ResK
                 monNames(nMon) = cgnsL2ResOmega
 
+            case (langtryMenterSST)
+                nMon = nMon + 4; nMonSum = nMonSum + 4
+                monNames(nMon - 3) = cgnsL2ResK
+                monNames(nMon - 2) = cgnsL2ResOmega
+                monNames(nMon - 1) = cgnsL2ResGamma
+                monNames(nMon) = cgnsL2ResRethetat
+
                 ! Two equation k-tau model.
 
             case (ktau)
@@ -224,6 +231,20 @@ contains
                     nMonSum = nMonSum - 1
                 end if
 
+            case (cgnsL2ResGamma)
+                sortNumber(i) = 13
+                if (equations /= RANSEquations) then
+                    sortNumber(i) = 10008
+                    nMonSum = nMonSum - 1
+                end if
+
+            case (cgnsL2ResRethetat)
+                sortNumber(i) = 14
+                if (equations /= RANSEquations) then
+                    sortNumber(i) = 10009
+                    nMonSum = nMonSum - 1
+                end if
+
             case (cgnsCl)
                 sortNumber(i) = 101
                 if (flowType == internalFlow) then
@@ -297,9 +318,6 @@ contains
 
             case (cgnsAxisMoment)
                 sortNumber(i) = 116
-
-            case (cgnsSepSensorKsArea)
-                sortNumber(i) = 117
 
             case (cgnsHdiffMax)
                 sortNumber(i) = 201
@@ -397,8 +415,6 @@ contains
             surfWriteCfx = .false.
             surfWriteCfy = .false.
             surfWriteCfz = .false.
-            surfWriteForceInDragDir = .false.
-            surfWriteForceInLiftDir = .false.
 
             volWriteMachTurb = .false.
             volWriteEddyVis = .false.
@@ -1599,10 +1615,6 @@ contains
                 nMon = nMon + 1; nMonSum = nMonSum + 1
                 tmpNames(nMon) = cgnsSepSensor
 
-            case ("SepSensorKsArea")
-                nMon = nMon + 1; nMonSum = nMonSum + 1
-                tmpNames(nMon) = cgnsSepSensorKsArea
-
             case ("cavitation")
                 nMon = nMon + 1; nMonSum = nMonSum + 1
                 tmpNames(nMon) = cgnsCavitation
@@ -2075,11 +2087,12 @@ contains
         !       governing equations, the number of turbulent variables, etc.
         !
         use constants
+        use variableConstants
         use paramTurb
         use turbCurveFits
         use flowVarRefState, only: nw, nwf, nt1, nt2, nwt, viscous, &
                                    eddyModel, kPresent
-        use inputPhysics, only: equations, turbModel, wallFunctions, rvfN
+        use inputPhysics, only: equations, turbModel, wallFunctions, rvfN, transitionModel
         implicit none
 
         ! Set the number of flow variables to 5, nt1 to 6. This is valid
@@ -2093,6 +2106,7 @@ contains
         viscous = .false.
         kPresent = .false.
         eddyModel = .false.
+        transitionModel = noTransitionModel
 
         ! Determine the set of governing equations to solve for and set
         ! the parameters accordingly.
@@ -2163,6 +2177,20 @@ contains
                 kPresent = .true.
                 eddyModel = .true.
                 if (wallFunctions) call initCurveFitDataSST
+
+                !===========================================================
+
+            case (langtrymenterSST)
+                nw = 9
+                nt2 = 9
+
+                ! set the index for the transition variables
+                iTransition1 = 8
+                iTransition2 = 9
+
+                kPresent = .true.
+                eddyModel = .true.
+                transitionModel = GammaRetheta
 
                 !===========================================================
 
@@ -2358,13 +2386,9 @@ contains
         surfWriteCfx = .false.
         surfWriteCfy = .false.
         surfWriteCfz = .false.
-        surfWriteForceInDragDir = .false.
-        surfWriteForceInLiftDir = .false.
 
         surfWriteBlank = .false.
         surfWriteSepSensor = .false.
-        surfWriteSepSensorKs = .false.
-        surfWriteSepSensorKsArea = .false.
         surfWriteCavitation = .false.
         surfWriteAxisMoment = .false.
         surfWriteGC = .false.
@@ -2475,28 +2499,12 @@ contains
                 surfWriteCfz = .true.
                 nVarSpecified = nVarSpecified + 1
 
-            case ("forceindragdir")
-                surfWriteForceInDragDir = .true.
-                nVarSpecified = nVarSpecified + 1
-
-            case ("forceinliftdir")
-                surfWriteForceInLiftDir = .true.
-                nVarSpecified = nVarSpecified + 1
-
             case ("blank")
                 surfWriteBlank = .true.
                 nVarSpecified = nVarSpecified + 1
 
             case ("sepsensor")
                 surfWriteSepSensor = .true.
-                nVarSpecified = nVarSpecified + 1
-
-            case ("sepsensorks")
-                surfWriteSepSensorKs = .true.
-                nVarSpecified = nVarSpecified + 1
-
-            case ("sepsensorksarea")
-                surfWriteSepSensorKsArea = .true.
                 nVarSpecified = nVarSpecified + 1
 
             case ("cavitation")
@@ -3726,17 +3734,6 @@ contains
             cpmin_family = zero
         end if
 
-        ! Allocate the memory for sepsenmaxfamily. We had to wait until
-        ! nTimeIntervalsSpectral was set.
-        if (.not. allocated(sepSenMaxFamily)) then
-            allocate (sepSenMaxFamily(nTimeIntervalsSpectral), stat=ierr)
-            if (ierr /= 0) &
-                 call terminate("checkInputParam", &
-                 "Memory allocation failure for &
-                 &sepSenMaxFamily")
-            sepSenMaxFamily = zero
-        end if
-
     end subroutine checkInputParam
     subroutine setDefaultValues
         !
@@ -3965,6 +3962,7 @@ contains
         equationMode = none        ! specified. If not, the program
         flowType = none        ! exits.
         turbModel = none
+        transitionModel = none
 
         cpModel = cpConstant       ! Constant cp.
 
@@ -4080,14 +4078,14 @@ contains
         routineFailed = .False.
         fatalFail = .False.
         lumpedDiss = .False.
-        approxSA = .False.
+        approxTurb = .False.
         useApproxWallDistance = .False.
-        updateWallAssociations = .False.
-        recomputeOverlapMatrix = .True.
         cflLimit = 3.0
         adjointPETScVarsAllocated = .False.
         adjointPETScPreProcVarsAllocated = .False.
         usematrixfreedrdw = .False.
+        sepSensorOffset = zero
+        sepSensorSharpness = 10_realType
     end subroutine setDefaultValues
 
     subroutine initializeIsoSurfaceVariables(values, nValues)

@@ -79,6 +79,18 @@ module paramTurb
 
     real(kind=realType) :: rvfLimitK, rvfLimitE, rvfCl
     real(kind=realType) :: rvfCmu
+
+!
+!       Langtry-Menter constants
+!
+    real(kind=realType), parameter :: rLMca1 = 2.0_realType
+    real(kind=realType), parameter :: rLMca2 = 0.06_realType
+    real(kind=realType), parameter :: rLMce1 = 1.0_realType
+    real(kind=realType), parameter :: rLMce2 = 50.0_realType
+    real(kind=realType), parameter :: rLMcthetat = 0.03_realType
+    real(kind=realType), parameter :: rLMs1 = 2.0_realType
+    real(kind=realType), parameter :: rLMsigmaf = 1.0_realType
+    real(kind=realType), parameter :: rLMsigmathetat = 2.0_realType
 !
 !       Variables to store the parameters for the wall functions fits.
 !       As these variables depend on the turbulence model they are set

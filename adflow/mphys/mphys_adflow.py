@@ -4,7 +4,7 @@ import inspect
 import numpy as np
 from adflow import ADFLOW
 from idwarp import USMesh, MultiUSMesh
-from mphys import Builder, MPhysVariables
+from mphys.builder import Builder
 from openmdao.api import AnalysisError, ExplicitComponent, Group, ImplicitComponent
 from mpi4py import MPI
 
@@ -14,14 +14,6 @@ from .om_utils import get_dvs_and_cons
 # Set this to true to print out the name of the function being called and the class it's being called from along with
 # printing messages when node coordinates and states are updated from OpenMDAO inputs and outputs.
 DEBUG_LOGGING = False
-
-
-X_AERO0 = MPhysVariables.Aerodynamics.Surface.COORDINATES_INITIAL
-X_AERO = MPhysVariables.Aerodynamics.Surface.COORDINATES
-X_AERO0_MESH = MPhysVariables.Aerodynamics.Surface.Mesh.COORDINATES
-X_AERO0_GEOM_OUTPUT = MPhysVariables.Aerodynamics.Surface.Geometry.COORDINATES_OUTPUT
-F_AERO = MPhysVariables.Aerodynamics.Surface.LOADS
-Q_AERO = MPhysVariables.Aerodynamics.Surface.HEAT_FLOW
 
 
 def print_func_call(component):
@@ -101,8 +93,8 @@ def set_surf_coords(solver, inputs):
         True on all procs if the coordinates were updated on any proc, False otherwise.
     """
     coordsUpdated = False
-    if X_AERO in inputs:
-        newSurfCoord = inputs[X_AERO].reshape((-1, 3))
+    if "x_aero" in inputs:
+        newSurfCoord = inputs["x_aero"].reshape((-1, 3))
 
         # We take coordinates directly from IDWarp because they are guaranteed to match the coordinates we set. The
         # coordinates returned by solver.getSurfaceCoordinates are taken from the volume coordinate data structures and
@@ -239,7 +231,7 @@ class ADflowMesh(ExplicitComponent):
 
         coord_size = self.x_a0.size
         self.add_output(
-            X_AERO0_MESH,
+            "x_aero0",
             distributed=True,
             shape=coord_size,
             desc="initial aerodynamic surface node coordinates",
@@ -248,11 +240,11 @@ class ADflowMesh(ExplicitComponent):
 
     def mphys_add_coordinate_input(self):
         self.add_input(
-            X_AERO0_GEOM_OUTPUT, distributed=True, shape_by_conn=True, desc="aerodynamic surface with geom changes"
+            "x_aero0_points", distributed=True, shape_by_conn=True, desc="aerodynamic surface with geom changes"
         )
 
         # return the promoted name and coordinates
-        return X_AERO0_GEOM_OUTPUT, self.x_a0
+        return "x_aero0_points", self.x_a0
 
     def mphys_get_surface_mesh(self):
         return self.x_a0
@@ -329,20 +321,20 @@ class ADflowMesh(ExplicitComponent):
     def compute(self, inputs, outputs):
         if DEBUG_LOGGING:
             print_func_call(self)
-        if X_AERO0_GEOM_OUTPUT in inputs:
-            outputs[X_AERO0_MESH] = inputs[X_AERO0_GEOM_OUTPUT]
+        if "x_aero0_points" in inputs:
+            outputs["x_aero0"] = inputs["x_aero0_points"]
         else:
-            outputs[X_AERO0_MESH] = self.x_a0
+            outputs["x_aero0"] = self.x_a0
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         if DEBUG_LOGGING:
             print_func_call(self)
         if mode == "fwd":
-            if X_AERO0_GEOM_OUTPUT in d_inputs:
-                d_outputs[X_AERO0_MESH] += d_inputs[X_AERO0_GEOM_OUTPUT]
+            if "x_aero0_points" in d_inputs:
+                d_outputs["x_aero0"] += d_inputs["x_aero0_points"]
         elif mode == "rev":
-            if X_AERO0_GEOM_OUTPUT in d_inputs:
-                d_inputs[X_AERO0_GEOM_OUTPUT] += d_outputs[X_AERO0_MESH]
+            if "x_aero0_points" in d_inputs:
+                d_inputs["x_aero0_points"] += d_outputs["x_aero0"]
 
 
 class ADflowWarper(ExplicitComponent):
@@ -367,7 +359,7 @@ class ADflowWarper(ExplicitComponent):
         # state inputs and outputs
         local_volume_coord_size = solver.mesh.getSolverGrid().size
 
-        self.add_input(X_AERO, distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
+        self.add_input("x_aero", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
         self.add_output("adflow_vol_coords", distributed=True, shape=local_volume_coord_size, tags=["mphys_coupling"])
 
         # self.declare_partials(of='adflow_vol_coords', wrt='x_aero')
@@ -392,21 +384,21 @@ class ADflowWarper(ExplicitComponent):
 
         if mode == "fwd":
             if "adflow_vol_coords" in d_outputs:
-                if X_AERO in d_inputs:
-                    dxS = d_inputs[X_AERO]
+                if "x_aero" in d_inputs:
+                    dxS = d_inputs["x_aero"]
                     dxV = self.solver.mesh.warpDerivFwd(dxS)
                     d_outputs["adflow_vol_coords"] += dxV
 
         elif mode == "rev":
             if "adflow_vol_coords" in d_outputs:
-                if X_AERO in d_inputs:
+                if "x_aero" in d_inputs:
                     dxV = d_outputs["adflow_vol_coords"]
                     self.solver.mesh.warpDeriv(dxV)
                     dxS = self.solver.mesh.getdXs()
                     dxS = self.solver.mapVector(
                         dxS, self.solver.meshFamilyGroup, self.solver.designFamilyGroup, includeZipper=True
                     )
-                    d_inputs[X_AERO] += dxS.flatten()
+                    d_inputs["x_aero"] += dxS.flatten()
 
 
 class ADflowSolver(ImplicitComponent):
@@ -476,28 +468,6 @@ class ADflowSolver(ImplicitComponent):
     def _set_states(self, outputs):
         self.solver.setStates(outputs["adflow_states"])
 
-    def _setup_vectors(self, root_vectors):
-        super()._setup_vectors(root_vectors)
-        solver = self.solver
-
-        # Get the default flags
-        printIterationsDefault = solver.getOption("printIterations")
-        printBCWarningsDefault = solver.adflow.inputiteration.printbcwarnings
-
-        # Turn off extra printouts
-        solver.setOption("printIterations", False)
-        solver.adflow.inputiteration.printbcwarnings = False
-
-        # Set the AP
-        self.solver.setAeroProblem(self.ap)
-
-        # Set values back to the default
-        solver.setOption("printIterations", printIterationsDefault)
-        solver.adflow.inputiteration.printbcwarnings = printBCWarningsDefault
-
-        # Set the OM states to be equal to the free stream
-        self.set_val("adflow_states", self.solver.getStates())
-
     def apply_nonlinear(self, inputs, outputs, residuals):
         solver = self.solver
         ap = self.ap
@@ -511,7 +481,6 @@ class ADflowSolver(ImplicitComponent):
             print_func_call(self)
         solver = self.solver
         ap = self.ap
-
         if self._do_solve:
             setAeroProblem(solver, ap, self.ap_vars, inputs=inputs, outputs=outputs, print_dict=False)
             ap.solveFailed = False  # might need to clear this out?
@@ -519,9 +488,6 @@ class ADflowSolver(ImplicitComponent):
 
             # do not write solution files inside the solver loop
             solver(ap, writeSolution=False)
-
-            # base name for failed solution writing
-            fail_name = f"{self.ap.name}_analysis_fail"
 
             if ap.fatalFail:
                 if self.comm.rank == 0:
@@ -541,7 +507,7 @@ class ADflowSolver(ImplicitComponent):
                             print("###############################################################")
 
                         # write the solution so that we can diagnose
-                        solver.writeSolution(baseName=fail_name, number=self.solution_counter)
+                        solver.writeSolution(baseName="analysis_fail", number=self.solution_counter)
                         self.solution_counter += 1
 
                         if self.analysis_error_on_failure:
@@ -558,7 +524,7 @@ class ADflowSolver(ImplicitComponent):
                             print("###############################################################")
 
                         # write the solution so that we can diagnose
-                        solver.writeSolution(baseName=fail_name, number=self.solution_counter)
+                        solver.writeSolution(baseName="analysis_fail", number=self.solution_counter)
                         self.solution_counter += 1
 
                         ap.solveFailed = False
@@ -573,7 +539,7 @@ class ADflowSolver(ImplicitComponent):
                                 print("###############################################################")
 
                             # write the solution so that we can diagnose
-                            solver.writeSolution(baseName=fail_name, number=self.solution_counter)
+                            solver.writeSolution(baseName="analysis_fail", number=self.solution_counter)
                             self.solution_counter += 1
 
                             if self.analysis_error_on_failure:
@@ -593,11 +559,6 @@ class ADflowSolver(ImplicitComponent):
                         print("###############################################################")
                         print("# Solve Failed, not attempting a clean restart")
                         print("###############################################################")
-
-                    # write the solution so that we can diagnose
-                    solver.writeSolution(baseName=fail_name, number=self.solution_counter)
-                    self.solution_counter += 1
-
                     raise AnalysisError("ADFLOW Solver Fatal Fail")
 
                 else:
@@ -727,7 +688,7 @@ class ADflowForces(ExplicitComponent):
         self.add_input("adflow_states", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
 
         local_surface_coord_size = solver.getSurfaceCoordinates(includeZipper=True).size
-        self.add_output(F_AERO, distributed=True, shape=local_surface_coord_size, tags=["mphys_coupling"])
+        self.add_output("f_aero", distributed=True, shape=local_surface_coord_size, tags=["mphys_coupling"])
 
         # self.declare_partials(of='f_aero', wrt='*')
 
@@ -755,7 +716,7 @@ class ADflowForces(ExplicitComponent):
         setAeroProblem(solver, ap, self.ap_vars, inputs=inputs, outputs=outputs, print_dict=False)
 
         f_aero = solver.getForces()
-        outputs[F_AERO] = f_aero.flatten(order="C")
+        outputs["f_aero"] = f_aero.flatten(order="C")
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
         if DEBUG_LOGGING:
@@ -770,7 +731,7 @@ class ADflowForces(ExplicitComponent):
             solver.getResidual(ap)
 
         if mode == "fwd":
-            if F_AERO in d_outputs:
+            if "f_aero" in d_outputs:
                 xDvDot = {}
                 for var_name in d_inputs:
                     xDvDot[var_name] = d_inputs[var_name]
@@ -784,11 +745,11 @@ class ADflowForces(ExplicitComponent):
                     xVDot = None
                 if not (xVDot is None and wDot is None):
                     dfdot = solver.computeJacobianVectorProductFwd(xDvDot=xDvDot, xVDot=xVDot, wDot=wDot, fDeriv=True)
-                    d_outputs[F_AERO] += dfdot.flatten()
+                    d_outputs["f_aero"] += dfdot.flatten()
 
         elif mode == "rev":
-            if F_AERO in d_outputs:
-                fBar = d_outputs[F_AERO]
+            if "f_aero" in d_outputs:
+                fBar = d_outputs["f_aero"]
 
                 wBar, xVBar, xDVBar = solver.computeJacobianVectorProductBwd(
                     fBar=fBar, wDeriv=True, xVDeriv=True, xDvDeriv=False, xDvDerivAero=True
@@ -825,7 +786,7 @@ class AdflowHeatTransfer(ExplicitComponent):
         self.add_input("adflow_states", distributed=True, shape_by_conn=True, tags=["mphys_coupling"])
 
         self.add_output(
-            Q_AERO,
+            "q_convect",
             distributed=True,
             val=np.ones(local_nodes) * -499,
             shape=local_nodes,
@@ -863,7 +824,7 @@ class AdflowHeatTransfer(ExplicitComponent):
         if updatesMade:
             solver.getResidual(ap)
 
-        outputs[Q_AERO] = solver.getHeatFluxes().flatten(order="C")
+        outputs["q_convect"] = solver.getHeatFluxes().flatten(order="C")
         # print()
 
     def compute_jacvec_product(self, inputs, d_inputs, d_outputs, mode):
@@ -879,7 +840,7 @@ class AdflowHeatTransfer(ExplicitComponent):
             solver.getResidual(ap)
 
         if mode == "fwd":
-            if Q_AERO in d_outputs:
+            if "q_convect" in d_outputs:
                 xDvDot = {}
                 for var_name in d_inputs:
                     xDvDot[var_name] = d_inputs[var_name]
@@ -899,11 +860,11 @@ class AdflowHeatTransfer(ExplicitComponent):
                         dhfdot_map, self.solver.allWallsGroup, self.solver.allIsothermalWallsGroup
                     )
                     dhfdot = dhfdot_map[:, 0]
-                    d_outputs[Q_AERO] += dhfdot
+                    d_outputs["q_convect"] += dhfdot
 
         elif mode == "rev":
-            if Q_AERO in d_outputs:
-                hfBar = d_outputs[Q_AERO]
+            if "q_convect" in d_outputs:
+                hfBar = d_outputs["q_convect"]
 
                 hfBar_map = np.zeros((hfBar.size, 3))
                 hfBar_map[:, 0] = hfBar.flatten()
@@ -1060,11 +1021,8 @@ class ADflowFunctions(ExplicitComponent):
         printIterationsDefault = solver.getOption("printIterations")
         printBCWarningsDefault = solver.adflow.inputiteration.printbcwarnings
 
-        # Turn off extra printouts
         solver.setOption("printIterations", False)
-        solver.adflow.inputiteration.printbcwarnings = False
-
-        # Set the aeroproblem
+        solver.adflow.inputiteration.printbcwarnings = False  # Turn off extra printouts
         solver.setAeroProblem(ap)
 
         # Reset back to true to preserve normal ADflow printout structure
@@ -1227,7 +1185,7 @@ class ADflowGroup(Group):
                 ADflowWarper(
                     aero_solver=self.aero_solver,
                 ),
-                promotes_inputs=[X_AERO],
+                promotes_inputs=["x_aero"],
                 promotes_outputs=["adflow_vol_coords"],
             )
 
@@ -1248,7 +1206,7 @@ class ADflowGroup(Group):
                 "force",
                 ADflowForces(aero_solver=self.aero_solver),
                 promotes_inputs=["adflow_vol_coords", "adflow_states"],
-                promotes_outputs=[F_AERO],
+                promotes_outputs=["f_aero"],
             )
         if self.prop_coupling:
             self.add_subsystem(
@@ -1262,7 +1220,9 @@ class ADflowGroup(Group):
             )
 
         if self.heat_transfer:
-            self.add_subsystem("heat_xfer", AdflowHeatTransfer(aero_solver=self.aero_solver), promotes_outputs=[Q_AERO])
+            self.add_subsystem(
+                "heat_xfer", AdflowHeatTransfer(aero_solver=self.aero_solver), promotes_outputs=["q_convect"]
+            )
 
         if balance_group is not None:
             self.add_subsystem("balance", balance_group)
@@ -1312,7 +1272,7 @@ class ADflowMeshGroup(Group):
         self.add_subsystem(
             "volume_mesh",
             ADflowWarper(aero_solver=aero_solver),
-            promotes_inputs=[(X_AERO, X_AERO0)],
+            promotes_inputs=[("x_aero", "x_aero0")],
             promotes_outputs=["adflow_vol_coords"],
         )
 

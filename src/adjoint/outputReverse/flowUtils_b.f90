@@ -674,13 +674,14 @@ contains
     use blockpointers
     use flowvarrefstate
     use inputphysics
+    use utils_b, only : getcorrectfork
     implicit none
 ! input parameter
     logical, intent(in) :: includehalos
 ! local variables
     integer(kind=inttype) :: i, j, k, ii
-    real(kind=realtype) :: gm1, v2
-    real(kind=realtype) :: v2d
+    real(kind=realtype) :: gm1, v2, factk, pp
+    real(kind=realtype) :: v2d, ppd
     integer(kind=inttype) :: ibeg, iend, isize, jbeg, jend, jsize, kbeg&
 &   , kend, ksize
     intrinsic mod
@@ -688,6 +689,7 @@ contains
     real(kind=realtype) :: tempd
 ! compute the pressures
     gm1 = gammaconstant - one
+    factk = five*third - gammaconstant
     if (includehalos) then
       ibeg = 0
       jbeg = 0
@@ -706,19 +708,40 @@ contains
     isize = iend - ibeg + 1
     jsize = jend - jbeg + 1
     ksize = kend - kbeg + 1
+! apply correction for k in a separate loop
+    if (getcorrectfork()) then
+      isize = iend - ibeg + 1
+      jsize = jend - jbeg + 1
+      ksize = kend - kbeg + 1
+!$bwd-of ii-loop 
+      do ii=0,isize*jsize*ksize-1
+        i = mod(ii, isize) + ibeg
+        j = mod(ii/isize, jsize) + jbeg
+        k = ii/(isize*jsize) + kbeg
+        wd(i, j, k, irho) = wd(i, j, k, irho) + w(i, j, k, itu1)*factk*&
+&         pd(i, j, k)
+        wd(i, j, k, itu1) = wd(i, j, k, itu1) + w(i, j, k, irho)*factk*&
+&         pd(i, j, k)
+      end do
+    end if
+    isize = iend - ibeg + 1
+    jsize = jend - jbeg + 1
 !$bwd-of ii-loop 
     do ii=0,isize*jsize*ksize-1
       i = mod(ii, isize) + ibeg
       j = mod(ii/isize, jsize) + jbeg
       k = ii/(isize*jsize) + kbeg
       v2 = w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, ivz)**2
-      p(i, j, k) = gm1*(w(i, j, k, irhoe)-half*w(i, j, k, irho)*v2)
-      if (p(i, j, k) .lt. 1.e-4_realtype*pinfcorr) then
+      pp = gm1*(w(i, j, k, irhoe)-half*w(i, j, k, irho)*v2)
+      if (pp .lt. 1.e-4_realtype*pinfcorr) then
         pinfcorrd = pinfcorrd + 1.e-4_realtype*pd(i, j, k)
         pd(i, j, k) = 0.0_8
+        ppd = 0.0_8
+      else
+        ppd = pd(i, j, k)
+        pd(i, j, k) = 0.0_8
       end if
-      tempd = gm1*pd(i, j, k)
-      pd(i, j, k) = 0.0_8
+      tempd = gm1*ppd
       wd(i, j, k, irhoe) = wd(i, j, k, irhoe) + tempd
       wd(i, j, k, irho) = wd(i, j, k, irho) - v2*half*tempd
       v2d = -(w(i, j, k, irho)*half*tempd)
@@ -735,18 +758,20 @@ contains
     use blockpointers
     use flowvarrefstate
     use inputphysics
+    use utils_b, only : getcorrectfork
     implicit none
 ! input parameter
     logical, intent(in) :: includehalos
 ! local variables
     integer(kind=inttype) :: i, j, k, ii
-    real(kind=realtype) :: gm1, v2
+    real(kind=realtype) :: gm1, v2, factk, pp
     integer(kind=inttype) :: ibeg, iend, isize, jbeg, jend, jsize, kbeg&
 &   , kend, ksize
     intrinsic mod
     intrinsic max
 ! compute the pressures
     gm1 = gammaconstant - one
+    factk = five*third - gammaconstant
     if (includehalos) then
       ibeg = 0
       jbeg = 0
@@ -771,13 +796,27 @@ contains
       j = mod(ii/isize, jsize) + jbeg
       k = ii/(isize*jsize) + kbeg
       v2 = w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, ivz)**2
-      p(i, j, k) = gm1*(w(i, j, k, irhoe)-half*w(i, j, k, irho)*v2)
-      if (p(i, j, k) .lt. 1.e-4_realtype*pinfcorr) then
+      pp = gm1*(w(i, j, k, irhoe)-half*w(i, j, k, irho)*v2)
+      if (pp .lt. 1.e-4_realtype*pinfcorr) then
         p(i, j, k) = 1.e-4_realtype*pinfcorr
       else
-        p(i, j, k) = p(i, j, k)
+        p(i, j, k) = pp
       end if
     end do
+! apply correction for k in a separate loop
+    if (getcorrectfork()) then
+      isize = iend - ibeg + 1
+      jsize = jend - jbeg + 1
+      ksize = kend - kbeg + 1
+!$ad ii-loop
+      do ii=0,isize*jsize*ksize-1
+        i = mod(ii, isize) + ibeg
+        j = mod(ii/isize, jsize) + jbeg
+        k = ii/(isize*jsize) + kbeg
+        p(i, j, k) = p(i, j, k) + factk*w(i, j, k, irho)*w(i, j, k, itu1&
+&         )
+      end do
+    end if
   end subroutine computepressuresimple
 
   subroutine computepressure(ibeg, iend, jbeg, jend, kbeg, kend, &
@@ -1021,8 +1060,8 @@ contains
 !      local variables.
 !
     integer(kind=inttype) :: i, j, k, ii
-    real(kind=realtype) :: musuth, tsuth, ssuth, t, pp
-    real(kind=realtype) :: musuthd, tsuthd, ssuthd, td, ppd
+    real(kind=realtype) :: musuth, tsuth, ssuth, t, pp, correction
+    real(kind=realtype) :: musuthd, tsuthd, ssuthd, td, ppd, correctiond
     logical :: correctfork
     integer(kind=inttype) :: ibeg, iend, isize, jbeg, jend, jsize, kbeg&
 &   , kend, ksize
@@ -1033,6 +1072,7 @@ contains
     real(kind=realtype) :: tempd0
     real(kind=realtype) :: temp1
     real(kind=realtype) :: tempd1
+    integer :: branch
 ! return immediately if no laminar viscosity needs to be computed.
     if (viscous) then
 ! determine whether or not the pressure must be corrected
@@ -1071,7 +1111,15 @@ contains
           i = mod(ii, isize) + ibeg
           j = mod(ii/isize, jsize) + jbeg
           k = ii/(isize*jsize) + kbeg
-          pp = p(i, j, k) - twothird*w(i, j, k, irho)*w(i, j, k, itu1)
+          pp = p(i, j, k)
+          correction = twothird*w(i, j, k, irho)*w(i, j, k, itu1)
+          if (pp .gt. correction) then
+! only subtract the correction when we dont produce a negative number
+            pp = pp - correction
+            call pushcontrol1b(0)
+          else
+            call pushcontrol1b(1)
+          end if
           t = pp/(rgas*w(i, j, k, irho))
           temp0 = t/tsuth
           temp = musuth*(tsuth+ssuth)/(t+ssuth)
@@ -1088,11 +1136,18 @@ contains
           ppd = td/temp0
           tempd = -(pp*td/temp0**2)
           rgasd = rgasd + temp*tempd
-          wd(i, j, k, irho) = wd(i, j, k, irho) + rgas*tempd - w(i, j, k&
-&           , itu1)*twothird*ppd
+          wd(i, j, k, irho) = wd(i, j, k, irho) + rgas*tempd
+          call popcontrol1b(branch)
+          if (branch .eq. 0) then
+            correctiond = -ppd
+          else
+            correctiond = 0.0_8
+          end if
+          wd(i, j, k, irho) = wd(i, j, k, irho) + w(i, j, k, itu1)*&
+&           twothird*correctiond
+          wd(i, j, k, itu1) = wd(i, j, k, itu1) + w(i, j, k, irho)*&
+&           twothird*correctiond
           pd(i, j, k) = pd(i, j, k) + ppd
-          wd(i, j, k, itu1) = wd(i, j, k, itu1) - w(i, j, k, irho)*&
-&           twothird*ppd
         end do
       else
 ! loop over the owned cells *and* first level halos of this
@@ -1158,7 +1213,7 @@ contains
 !      local variables.
 !
     integer(kind=inttype) :: i, j, k, ii
-    real(kind=realtype) :: musuth, tsuth, ssuth, t, pp
+    real(kind=realtype) :: musuth, tsuth, ssuth, t, pp, correction
     logical :: correctfork
     integer(kind=inttype) :: ibeg, iend, isize, jbeg, jend, jsize, kbeg&
 &   , kend, ksize
@@ -1200,7 +1255,12 @@ contains
           i = mod(ii, isize) + ibeg
           j = mod(ii/isize, jsize) + jbeg
           k = ii/(isize*jsize) + kbeg
-          pp = p(i, j, k) - twothird*w(i, j, k, irho)*w(i, j, k, itu1)
+          pp = p(i, j, k)
+          correction = twothird*w(i, j, k, irho)*w(i, j, k, itu1)
+          if (pp .gt. correction) then
+! only subtract the correction when we dont produce a negative number
+            pp = pp - correction
+          end if
           t = pp/(rgas*w(i, j, k, irho))
           rlv(i, j, k) = musuth*((tsuth+ssuth)/(t+ssuth))*(t/tsuth)**&
 &           1.5_realtype

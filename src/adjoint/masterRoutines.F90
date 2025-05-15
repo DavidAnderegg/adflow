@@ -19,8 +19,12 @@ contains
         use initializeFlow, only: referenceState
         use section, only: sections, nSections
         use monitor, only: timeUnsteadyRestart
-        use sa, only: saSource, saViscous, saResScale, qq
-        use haloExchange, only: exchangeCoor, whalo2
+        use sa, only: sa_block_residuals
+        use SST, only: SST_block_residuals
+        use kw, only: kwSolve
+        use kt, only: ktSolve
+        use vf, only: vfSolve, keSolve
+        use haloExchange, only: exchangeCoor, whalo2, whalo1, exchanged2Wall
         use wallDistance, only: updateWallDistancesQuickly
         use solverUtils, only: timeStep_block
         use flowUtils, only: allNodalGradients, computeLamViscosity, computePressureSimple, &
@@ -29,7 +33,7 @@ contains
                           inviscidUpwindFlux, inviscidDissFluxScalar, inviscidDissFluxMatrix, &
                           viscousFlux, viscousFluxApprox, inviscidCentralFlux
         use utils, only: setPointers, EChk
-        use turbUtils, only: turbAdvection, computeEddyViscosity
+        use turbUtils, only: turbAdvection, computeEddyViscosity, vfScale
         use residuals, only: initRes_block, sourceTerms_block
         use surfaceIntegrations, only: getSolution
         use adjointExtra, only: volume_block, metric_block, boundaryNormals, &
@@ -73,14 +77,29 @@ contains
             end if
 
             do sps = 1, nTimeIntervalsSpectral
+                call VecGetArrayF90(xSurfVec(1, sps), xSurf, ierr)
+                call EChk(ierr, __FILE__, __LINE__)
+
                 do nn = 1, nDom
                     call setPointers(nn, 1, sps)
                     call xhalo_block()
+
+                    if (equations == RANSEquations .and. useApproxWallDistance) then
+                        call updateWallDistancesQuickly(nn, 1, sps)
+                    end if
                 end do
+
+                ! These arrays need to be restored before we can move to the next spectral instance.
+                call VecRestoreArrayF90(xSurfVec(1, sps), xSurf, ierr)
+                call EChk(ierr, __FILE__, __LINE__)
             end do
 
             ! Now exchange the coordinates (fine level only)
             call exchangecoor(1)
+
+            if (equations == RANSEquations .and. useApproxWallDistance) then
+                call exchanged2Wall(1)
+            end if
 
             do sps = 1, nTimeIntervalsSpectral
                 ! Update overset connectivity if necessary
@@ -88,9 +107,7 @@ contains
                     call updateOversetConnectivity(1_intType, sps)
                 end if
             end do
-        end if
 
-        if (useSpatial) then
             ! Zero out the local volume pointers for the actuator zone
             do iRegion = 1, nActuatorRegions
                 actuatorRegions(iRegion)%volLocal = zero
@@ -102,10 +119,6 @@ contains
                 call setPointers(nn, 1, sps)
 
                 if (useSpatial) then
-
-                    call VecGetArrayF90(xSurfVec(1, sps), xSurf, ierr)
-                    call EChk(ierr, __FILE__, __LINE__)
-
                     call volume_block
 
                     ! Compute the volume of each actuator region
@@ -115,15 +128,6 @@ contains
 
                     call metric_block
                     call boundaryNormals
-
-                    if (equations == RANSEquations .and. useApproxWallDistance) then
-                        call updateWallDistancesQuickly(nn, 1, sps)
-                    end if
-
-                    ! These arrays need to be restored before we can move to the next spectral instance.
-                    call VecRestoreArrayF90(xSurfVec(1, sps), xSurf, ierr)
-                    call EChk(ierr, __FILE__, __LINE__)
-
                 end if
 
                 ! Compute the pressures/viscositites
@@ -190,16 +194,32 @@ contains
                     ! Initialize only the Turblent Variables
                     !call unsteadyTurbSpectral_block(itu1, itu1, nn, sps)
 
+                    !we do not need bcTurbTreatment... we just did it before
+
                     select case (turbModel)
 
                     case (spalartAllmaras)
-                        allocate (qq(2:il, 2:jl, 2:kl))
-                        call saSource
-                        call turbAdvection(1_intType, 1_intType, itu1 - 1, qq)
-                        !call unsteadyTurbTerm(1_intType, 1_intType, itu1-1, qq)
-                        call saViscous
-                        call saResScale
-                        deallocate (qq)
+                        call sa_block_residuals(.True.)
+
+                    case (komegaWilcox, komegaModified)
+                        call kwSolve(.True.)
+
+                    case (menterSST, langtryMenterSST)
+                        call SST_block_residuals(.True.)
+
+                    case (ktau)
+                        call ktSolve(.True.)
+
+                    case (v2f)
+                        !see vf_block for comments
+                        call vfScale
+                        call keSolve(.True.)
+                        call vfSolve(.True.)
+
+                    case DEFAULT
+                        print *, 'ERROR: requested turbulence model not implemented'
+                        call EChk(1, __FILE__, __LINE__)
+
                     end select
                 end if
 
@@ -275,14 +295,15 @@ contains
         use section, only: sections, nSections
         use monitor, only: timeUnsteadyRestart
         use utils, only: isWallType, setPointers, setPointers_d, EChk
-        use sa_d, only: saSource_d, saViscous_d, saResScale_d, qq
+        use sa, only: sa_block_residuals_d
+        use sst, only: sst_block_residuals_d
         use turbutils_d, only: turbAdvection_d, computeEddyViscosity_d
         use fluxes_d, only: inviscidDissFluxScalarApprox_d, inviscidDissFluxMatrixApprox_d, &
                             inviscidUpwindFlux_d, inviscidDissFluxScalar_d, inviscidDissFluxMatrix_d, &
                             inviscidUpwindFlux_d, viscousFlux_d, viscousFluxApprox_d, inviscidCentralFlux_d
         use residuals_d, only: sourceTerms_block_d, initres_block_d
         use adjointPETSc, only: x_like
-        use haloExchange, only: whalo2_d, exchangeCoor_d, exchangeCoor, whalo2
+        use haloExchange, only: whalo2_d, exchangeCoor_d, exchangeCoor, whalo2, exchanged2Wall, exchanged2Wall_d
         use wallDistance_d, only: updateWallDistancesQuickly_d
         use wallDistanceData, only: xSurfVec, xSurfVecd, xSurf, xSurfd, wallScatter
         use flowutils_d, only: computePressureSimple_d, computeLamViscosity_d, &
@@ -293,6 +314,7 @@ contains
         use initializeflow_d, only: referenceState_d
         use surfaceIntegrations, only: getSolution_d
         use adjointExtra_d, only: xhalo_block_d, volume_block_d, metric_BLock_d, boundarynormals_d
+        use adjointExtra, only: volume_block
         use adjointextra_d, only: resscale_D, sumdwandfw_d
         use bcdata, only: setBCData_d, setBCDataFineGrid_d
         use oversetData, only: oversetPresent
@@ -361,10 +383,45 @@ contains
         end do domainLoop1
 
         do sps = 1, nTimeIntervalsSpectral
+            ! Now set the xsurfd contribution from the full x perturbation.
+            ! scatter from the global seed (in x_like) to xSurfVecd...but only
+            ! if wallDistances were used
+            if (wallDistanceNeeded .and. useApproxWallDistance) then
+                call VecScatterBegin(wallScatter(1, sps), x_like, xSurfVecd(sps), INSERT_VALUES, SCATTER_FORWARD, &
+                                     ierr)
+                call EChk(ierr, __FILE__, __LINE__)
+
+                call VecScatterEnd(wallScatter(1, sps), x_like, xSurfVecd(sps), INSERT_VALUES, SCATTER_FORWARD, &
+                                   ierr)
+                call EChk(ierr, __FILE__, __LINE__)
+            end if
+
+            ! Get the pointers from the petsc vector for the surface
+            ! perturbation for wall distance.
+            call VecGetArrayF90(xSurfVec(1, sps), xSurf, ierr)
+            call EChk(ierr, __FILE__, __LINE__)
+
+            ! And it's derivative
+            call VecGetArrayF90(xSurfVecd(sps), xSurfd, ierr)
+            call EChk(ierr, __FILE__, __LINE__)
+
             do nn = 1, nDom
                 call setPointers_d(nn, 1, sps)
                 call xhalo_block_d()
+
+                if (equations == RANSEquations .and. useApproxWallDistance) then
+                    call updateWallDistancesQuickly_d(nn, 1, sps)
+                end if
             end do
+
+            ! These arrays need to be restored before we can move to the next spectral instance.
+            call VecRestoreArrayF90(xSurfVec(1, sps), xSurf, ierr)
+            call EChk(ierr, __FILE__, __LINE__)
+
+            ! And it's derivative
+            call VecRestoreArrayF90(xSurfVecd(sps), xSurfd, ierr)
+            call EChk(ierr, __FILE__, __LINE__)
+
         end do
 
         ! Now exchange the coordinates. Note that we *must* exhchange the
@@ -372,6 +429,10 @@ contains
         ! halo nodes and exchange coor corrects them.
         call exchangecoor_d(1)
         call exchangecoor(1)
+
+        if (equations == RANSEquations .and. useApproxWallDistance) then
+            call exchanged2Wall_d(1)
+        end if
 
         do sps = 1, nTimeIntervalsSpectral
             ! Update overset connectivity if necessary
@@ -385,19 +446,6 @@ contains
                 end if
             end if
         end do
-
-        ! Now set the xsurfd contribution from the full x perturbation.
-        ! scatter from the global seed (in x_like) to xSurfVecd...but only
-        ! if wallDistances were used
-        if (wallDistanceNeeded .and. useApproxWallDistance) then
-            do sps = 1, nTimeIntervalsSpectral
-                call VecScatterBegin(wallScatter(1, sps), x_like, xSurfVecd(sps), INSERT_VALUES, SCATTER_FORWARD, ierr)
-                call EChk(ierr, __FILE__, __LINE__)
-
-                call VecScatterEnd(wallScatter(1, sps), x_like, xSurfVecd(sps), INSERT_VALUES, SCATTER_FORWARD, ierr)
-                call EChk(ierr, __FILE__, __LINE__)
-            end do
-        end if
 
         call adjustInflowAngle_d
         call referenceState_d
@@ -421,16 +469,9 @@ contains
                 ISIZE1OFDrfbcdata = nBocos
                 ISIZE1OFDrfviscsubface = nViscBocos
 
-                ! Get the pointers from the petsc vector for the surface
-                ! perturbation for wall distance.
-                call VecGetArrayF90(xSurfVec(1, sps), xSurf, ierr)
-                call EChk(ierr, __FILE__, __LINE__)
-
-                ! And it's derivative
-                call VecGetArrayF90(xSurfVecd(sps), xSurfd, ierr)
-                call EChk(ierr, __FILE__, __LINE__)
-
                 call volume_block_d()
+                call volume_block() ! not completely sure if this is needed still, but it fixes a bug where the residuasl would
+                ! increase from ~1e-11 to ~1e-7
                 call metric_block_d()
 
                 ! Loop over the actuator regions to compute the local
@@ -454,10 +495,6 @@ contains
                 ! required for ts
                 call slipvelocitiesfinelevel_block_d(useoldcoor, time, sps, nn)
 
-                if (equations == RANSEquations .and. useApproxWallDistance) then
-                    call updateWallDistancesQuickly_d(nn, 1, sps)
-                end if
-
                 call computePressureSimple_d(.False.)
                 call computeLamViscosity_d(.False.)
                 call computeEddyViscosity_d(.False.)
@@ -471,13 +508,6 @@ contains
 
                 call applyAllBC_block_d(.True.)
 
-                ! These arrays need to be restored before we can move to the next spectral instance.
-                call VecRestoreArrayF90(xSurfVec(1, sps), xSurf, ierr)
-                call EChk(ierr, __FILE__, __LINE__)
-
-                ! And it's derivative
-                call VecRestoreArrayF90(xSurfVecd(sps), xSurfd, ierr)
-                call EChk(ierr, __FILE__, __LINE__)
             end do
         end do
 
@@ -531,11 +561,9 @@ contains
 
                     select case (turbModel)
                     case (spalartAllmaras)
-                        call saSource_d
-                        call turbAdvection_d(1_intType, 1_intType, itu1 - 1, qq)
-                !!call unsteadyTurbTerm_d(1_intType, 1_intType, itu1-1, qq)
-                        call saViscous_d
-                        call saResScale_d
+                        call sa_block_residuals_d
+                    case (menterSST, langtryMenterSST)
+                        call sst_block_residuals_d
                     end select
                 end if
 
@@ -629,7 +657,7 @@ contains
         use inputAdjoint, only: viscPC
         use fluxes, only: viscousFlux
         use flowVarRefState, only: nw, nwf, viscous, pInfDimd, rhoInfDimd, TinfDimd
-        use blockPointers, only: nDom, il, jl, kl, wd, xd, dw, dwd
+        use blockPointers, only: nDom, il, jl, kl, wd, xd, dw, dwd, revd
         use inputPhysics, only: pointRefd, alphad, betad, equations, machCoefd, &
                                 machd, machGridd, rgasdimd, equationMode, turbModel, wallDistanceNeeded
         use inputDiscretization, only: lowSpeedPreconditioner, lumpedDiss, spaceDiscr, useAPproxWallDistance
@@ -637,7 +665,7 @@ contains
         use inputAdjoint, only: frozenTurbulence
         use utils, only: isWallType, setPointers_b, EChk
         use adjointPETSc, only: x_like
-        use haloExchange, only: whalo2_b, exchangeCoor_b, exchangeCoor, whalo2
+        use haloExchange, only: whalo2_b, exchangeCoor_b, exchangeCoor, whalo2, exchanged2Wall_b
         use wallDistanceData, only: xSurfVec, xSurfVecd, xSurf, xSurfd, wallScatter
         use surfaceIntegrations, only: getSolution_b
         use flowUtils, only: fixAllNodalGradientsFromAD
@@ -650,7 +678,8 @@ contains
         use turbbcroutines_b, only: applyAllTurbBCthisblock_b, bcTurbTreatment_b
         use initializeflow_b, only: referenceState_b
         use wallDistance_b, only: updateWallDistancesQuickly_b
-        use sa_b, only: saSource_b, saViscous_b, saResScale_b, qq
+        use sa, only: sa_block_residuals_b
+        use sst, only: sst_block_residuals_b
         use turbutils_b, only: turbAdvection_b, computeEddyViscosity_b
         use residuals_b, only: sourceTerms_block_b, initRes_block_b
         use fluxes_b, only: inviscidUpwindFlux_b, inviscidDissFluxScalar_b, &
@@ -778,14 +807,9 @@ contains
                 if (equations == RANSEquations) then
                     select case (turbModel)
                     case (spalartAllmaras)
-                        call saResScale_b
-                        call saViscous_b
-                        !call unsteadyTurbTerm_b(1_intType, 1_intType, itu1-1, qq)
-                        call turbAdvection_b(1_intType, 1_intType, itu1 - 1, qq)
-                        ! turbAdvection_b zeros the faceid. This should be ok since
-                        ! it presumably is the last call in master using faceid and
-                        ! therefore should be the first call in master_b to use faceid
-                        call saSource_b
+                        call sa_block_residuals_b
+                    case (menterSST)
+                        call sst_block_residuals_b
                     end select
 
                     !call unsteadyTurbSpectral_block_b(itu1, itu1, nn, sps)
@@ -837,19 +861,6 @@ contains
 
         spsLoop2: do sps = 1, nTimeIntervalsSpectral
 
-            ! Get the pointers from the petsc vector for the wall
-            ! surface and it's accumulation. Only necessary for wall
-            ! distance.
-            call VecGetArrayF90(xSurfVec(1, sps), xSurf, ierr)
-            call EChk(ierr, __FILE__, __LINE__)
-
-            ! And it's derivative
-            call VecGetArrayF90(xSurfVecd(sps), xSurfd, ierr)
-            call EChk(ierr, __FILE__, __LINE__)
-
-            !Zero the accumulation vector on a per-time-spectral instance basis
-            xSurfd = zero
-
             domainLoop2: do nn = 1, nDom
                 call setPointers_b(nn, 1, sps)
                 call applyAllBC_block_b(.True.)
@@ -869,10 +880,6 @@ contains
                 call computeEddyViscosity_b(.false.)
                 call computeLamViscosity_b(.false.)
                 call computePressureSimple_b(.false.)
-
-                if (equations == RANSEquations .and. useApproxWallDistance) then
-                    call updateWallDistancesQuickly_b(nn, 1, sps)
-                end if
 
                 ! Here we insert the functions related to
                 ! rotational (mesh movement) setup
@@ -897,24 +904,6 @@ contains
 
             end do domainLoop2
 
-            ! Restore the petsc pointers.
-            call VecGetArrayF90(xSurfVec(1, sps), xSurf, ierr)
-            call EChk(ierr, __FILE__, __LINE__)
-
-            ! And it's derivative
-            call VecGetArrayF90(xSurfVecd(sps), xSurfd, ierr)
-            call EChk(ierr, __FILE__, __LINE__)
-
-            ! Now accumulate the xsurfd accumulation by using the wall scatter
-            ! in reverse.
-            if (wallDistanceNeeded .and. useApproxWallDistance) then
-
-                call VecScatterBegin(wallScatter(1, sps), xSurfVecd(sps), x_like, ADD_VALUES, SCATTER_REVERSE, ierr)
-                call EChk(ierr, __FILE__, __LINE__)
-
-                call VecScatterEnd(wallScatter(1, sps), xSurfVecd(sps), x_like, ADD_VALUES, SCATTER_REVERSE, ierr)
-                call EChk(ierr, __FILE__, __LINE__)
-            end if
         end do spsLoop2
 
         ! Zero out the local volume seeds of the actuator zone
@@ -951,12 +940,55 @@ contains
             end if
         end do
         ! Now the adjoint of the coordinate exhcange
+
+        if (equations == RANSEquations .and. useApproxWallDistance) then
+            call exchanged2Wall_b(1)
+        end if
         call exchangecoor_b(1)
-        do nn = 1, nDom
-            do sps = 1, nTimeIntervalsSpectral
+        do sps = 1, nTimeIntervalsSpectral
+
+            ! Get the pointers from the petsc vector for the wall
+            ! surface and it's accumulation. Only necessary for wall
+            ! distance.
+            call VecGetArrayF90(xSurfVec(1, sps), xSurf, ierr)
+            call EChk(ierr, __FILE__, __LINE__)
+
+            ! And it's derivative
+            call VecGetArrayF90(xSurfVecd(sps), xSurfd, ierr)
+            call EChk(ierr, __FILE__, __LINE__)
+
+            !Zero the accumulation vector on a per-time-spectral instance basis
+            xSurfd = zero
+
+            do nn = 1, nDom
                 call setPointers_b(nn, 1, sps)
+
+                if (equations == RANSEquations .and. useApproxWallDistance) then
+                    call updateWallDistancesQuickly_b(nn, 1, sps)
+                end if
+
                 call xhalo_block_b()
             end do
+
+            ! Restore the petsc pointers.
+            call VecGetArrayF90(xSurfVec(1, sps), xSurf, ierr)
+            call EChk(ierr, __FILE__, __LINE__)
+
+            ! And it's derivative
+            call VecGetArrayF90(xSurfVecd(sps), xSurfd, ierr)
+            call EChk(ierr, __FILE__, __LINE__)
+
+            ! Now accumulate the xsurfd accumulation by using the wall scatter
+            ! in reverse.
+            if (wallDistanceNeeded .and. useApproxWallDistance) then
+
+                call VecScatterBegin(wallScatter(1, sps), xSurfVecd(sps), x_like, ADD_VALUES, SCATTER_REVERSE, ierr)
+                call EChk(ierr, __FILE__, __LINE__)
+
+                call VecScatterEnd(wallScatter(1, sps), xSurfVecd(sps), x_like, ADD_VALUES, SCATTER_REVERSE, ierr)
+                call EChk(ierr, __FILE__, __LINE__)
+            end if
+
         end do
 
         call VecResetArray(x_like, ierr)
@@ -1051,8 +1083,8 @@ contains
         use turbUtils_b, only: computeEddyViscosity_b
         use BCExtra_b, only: applyAllBC_Block_b
 
-        use sa_fast_b, only: saresscale_fast_b, saviscous_fast_b, &
-                             sasource_fast_b, qq
+        use sa, only: sa_block_residuals_fast_b
+        use sst, only: sst_block_residuals_fast_b
         use turbutils_fast_b, only: turbAdvection_fast_b
         use fluxes_fast_b, only: inviscidUpwindFlux_fast_b, inviscidDissFluxScalar_fast_b, &
                                  inviscidDissFluxMatrix_fast_b, viscousFlux_fast_b, inviscidCentralFlux_fast_b
@@ -1132,11 +1164,9 @@ contains
                 if (equations == RANSEquations) then
                     select case (turbModel)
                     case (spalartAllmaras)
-                        call saResScale_fast_b
-                        call saViscous_fast_b
-                        !call unsteadyTurbTerm_b(1_intType, 1_intType, itu1-1, qq)
-                        call turbAdvection_fast_b(1_intType, 1_intType, itu1 - 1, qq)
-                        call saSource_fast_b
+                        call sa_block_residuals_fast_b
+                    case (menterSST)
+                        call sst_block_residuals_fast_b
                     end select
 
                     !call unsteadyTurbSpectral_block_b(itu1, itu1, nn, sps)
@@ -1295,7 +1325,8 @@ contains
         use inputDiscretization, only: lowSpeedPreconditioner, lumpedDiss, spaceDiscr
         use inputTimeSpectral, only: nTimeIntervalsSpectral
         use utils, only: setPointers_d, EChk
-        use sa_d, only: saSource_d, saViscous_d, saResScale_d, qq
+        use sa, only: sa_block_residuals_d
+        use sst, only: sst_block_residuals_d
         use turbutils_d, only: turbAdvection_d, computeEddyViscosity_d
         use fluxes_d, only: inviscidDissFluxScalarApprox_d, inviscidDissFluxMatrixApprox_d, &
                             inviscidUpwindFlux_d, inviscidDissFluxScalar_d, inviscidDissFluxMatrix_d, &
@@ -1344,11 +1375,9 @@ contains
 
             select case (turbModel)
             case (spalartAllmaras)
-                call saSource_d
-                call turbAdvection_d(1_intType, 1_intType, itu1 - 1, qq)
-          !!call unsteadyTurbTerm_d(1_intType, 1_intType, itu1-1, qq)
-                call saViscous_d
-                call saResScale_d
+                call sa_block_residuals_d
+            case (menterSST)
+                call sst_block_residuals_d
             end select
         end if
 

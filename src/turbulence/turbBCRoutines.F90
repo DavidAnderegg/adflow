@@ -808,6 +808,7 @@ contains
         use flowVarRefState
         use inputPhysics
         use constants
+        use variableConstants
         use paramTurb
         implicit none
         !
@@ -877,7 +878,7 @@ contains
             end select
 
             !        ================================================================
-        case (komegaWilcox, komegaModified, menterSST)
+        case (komegaWilcox, komegaModified, menterSST, langtryMenterSST)
 
             ! K-omega type of models. K is zero on the wall and thus the
             ! halo value is the negative of the first internal cell.
@@ -907,6 +908,12 @@ contains
                         bmti1(i, j, itu2, itu2) = one
 
                         bvti1(i, j, itu2) = two * 60.0_realType * nu * tmpd
+                        ! This is consistent with the guideline for SST in https://turbmodels.larc.nasa.gov/sst.html
+                        ! Note: the factor two comes from the fact that we impose that the mean of the 1st halo cell and
+                        !       the first domain cell is equal to the target value.
+                        !     omega_halo = - bmt_onega * omega + bvt_omega
+                        !  => omega_halo = - one * omega_1 + two*60.0_realType*nu*tmpd
+                        !  => (omega_halo + omega_1)/2 = 60.0_realType*nu*tmpd
                     end do
                 end do
 
@@ -1126,6 +1133,62 @@ contains
             end do
 #endif
         end select
+
+        select case (transitionModel)
+        case (GammaRetheta) ! Apply Neumann BC (zero normal derivative) for gamma and Re_theta at the wall
+            select case (BCFaceID(nn)) 
+
+            case (iMin)
+                do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
+                    do i = BCData(nn)%icBeg, BCData(nn)%icEnd
+                        bmti1(i, j, iTransition1, iTransition1) = bmti1(i+1, j, iTransition1, iTransition1)
+                        bmti1(i, j, iTransition2, iTransition2) = bmti1(i+1, j, iTransition2, iTransition2)
+                    end do
+                end do
+
+            case (iMax)
+                do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
+                    do i = BCData(nn)%icBeg, BCData(nn)%icEnd
+                        bmti2(i, j, iTransition1, iTransition1) = bmti2(i-1, j, iTransition1, iTransition1)
+                        bmti2(i, j, iTransition2, iTransition2) = bmti2(i-1, j, iTransition2, iTransition2)
+                    end do
+                end do
+
+            case (jMin)
+                do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
+                    do i = BCData(nn)%icBeg, BCData(nn)%icEnd
+                        bmtj1(i, j, iTransition1, iTransition1) = bmtj1(i, j+1, iTransition1, iTransition1)
+                        bmtj1(i, j, iTransition2, iTransition2) = bmtj1(i, j+1, iTransition2, iTransition2)
+                    end do
+                end do
+
+            case (jMax)
+                do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
+                    do i = BCData(nn)%icBeg, BCData(nn)%icEnd
+                        bmtj2(i, j, iTransition1, iTransition1) = bmtj2(i, j-1, iTransition1, iTransition1)
+                        bmtj2(i, j, iTransition2, iTransition2) = bmtj2(i, j-1, iTransition2, iTransition2)
+                    end do
+                end do
+
+            case (kMin)
+                do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
+                    do i = BCData(nn)%icBeg, BCData(nn)%icEnd
+                        bmtk1(i, j, iTransition1, iTransition1) = bmtk1(i, j, iTransition1, iTransition1+1)
+                        bmtk1(i, j, iTransition2, iTransition2) = bmtk1(i, j, iTransition2, iTransition2+1)
+                    end do
+                end do
+
+            case (kMax)
+                do j = BCData(nn)%jcBeg, BCData(nn)%jcEnd
+                    do i = BCData(nn)%icBeg, BCData(nn)%icEnd
+                        bmtk2(i, j, iTransition1, iTransition1) = bmtk2(i, j, iTransition1, iTransition1-1)
+                        bmtk2(i, j, iTransition2, iTransition2) = bmtk2(i, j, iTransition2, iTransition2-1)
+                    end do
+                end do
+
+            end select
+    end select
+
     end subroutine bcTurbWall
 
     subroutine turb2ndHalo(nn)

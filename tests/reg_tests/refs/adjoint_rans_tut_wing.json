@@ -1,5 +1,4 @@
 {
-    "Adjoint States": 0.0,
     "Eval Functions Sens:": {
         "mdo_tutorial_cavitation": {
             "P_mdo_tutorial": -3.3530531445605923e-10,
@@ -1263,7 +1262,7 @@
         "ANKTurbCFLScale": 1.0,
         "ANKTurbKSPDebug": false,
         "ANKUnsteadyLSTol": 1.0,
-        "ANKUseApproxSA": false,
+        "ANKUseApproxTurb": false,
         "ANKUseFullVisc": true,
         "ANKUseMatrixFree": true,
         "ANKUseTurbDADI": true,

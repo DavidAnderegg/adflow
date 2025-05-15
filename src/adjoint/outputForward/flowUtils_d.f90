@@ -649,13 +649,14 @@ contains
     use blockpointers
     use flowvarrefstate
     use inputphysics
+    use utils_d, only : getcorrectfork
     implicit none
 ! input parameter
     logical, intent(in) :: includehalos
 ! local variables
     integer(kind=inttype) :: i, j, k, ii
-    real(kind=realtype) :: gm1, v2
-    real(kind=realtype) :: v2d
+    real(kind=realtype) :: gm1, v2, factk, pp
+    real(kind=realtype) :: v2d, ppd
     integer(kind=inttype) :: ibeg, iend, isize, jbeg, jend, jsize, kbeg&
 &   , kend, ksize
     intrinsic max
@@ -664,6 +665,7 @@ contains
     real(kind=realtype) :: temp1
 ! compute the pressures
     gm1 = gammaconstant - one
+    factk = five*third - gammaconstant
     if (includehalos) then
       ibeg = 0
       jbeg = 0
@@ -691,18 +693,33 @@ contains
 &           temp1*wd(i, j, k, ivz)
           v2 = temp*temp + temp0*temp0 + temp1*temp1
           temp1 = w(i, j, k, irho)
-          pd(i, j, k) = gm1*(wd(i, j, k, irhoe)-half*(v2*wd(i, j, k, &
-&           irho)+temp1*v2d))
-          p(i, j, k) = gm1*(w(i, j, k, irhoe)-half*(temp1*v2))
-          if (p(i, j, k) .lt. 1.e-4_realtype*pinfcorr) then
+          ppd = gm1*(wd(i, j, k, irhoe)-half*(v2*wd(i, j, k, irho)+temp1&
+&           *v2d))
+          pp = gm1*(w(i, j, k, irhoe)-half*(temp1*v2))
+          if (pp .lt. 1.e-4_realtype*pinfcorr) then
             pd(i, j, k) = 1.e-4_realtype*pinfcorrd
             p(i, j, k) = 1.e-4_realtype*pinfcorr
           else
-            p(i, j, k) = p(i, j, k)
+            pd(i, j, k) = ppd
+            p(i, j, k) = pp
           end if
         end do
       end do
     end do
+! apply correction for k in a separate loop
+    if (getcorrectfork()) then
+      do k=kbeg,kend
+        do j=jbeg,jend
+          do i=ibeg,iend
+            temp1 = w(i, j, k, itu1)
+            temp0 = w(i, j, k, irho)
+            pd(i, j, k) = pd(i, j, k) + factk*(temp1*wd(i, j, k, irho)+&
+&             temp0*wd(i, j, k, itu1))
+            p(i, j, k) = p(i, j, k) + factk*(temp0*temp1)
+          end do
+        end do
+      end do
+    end if
   end subroutine computepressuresimple_d
 
   subroutine computepressuresimple(includehalos)
@@ -712,17 +729,19 @@ contains
     use blockpointers
     use flowvarrefstate
     use inputphysics
+    use utils_d, only : getcorrectfork
     implicit none
 ! input parameter
     logical, intent(in) :: includehalos
 ! local variables
     integer(kind=inttype) :: i, j, k, ii
-    real(kind=realtype) :: gm1, v2
+    real(kind=realtype) :: gm1, v2, factk, pp
     integer(kind=inttype) :: ibeg, iend, isize, jbeg, jend, jsize, kbeg&
 &   , kend, ksize
     intrinsic max
 ! compute the pressures
     gm1 = gammaconstant - one
+    factk = five*third - gammaconstant
     if (includehalos) then
       ibeg = 0
       jbeg = 0
@@ -743,15 +762,26 @@ contains
         do i=ibeg,iend
           v2 = w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, ivz)&
 &           **2
-          p(i, j, k) = gm1*(w(i, j, k, irhoe)-half*w(i, j, k, irho)*v2)
-          if (p(i, j, k) .lt. 1.e-4_realtype*pinfcorr) then
+          pp = gm1*(w(i, j, k, irhoe)-half*w(i, j, k, irho)*v2)
+          if (pp .lt. 1.e-4_realtype*pinfcorr) then
             p(i, j, k) = 1.e-4_realtype*pinfcorr
           else
-            p(i, j, k) = p(i, j, k)
+            p(i, j, k) = pp
           end if
         end do
       end do
     end do
+! apply correction for k in a separate loop
+    if (getcorrectfork()) then
+      do k=kbeg,kend
+        do j=jbeg,jend
+          do i=ibeg,iend
+            p(i, j, k) = p(i, j, k) + factk*w(i, j, k, irho)*w(i, j, k, &
+&             itu1)
+          end do
+        end do
+      end do
+    end if
   end subroutine computepressuresimple
 
   subroutine computepressure(ibeg, iend, jbeg, jend, kbeg, kend, &
@@ -995,8 +1025,8 @@ contains
 !      local variables.
 !
     integer(kind=inttype) :: i, j, k, ii
-    real(kind=realtype) :: musuth, tsuth, ssuth, t, pp
-    real(kind=realtype) :: musuthd, tsuthd, ssuthd, td, ppd
+    real(kind=realtype) :: musuth, tsuth, ssuth, t, pp, correction
+    real(kind=realtype) :: musuthd, tsuthd, ssuthd, td, ppd, correctiond
     logical :: correctfork
     integer(kind=inttype) :: ibeg, iend, isize, jbeg, jend, jsize, kbeg&
 &   , kend, ksize
@@ -1040,11 +1070,18 @@ contains
         do k=kbeg,kend
           do j=jbeg,jend
             do i=ibeg,iend
+              ppd = pd(i, j, k)
+              pp = p(i, j, k)
               temp = w(i, j, k, itu1)
               temp0 = w(i, j, k, irho)
-              ppd = pd(i, j, k) - twothird*(temp*wd(i, j, k, irho)+temp0&
-&               *wd(i, j, k, itu1))
-              pp = p(i, j, k) - twothird*(temp0*temp)
+              correctiond = twothird*(temp*wd(i, j, k, irho)+temp0*wd(i&
+&               , j, k, itu1))
+              correction = twothird*(temp0*temp)
+              if (pp .gt. correction) then
+! only subtract the correction when we dont produce a negative number
+                ppd = ppd - correctiond
+                pp = pp - correction
+              end if
               temp0 = w(i, j, k, irho)
               temp = rgas*temp0
               td = (ppd-pp*(temp0*rgasd+rgas*wd(i, j, k, irho))/temp)/&
@@ -1112,7 +1149,7 @@ contains
 !      local variables.
 !
     integer(kind=inttype) :: i, j, k, ii
-    real(kind=realtype) :: musuth, tsuth, ssuth, t, pp
+    real(kind=realtype) :: musuth, tsuth, ssuth, t, pp, correction
     logical :: correctfork
     integer(kind=inttype) :: ibeg, iend, isize, jbeg, jend, jsize, kbeg&
 &   , kend, ksize
@@ -1148,8 +1185,12 @@ contains
         do k=kbeg,kend
           do j=jbeg,jend
             do i=ibeg,iend
-              pp = p(i, j, k) - twothird*w(i, j, k, irho)*w(i, j, k, &
-&               itu1)
+              pp = p(i, j, k)
+              correction = twothird*w(i, j, k, irho)*w(i, j, k, itu1)
+              if (pp .gt. correction) then
+! only subtract the correction when we dont produce a negative number
+                pp = pp - correction
+              end if
               t = pp/(rgas*w(i, j, k, irho))
               rlv(i, j, k) = musuth*((tsuth+ssuth)/(t+ssuth))*(t/tsuth)&
 &               **1.5_realtype

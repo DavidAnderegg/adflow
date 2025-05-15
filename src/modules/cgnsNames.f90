@@ -50,6 +50,11 @@ module cgnsNames
         cgnsTurbF = "TurbulentScalarF"
 
     character(len=maxCGNSNameLen), parameter :: &
+        cgnsTransitionGamma = "TransitionGamma"
+    character(len=maxCGNSNameLen), parameter :: &
+        cgnsTransitionReThetat = "TransitionReThetat"
+
+    character(len=maxCGNSNameLen), parameter :: &
         cgnsVelX = "VelocityX"
     character(len=maxCGNSNameLen), parameter :: &
         cgnsVelY = "VelocityY"
@@ -113,10 +118,6 @@ module cgnsNames
         cgnsSkinFY = "SkinFrictionY"
     character(len=maxCGNSNameLen), parameter :: &
         cgnsSkinFZ = "SkinFrictionZ"
-    character(len=maxCGNSNameLen), parameter :: &
-        cgnsForceInDragDir = "ForceInDragDir"
-    character(len=maxCGNSNameLen), parameter :: &
-        cgnsForceInLiftDir = "ForceInLiftDir"
     character(len=maxCGNSNameLen), parameter :: &
         cgnsStanton = "StantonNumber"
     character(len=maxCGNSNameLen), parameter :: &
@@ -229,6 +230,11 @@ module cgnsNames
         cgnsL2resV2 = "RSDTurbulentScalarV2RMS"
     character(len=maxCGNSNameLen), parameter :: &
         cgnsL2ResF = "RSDTurbulentScalarFRMS"
+    character(len=maxCGNSNameLen), parameter :: &
+        cgnsL2ResGamma = "RSDTransitionGammaRMS"
+    character(len=maxCGNSNameLen), parameter :: &
+        cgnsL2ResRethetat = "RSDTransitionReThetat"
+
 !
 !       Force and moment coefficients names.
 !
@@ -276,8 +282,6 @@ module cgnsNames
 !       Names of the "lift" force, separation sensor and cavitation
 !
     character(len=maxCGNSNameLen), parameter :: cgnsSepSensor = "SepSensor"
-    character(len=maxCGNSNameLen), parameter :: cgnsSepSensorKs = "SepSensorKs"
-    character(len=maxCGNSNameLen), parameter :: cgnsSepSensorKsArea = "SepSensorKsArea"
     character(len=maxCGNSNameLen), parameter :: cgnsCavitation = "Cavitation"
     character(len=maxCGNSNameLen), parameter :: cgnsAxisMoment = "AxisMoment"
 !

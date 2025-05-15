@@ -2038,6 +2038,52 @@ contains
 
     end subroutine siVelocity
 
+   subroutine smoothMax(sMax, g1, g2, phi)
+
+        use constants
+
+        implicit none
+
+        real(kind=realType), intent(out) :: sMax
+        real(kind=realType), intent(in) :: g1, g2, phi
+        real(kind=realType) :: a, b, p_switch
+
+        p_switch = 1e-15
+        a = max(g1, g2)
+        b = min(g1, g2)
+
+        if (abs(a - b) > -log(phi * p_switch)/phi) then
+
+            sMax = a
+        else
+            sMax = a + log(1.0 + exp(phi*(b-a)))/phi
+        end if
+
+    end subroutine smoothMax
+
+    subroutine smoothMin(sMin, g1, g2, phi)
+
+        use constants
+
+        implicit none
+
+        real(kind=realType), intent(out) :: sMin
+        real(kind=realType), intent(in) :: g1, g2, phi
+        real(kind=realType) :: a, b, p_switch
+
+        p_switch = 1e-15
+        a = max(g1, g2)
+        b = min(g1, g2)
+
+        if (abs(a - b) > -log(phi * p_switch)/phi) then
+            sMin = b
+        else
+            sMin = b + log(1.0 + exp(-phi*(a-b)))/(-phi)
+        end if
+
+    end subroutine smoothMin
+
+
     ! ----------------------------------------------------------------------
     !                                                                      |
     !                    No Tapenade Routine below this line               |
@@ -4737,7 +4783,7 @@ contains
         !
         use block
         use inputTimeSpectral
-        use inputPhysics, only: cpmin_family, sepSenMaxFamily
+        use inputPhysics, only: cpmin_family
         use ADjointPETSc
         use cgnsGrid
         implicit none
@@ -4768,10 +4814,6 @@ contains
         ! deallocate the cpmin_family array allocated in inputParamRoutines
         if (allocated(cpmin_family)) &
             deallocate (cpmin_family)
-
-        ! deallocate the sepSenMaxFamily array allocated in inputParamRoutines
-        if (allocated(sepSenMaxFamily)) &
-            deallocate (sepSenMaxFamily)
 
         ! Destroy variables allocated in preprocessingAdjoint
         if (adjointPETScPreProcVarsAllocated) then
@@ -6121,6 +6163,12 @@ contains
                 case (cgnsL2resF)
                     write (*, "(a)", advance="no") "       Res fturb        |"
 
+                case (cgnsL2ResGamma)
+                    write (*, "(a)", advance="no") "     Res gamma trans    |"
+
+                case (cgnsL2ResRethetat)
+                    write (*, "(a)", advance="no") "   Res ReThetat trans   |"
+
                 case (cgnsCl)
                     write (*, "(a)", advance="no") "         C_lift         |"
 
@@ -6171,9 +6219,6 @@ contains
 
                 case (cgnsSepSensor)
                     write (*, "(a)", advance="no") "        SepSensor       |"
-
-                case (cgnssepSensorKsArea)
-                    write (*, "(a)", advance="no") "       sepSensorKsArea    |"
 
                 case (cgnsCavitation)
                     write (*, "(a)", advance="no") "       Cavitation       |"
@@ -6226,6 +6271,12 @@ contains
                 case (cgnsL2resF)
                     write (*, "(a)", advance="no") "           Res fturb             |"
 
+                case (cgnsL2ResGamma)
+                    write (*, "(a)", advance="no") "         Res gamma trans         |"
+
+                case (cgnsL2ResRethetat)
+                    write (*, "(a)", advance="no") "       Res ReThetat trans        |"
+
                 case (cgnsCl)
                     write (*, "(a)", advance="no") "                     C_lift                      |"
 
@@ -6276,9 +6327,6 @@ contains
 
                 case (cgnsSepSensor)
                     write (*, "(a)", advance="no") "                    SepSensor                    |"
-
-                case (cgnssepSensorKsArea)
-                    write (*, "(a)", advance="no") "                    sepSensorKsArea                |"
 
                 case (cgnsCavitation)
                     write (*, "(a)", advance="no") "                   Cavitation                    |"

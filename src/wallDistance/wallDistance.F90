@@ -140,8 +140,7 @@ contains
                                  sendBufferSize, recvBufferSize
         use inputPhysics, only: equations, wallDistanceNeeded
         use inputTimeSpectral, only: nTimeIntervalsSpectral
-        use inputDiscretization, only: useApproxWallDistance, updateWallAssociations
-        use oversetData, only: oversetPresent
+        use inputDiscretization, only: useApproxWallDistance
         use utils, only: setPointers, EChk, terminate, &
                          deallocateTempMemory, allocateTempMemory
         implicit none
@@ -225,7 +224,7 @@ contains
 
         ! Normal, original wall distance calc. Cannot be used when
         ! overset is present due to possibility of overlapping walls.
-        if ((.not. useApproxWallDistance) .and. (.not. oversetPresent)) then
+        if (.not. useApproxWallDistance) then
             ! Loop over the number of spectral solutions.
             spectralLoop: do sps = 1, nTimeIntervalsSpectral
 
@@ -258,7 +257,7 @@ contains
         else ! The user wants to use approx wall distance calcs OR we
             ! have overset mesh. :
 
-            if (updateLevelWallAssociation(level)) then
+            if (updateWallAssociation(level)) then
 
                 ! Initialize the wall distance
                 spectralLoop2: do sps = 1, nTimeIntervalsSpectral
@@ -275,10 +274,7 @@ contains
                     call determineWallAssociation(level, sps)
                 end do
 
-                if (.not. updateWallAssociations) then
-                    ! don't re-compute the wall associations after the first call
-                    updateLevelWallAssociation(level) = .False.
-                end if
+                updateWallAssociation(level) = .False.
             end if
 
             ! Update the xsurf vector from X
@@ -486,7 +482,7 @@ contains
         !
         integer :: ierr
 
-        integer(kind=intType) :: nn, il, jl, kl
+        integer(kind=intType) :: nn, ib, jb, kb
 
         ! Loop over the domains.
 
@@ -496,11 +492,11 @@ contains
 
             if (allocMem) then
 
-                il = flowDoms(nn, level, sps)%il
-                jl = flowDoms(nn, level, sps)%jl
-                kl = flowDoms(nn, level, sps)%kl
+                ib = flowDoms(nn, level, sps)%ib
+                jb = flowDoms(nn, level, sps)%jb
+                kb = flowDoms(nn, level, sps)%kb
 
-                allocate (flowDoms(nn, level, sps)%d2Wall(2:il, 2:jl, 2:kl), &
+                allocate (flowDoms(nn, level, sps)%d2Wall(0:ib, 0:jb, 0:kb), &
                           stat=ierr)
                 if (ierr /= 0) &
                     call terminate("initWallDistance", &
@@ -1531,6 +1527,8 @@ contains
         use block, only: flowDoms
         use inputPhysics, only: equations
         use iteration, only: groundLevel
+        use haloExchange, only: exchanged2Wall
+        use inputPhysics, only: wallDistanceNeeded
         implicit none
         !
         !      Local variables.
@@ -1546,6 +1544,9 @@ contains
         nLevels = ubound(flowDoms, 2)
         do nn = groundLevel, nLevels
             call computeWallDistance(nn, .false.)
+            if (wallDistanceNeeded) then
+                call exchanged2Wall(nn)
+            end if
         end do
 
     end subroutine updateWallDistanceAllLevels
@@ -2098,6 +2099,7 @@ contains
 
             wallDistanceDataAllocated(level) = .False.
         end if
+
     end subroutine destroyWallDistanceDataLevel
 
 #endif

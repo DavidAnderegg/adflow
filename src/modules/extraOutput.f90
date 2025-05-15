@@ -19,9 +19,8 @@ module extraOutput
     logical :: surfWriteRMach
     logical :: surfWriteCf, surfWriteCh, surfWriteYPlus
     logical :: surfWriteCfx, surfWriteCfy, surfWriteCfz
-    logical :: surfWriteBlank, surfWriteSepSensor, surfWriteSepSensorKs, surfWriteSepSensorKsArea
+    logical :: surfWriteBlank, surfWriteSepSensor
     logical :: surfWriteCavitation, surfWriteGC, surfWriteAxisMoment
-    logical :: surfWriteForceInDragDir, surfWriteForceInLiftDir
 !
 !       The logical variables, which define the extra volume variables
 !       to be written.

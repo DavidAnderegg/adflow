@@ -14,16 +14,11 @@ contains
         use iteration
         use utils, only: setPointers
         use turbUtils, only: kwEddyViscosity
-        use turbBCRoutines, only: bcTurbTreatment, applyAllTurbBCThisBlock
         implicit none
         !
         !      Subroutine argument.
         !
         logical, intent(in) :: resOnly
-
-        ! Set the arrays for the boundary condition treatment.
-
-        call bcTurbTreatment
 
         ! Solve the transport equations for k and omega.
 
@@ -37,12 +32,6 @@ contains
             ! Compute the corresponding eddy viscosity.
 
             call kwEddyViscosity(2, il, 2, jl, 2, kl)
-
-            ! Set the halo values for the turbulent variables.
-            ! We are on the finest mesh, so the second layer of halo
-            ! cells must be computed as well.
-
-            call applyAllTurbBCThisBlock(.true.)
 
         end if
 
@@ -118,13 +107,13 @@ contains
         !
         select case (turbProd)
         case (strain)
-            call prodSmag2
+            call prodSmag2(2, il, 2, jl, 2, kl, iprod)
 
         case (vorticity)
-            call prodWmag2
+            call prodWmag2(2, il, 2, jl, 2, kl, iprod)
 
         case (katoLaunder)
-            call prodKatoLaunder
+            call prodKatoLaunder(2, il, 2, jl, 2, kl, iprod)
 
         end select
         !
@@ -192,9 +181,9 @@ contains
         !       Advection and unsteady terms.
         !
         nn = itu1 - 1
-        call turbAdvection(2_intType, 2_intType, nn, qq)
+        call turbAdvection((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
 
-        call unsteadyTurbTerm(2_intType, 2_intType, nn, qq)
+        call unsteadyTurbTerm((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
         !
         !       Viscous terms in k-direction.
         !

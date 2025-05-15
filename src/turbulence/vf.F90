@@ -12,17 +12,12 @@ contains
         use iteration
         use utils, only: setPointers
         use turbUtils, only: vfEddyViscosity, vfScale, unsteadyTurbTerm
-        use turbBCRoutines, only: bcTurbTreatment, applyAllTurbBCThisBlock
 
         implicit none
         !
         !      Subroutine argument.
         !
         logical, intent(in) :: resOnly
-
-        ! Set the arrays for the boundary condition treatment.
-
-        call bcTurbTreatment
 
         ! Compute time and length scale
 
@@ -46,12 +41,6 @@ contains
             ! Compute the corresponding eddy viscosity.
 
             call vfEddyViscosity(2, il, 2, jl, 2, kl)
-
-            ! Set the halo values for the turbulent variables.
-            ! We are on the finest mesh, so the second layer of halo
-            ! cells must be computed as well.
-
-            call applyAllTurbBCThisBlock(.true.)
 
         end if
 
@@ -188,9 +177,9 @@ contains
         !       Advection and unsteady terms.
         !
         nn = itu3 - 1
-        call turbAdvection(2_intType, 1_intType, nn, qq)
+        call turbAdvection((/itu3/), (/idvt/), 2, qq)
 
-        call unsteadyTurbTerm(2_intType, 1_intType, nn, qq)
+        call unsteadyTurbTerm((/itu3/), (/idvt/), 2, qq)
         !
         !       Viscous terms in k-direction.
         !
@@ -1163,9 +1152,9 @@ contains
         !       Advection and unsteady terms.
         !
         nn = itu1 - 1
-        call turbAdvection(2_intType, 2_intType, nn, qq)
+        call turbAdvection((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
 
-        call unsteadyTurbTerm(2_intType, 2_intType, nn, qq)
+        call unsteadyTurbTerm((/itu1,itu2/), (/idvt,idvt+1/), 2, qq)
         !
         !       Viscous terms in k-direction.
         !

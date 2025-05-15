@@ -1264,6 +1264,11 @@ contains
 
             ! !===============================================================
 
+        case (menterSST, langtrymenterSST) ! this is a hack and should be implemented properly
+            call readTurbKwType(nTypeMismatch)
+
+            ! !===============================================================
+
             ! case (komegaWilcox, komegaModified, menterSST, ktau)
             !   call readTurbKwType(nTypeMismatch)
 

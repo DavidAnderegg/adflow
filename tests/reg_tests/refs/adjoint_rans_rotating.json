@@ -1,5 +1,4 @@
 {
-    "Adjoint States": 0.0,
     "Eval Functions Sens:": {
         "mdo_tutorial_fy": {
             "T_mdo_tutorial": 0.0009508864923091359,
@@ -261,7 +260,7 @@
         "ANKTurbCFLScale": 1.0,
         "ANKTurbKSPDebug": false,
         "ANKUnsteadyLSTol": 1.0,
-        "ANKUseApproxSA": false,
+        "ANKUseApproxTurb": false,
         "ANKUseFullVisc": true,
         "ANKUseMatrixFree": true,
         "ANKUseTurbDADI": true,

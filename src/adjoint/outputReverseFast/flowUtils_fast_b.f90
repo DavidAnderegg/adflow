@@ -391,18 +391,20 @@ contains
     use blockpointers
     use flowvarrefstate
     use inputphysics
+    use utils_fast_b, only : getcorrectfork
     implicit none
 ! input parameter
     logical, intent(in) :: includehalos
 ! local variables
     integer(kind=inttype) :: i, j, k, ii
-    real(kind=realtype) :: gm1, v2
+    real(kind=realtype) :: gm1, v2, factk, pp
     integer(kind=inttype) :: ibeg, iend, isize, jbeg, jend, jsize, kbeg&
 &   , kend, ksize
     intrinsic mod
     intrinsic max
 ! compute the pressures
     gm1 = gammaconstant - one
+    factk = five*third - gammaconstant
     if (includehalos) then
       ibeg = 0
       jbeg = 0
@@ -427,13 +429,27 @@ contains
       j = mod(ii/isize, jsize) + jbeg
       k = ii/(isize*jsize) + kbeg
       v2 = w(i, j, k, ivx)**2 + w(i, j, k, ivy)**2 + w(i, j, k, ivz)**2
-      p(i, j, k) = gm1*(w(i, j, k, irhoe)-half*w(i, j, k, irho)*v2)
-      if (p(i, j, k) .lt. 1.e-4_realtype*pinfcorr) then
+      pp = gm1*(w(i, j, k, irhoe)-half*w(i, j, k, irho)*v2)
+      if (pp .lt. 1.e-4_realtype*pinfcorr) then
         p(i, j, k) = 1.e-4_realtype*pinfcorr
       else
-        p(i, j, k) = p(i, j, k)
+        p(i, j, k) = pp
       end if
     end do
+! apply correction for k in a separate loop
+    if (getcorrectfork()) then
+      isize = iend - ibeg + 1
+      jsize = jend - jbeg + 1
+      ksize = kend - kbeg + 1
+!$ad ii-loop
+      do ii=0,isize*jsize*ksize-1
+        i = mod(ii, isize) + ibeg
+        j = mod(ii/isize, jsize) + jbeg
+        k = ii/(isize*jsize) + kbeg
+        p(i, j, k) = p(i, j, k) + factk*w(i, j, k, irho)*w(i, j, k, itu1&
+&         )
+      end do
+    end if
   end subroutine computepressuresimple
 
   subroutine computepressure(ibeg, iend, jbeg, jend, kbeg, kend, &
@@ -671,7 +687,7 @@ contains
 !      local variables.
 !
     integer(kind=inttype) :: i, j, k, ii
-    real(kind=realtype) :: musuth, tsuth, ssuth, t, pp
+    real(kind=realtype) :: musuth, tsuth, ssuth, t, pp, correction
     logical :: correctfork
     integer(kind=inttype) :: ibeg, iend, isize, jbeg, jend, jsize, kbeg&
 &   , kend, ksize
@@ -713,7 +729,12 @@ contains
           i = mod(ii, isize) + ibeg
           j = mod(ii/isize, jsize) + jbeg
           k = ii/(isize*jsize) + kbeg
-          pp = p(i, j, k) - twothird*w(i, j, k, irho)*w(i, j, k, itu1)
+          pp = p(i, j, k)
+          correction = twothird*w(i, j, k, irho)*w(i, j, k, itu1)
+          if (pp .gt. correction) then
+! only subtract the correction when we dont produce a negative number
+            pp = pp - correction
+          end if
           t = pp/(rgas*w(i, j, k, irho))
           rlv(i, j, k) = musuth*((tsuth+ssuth)/(t+ssuth))*(t/tsuth)**&
 &           1.5_realtype

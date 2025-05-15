@@ -2,10 +2,11 @@ module turbUtils
 
 contains
 
-    subroutine prodKatoLaunder
+    subroutine prodKatoLaunder(iBeg, iEnd, jBeg, jEnd, kBeg, kEnd, scratchIndex)
         !
         !       prodKatoLaunder computes the turbulent production term using
         !       the Kato-Launder formulation.
+        !       Should ALWAYS be called with Beg>1 and <End!
         !
         use constants
         use blockPointers, only: nx, ny, nz, il, jl, kl, w, si, sj, sk, vol, sectionID, scratch
@@ -14,9 +15,13 @@ contains
         use turbMod, only: prod
         implicit none
         !
+        !      Subroutine arguments.
+        !
+        integer(kind=intType), intent(in) :: iBeg, iEnd, jBeg, jEnd, kBeg, kEnd, scratchIndex
+        !
         !      Local variables.
         !
-        integer(kind=intType) :: i, j, k, ii
+        integer(kind=intType) :: i, j, k, ii, iSize, jSize, kSize
 
         real(kind=realType) :: uux, uuy, uuz, vvx, vvy, vvz, wwx, wwy, wwz
         real(kind=realType) :: qxx, qyy, qzz, qxy, qxz, qyz, sijsij
@@ -40,15 +45,19 @@ contains
         ! but in that case the gradients for u, v and w must be stored.
         ! In the current approach no extra memory is needed.
 #ifdef TAPENADE_REVERSE
+        iSize = (iEnd - iBeg) + 1
+        jSize = (jEnd - jBeg) + 1
+        kSize = (kEnd - kBeg) + 1
+
         !$AD II-LOOP
-        do ii = 0, nx * ny * nz - 1
-            i = mod(ii, nx) + 2
-            j = mod(ii / nx, ny) + 2
-            k = ii / (nx * ny) + 2
+        do ii = 0, iSize * jSize * kSize - 1
+            i = mod(ii, iSize) + iBeg
+            j = mod(ii / iSize, jSize) + jBeg
+            k = ii / ((iSize * jSize)) + kBeg
 #else
-            do k = 2, kl
-                do j = 2, jl
-                    do i = 2, il
+            do k = kBeg, kEnd
+                do j = jBeg, jEnd
+                    do i = iBeg, iEnd
 #endif
 
                         ! Compute the gradient of u in the cell center. Use is made
@@ -116,7 +125,7 @@ contains
 
                         ! Compute the production term.
 
-                        scratch(i, j, k, iprod) = two * sqrt(sijsij * oijoij)
+                        scratch(i, j, k, scratchIndex) = two * sqrt(sijsij * oijoij)
 #ifdef TAPENADE_REVERSE
                     end do
 #else
@@ -126,17 +135,22 @@ contains
 #endif
     end subroutine prodKatoLaunder
 
-    subroutine prodSmag2
+    subroutine prodSmag2(iBeg, iEnd, jBeg, jEnd, kBeg, kEnd, scratchIndex)
         !
         !       prodSmag2 computes the term:
         !              2*sij*sij - 2/3 div(u)**2 with  sij=0.5*(duidxj+dujdxi)
         !       which is used for the turbulence equations.
         !       It is assumed that the pointer prod, stored in turbMod, is
         !       already set to the correct entry.
+        !       Should ALWAYS be called with Beg>1 and <End!
         !
         use constants
         use blockPointers, only: nx, ny, nz, il, jl, kl, w, si, sj, sk, vol, sectionID, scratch
         implicit none
+        !
+        !      Subroutine arguments.
+        !
+        integer(kind=intType), intent(in) :: iBeg, iEnd, jBeg, jEnd, kBeg, kEnd, scratchIndex
         !
         !      Local parameter
         !
@@ -144,7 +158,7 @@ contains
         !
         !      Local variables.
         !
-        integer(kind=intType) :: i, j, k, ii
+        integer(kind=intType) :: i, j, k, ii, iSize, jSize, kSize
         real(kind=realType) :: uux, uuy, uuz, vvx, vvy, vvz, wwx, wwy, wwz
         real(kind=realType) :: div2, fact, sxx, syy, szz, sxy, sxz, syz
 
@@ -154,15 +168,19 @@ contains
         ! In the current approach no extra memory is needed.
 
 #ifdef TAPENADE_REVERSE
+        iSize = (iEnd - iBeg) + 1
+        jSize = (jEnd - jBeg) + 1
+        kSize = (kEnd - kBeg) + 1
+
         !$AD II-LOOP
-        do ii = 0, nx * ny * nz - 1
-            i = mod(ii, nx) + 2
-            j = mod(ii / nx, ny) + 2
-            k = ii / (nx * ny) + 2
+        do ii = 0, iSize * jSize * kSize - 1
+            i = mod(ii, iSize) + iBeg
+            j = mod(ii / iSize, jSize) + jBeg
+            k = ii / ((iSize * jSize)) + kBeg
 #else
-            do k = 2, kl
-                do j = 2, jl
-                    do i = 2, il
+            do k = kBeg, kEnd
+                do j = jBeg, jEnd
+                    do i = iBeg, iEnd
 #endif
 
                         ! Compute the gradient of u in the cell center. Use is made
@@ -225,7 +243,7 @@ contains
 
                         ! Store the square of strain as the production term.
 
-                        scratch(i, j, k, iprod) = two * (two * (sxy**2 + sxz**2 + syz**2) &
+                        scratch(i, j, k, scratchIndex) = two * (two * (sxy**2 + sxz**2 + syz**2) &
                                                          + sxx**2 + syy**2 + szz**2) - div2
 #ifdef TAPENADE_REVERSE
                     end do
@@ -236,13 +254,14 @@ contains
 #endif
     end subroutine prodSmag2
 
-    subroutine prodWmag2
+    subroutine prodWmag2(iBeg, iEnd, jBeg, jEnd, kBeg, kEnd, scratchIndex)
         !
         !       prodWmag2 computes the term:
         !          2*oij*oij  with oij=0.5*(duidxj - dujdxi).
         !       This is equal to the magnitude squared of the vorticity.
         !       It is assumed that the pointer vort, stored in turbMod, is
         !       already set to the correct entry.
+        !       Should ALWAYS be called with Beg>1 and <End!
         !
         use constants
         use blockPointers, only: nx, ny, nz, il, jl, kl, w, si, sj, sk, vol, sectionID, scratch
@@ -250,9 +269,13 @@ contains
         use section, only: sections
         implicit none
         !
+        !      Subroutine arguments.
+        !
+        integer(kind=intType), intent(in) :: iBeg, iEnd, jBeg, jEnd, kBeg, kEnd, scratchIndex
+        !
         !      Local variables.
         !
-        integer :: i, j, k, ii
+        integer(kind=intType) :: i, j, k, ii, iSize, jSize, kSize
 
         real(kind=realType) :: uuy, uuz, vvx, vvz, wwx, wwy
         real(kind=realType) :: fact, vortx, vorty, vortz
@@ -269,15 +292,19 @@ contains
         ! but in that case the gradients for u, v and w must be stored.
         ! In the current approach no extra memory is needed.
 #ifdef TAPENADE_REVERSE
+        iSize = (iEnd - iBeg) + 1
+        jSize = (jEnd - jBeg) + 1
+        kSize = (kEnd - kBeg) + 1
+
         !$AD II-LOOP
-        do ii = 0, nx * ny * nz - 1
-            i = mod(ii, nx) + 2
-            j = mod(ii / nx, ny) + 2
-            k = ii / (nx * ny) + 2
+        do ii = 0, iSize * jSize * kSize - 1
+            i = mod(ii, iSize) + iBeg
+            j = mod(ii / iSize, jSize) + jBeg
+            k = ii / ((iSize * jSize)) + kBeg
 #else
-            do k = 2, kl
-                do j = 2, jl
-                    do i = 2, il
+            do k = kBeg, kEnd
+                do j = jBeg, jEnd
+                    do i = iBeg, iEnd
 #endif
 
                         ! Compute the necessary derivatives of u in the cell center.
@@ -321,7 +348,7 @@ contains
 
                         ! Compute the magnitude squared of the vorticity.
 
-                        scratch(i, j, k, ivort) = vortx**2 + vorty**2 + vortz**2
+                        scratch(i, j, k, scratchIndex) = vortx**2 + vorty**2 + vortz**2
 #ifdef TAPENADE_REVERSE
                     end do
 #else
@@ -330,6 +357,118 @@ contains
         end do
 #endif
     end subroutine prodWmag2
+
+    subroutine strainNorm2(iBeg, iEnd, jBeg, jEnd, kBeg, kEnd, scratchIndex)
+        !
+        !       strainNorm computes the term:
+        !              2*sij*sij  with  sij=0.5*(duidxj+dujdxi)
+        !       which is used for the eddy viscosity.
+        !       It is assumed that the pointer prod, stored in turbMod, is
+        !       already set to the correct entry.
+        !       Should ALWAYS be called with Beg>1 and <End!
+        !
+        use constants
+        use blockPointers, only: nx, ny, nz, il, jl, kl, w, si, sj, sk, vol, sectionID, scratch
+        implicit none
+        !
+        !      Subroutine arguments.
+        !
+        integer(kind=intType), intent(in) :: iBeg, iEnd, jBeg, jEnd, kBeg, kEnd, scratchIndex
+        !
+        !      Local variables.
+        !
+        integer(kind=intType) :: i, j, k, ii, iSize, jSize, kSize
+        real(kind=realType) :: uux, uuy, uuz, vvx, vvy, vvz, wwx, wwy, wwz
+        real(kind=realType) :: div2, fact, sxx, syy, szz, sxy, sxz, syz
+
+        ! Loop over the cell centers of the given block. It may be more
+        ! efficient to loop over the faces and to scatter the gradient,
+        ! but in that case the gradients for u, v and w must be stored.
+        ! In the current approach no extra memory is needed.
+
+#ifdef TAPENADE_REVERSE
+        iSize = (iEnd - iBeg) + 1
+        jSize = (jEnd - jBeg) + 1
+        kSize = (kEnd - kBeg) + 1
+
+        !$AD II-LOOP
+        do ii = 0, iSize * jSize * kSize - 1
+            i = mod(ii, iSize) + iBeg
+            j = mod(ii / iSize, jSize) + jBeg
+            k = ii / ((iSize * jSize)) + kBeg
+#else
+            do k = kBeg, kEnd
+                do j = jBeg, jEnd
+                    do i = iBeg, iEnd
+#endif
+
+                        ! Compute the gradient of u in the cell center. Use is made
+                        ! of the fact that the surrounding normals sum up to zero,
+                        ! such that the cell i,j,k does not give a contribution.
+                        ! The gradient is scaled by the factor 2*vol.
+
+                        uux = w(i + 1, j, k, ivx) * si(i, j, k, 1) - w(i - 1, j, k, ivx) * si(i - 1, j, k, 1) &
+                              + w(i, j + 1, k, ivx) * sj(i, j, k, 1) - w(i, j - 1, k, ivx) * sj(i, j - 1, k, 1) &
+                              + w(i, j, k + 1, ivx) * sk(i, j, k, 1) - w(i, j, k - 1, ivx) * sk(i, j, k - 1, 1)
+                        uuy = w(i + 1, j, k, ivx) * si(i, j, k, 2) - w(i - 1, j, k, ivx) * si(i - 1, j, k, 2) &
+                              + w(i, j + 1, k, ivx) * sj(i, j, k, 2) - w(i, j - 1, k, ivx) * sj(i, j - 1, k, 2) &
+                              + w(i, j, k + 1, ivx) * sk(i, j, k, 2) - w(i, j, k - 1, ivx) * sk(i, j, k - 1, 2)
+                        uuz = w(i + 1, j, k, ivx) * si(i, j, k, 3) - w(i - 1, j, k, ivx) * si(i - 1, j, k, 3) &
+                              + w(i, j + 1, k, ivx) * sj(i, j, k, 3) - w(i, j - 1, k, ivx) * sj(i, j - 1, k, 3) &
+                              + w(i, j, k + 1, ivx) * sk(i, j, k, 3) - w(i, j, k - 1, ivx) * sk(i, j, k - 1, 3)
+
+                        ! Idem for the gradient of v.
+
+                        vvx = w(i + 1, j, k, ivy) * si(i, j, k, 1) - w(i - 1, j, k, ivy) * si(i - 1, j, k, 1) &
+                              + w(i, j + 1, k, ivy) * sj(i, j, k, 1) - w(i, j - 1, k, ivy) * sj(i, j - 1, k, 1) &
+                              + w(i, j, k + 1, ivy) * sk(i, j, k, 1) - w(i, j, k - 1, ivy) * sk(i, j, k - 1, 1)
+                        vvy = w(i + 1, j, k, ivy) * si(i, j, k, 2) - w(i - 1, j, k, ivy) * si(i - 1, j, k, 2) &
+                              + w(i, j + 1, k, ivy) * sj(i, j, k, 2) - w(i, j - 1, k, ivy) * sj(i, j - 1, k, 2) &
+                              + w(i, j, k + 1, ivy) * sk(i, j, k, 2) - w(i, j, k - 1, ivy) * sk(i, j, k - 1, 2)
+                        vvz = w(i + 1, j, k, ivy) * si(i, j, k, 3) - w(i - 1, j, k, ivy) * si(i - 1, j, k, 3) &
+                              + w(i, j + 1, k, ivy) * sj(i, j, k, 3) - w(i, j - 1, k, ivy) * sj(i, j - 1, k, 3) &
+                              + w(i, j, k + 1, ivy) * sk(i, j, k, 3) - w(i, j, k - 1, ivy) * sk(i, j, k - 1, 3)
+
+                        ! And for the gradient of w.
+
+                        wwx = w(i + 1, j, k, ivz) * si(i, j, k, 1) - w(i - 1, j, k, ivz) * si(i - 1, j, k, 1) &
+                              + w(i, j + 1, k, ivz) * sj(i, j, k, 1) - w(i, j - 1, k, ivz) * sj(i, j - 1, k, 1) &
+                              + w(i, j, k + 1, ivz) * sk(i, j, k, 1) - w(i, j, k - 1, ivz) * sk(i, j, k - 1, 1)
+                        wwy = w(i + 1, j, k, ivz) * si(i, j, k, 2) - w(i - 1, j, k, ivz) * si(i - 1, j, k, 2) &
+                              + w(i, j + 1, k, ivz) * sj(i, j, k, 2) - w(i, j - 1, k, ivz) * sj(i, j - 1, k, 2) &
+                              + w(i, j, k + 1, ivz) * sk(i, j, k, 2) - w(i, j, k - 1, ivz) * sk(i, j, k - 1, 2)
+                        wwz = w(i + 1, j, k, ivz) * si(i, j, k, 3) - w(i - 1, j, k, ivz) * si(i - 1, j, k, 3) &
+                              + w(i, j + 1, k, ivz) * sj(i, j, k, 3) - w(i, j - 1, k, ivz) * sj(i, j - 1, k, 3) &
+                              + w(i, j, k + 1, ivz) * sk(i, j, k, 3) - w(i, j, k - 1, ivz) * sk(i, j, k - 1, 3)
+
+                        ! Compute the components of the stress tensor.
+                        ! The combination of the current scaling of the velocity
+                        ! gradients (2*vol) and the definition of the stress tensor,
+                        ! leads to the factor 1/(4*vol).
+
+                        fact = fourth / vol(i, j, k)
+
+                        sxx = two * fact * uux
+                        syy = two * fact * vvy
+                        szz = two * fact * wwz
+
+                        sxy = fact * (uuy + vvx)
+                        sxz = fact * (uuz + wwx)
+                        syz = fact * (vvz + wwy)
+
+                        ! Store the square of strain as the production term.
+
+                        scratch(i, j, k, scratchIndex) = two * (two * (sxy**2 + sxz**2 + syz**2) &
+                                                              + sxx**2 + syy**2 + szz**2)
+#ifdef TAPENADE_REVERSE
+                    end do
+#else
+                end do
+            end do
+        end do
+#endif
+    end subroutine strainNorm2
+
     function saNuKnownEddyRatio(eddyRatio, nuLam)
         !
         !       saNuKnownEddyRatio computes the Spalart-Allmaras transport
@@ -407,7 +546,7 @@ contains
 
     end function saNuKnownEddyRatio
 
-    subroutine unsteadyTurbTerm(mAdv, nAdv, offset, qq)
+    subroutine unsteadyTurbTerm(wIndices, scratchIndices, mAdv, qq)
         !
         !       unsteadyTurbTerm discretizes the time derivative of the
         !       turbulence transport equations and add it to the residual.
@@ -415,14 +554,13 @@ contains
         !       this generic routine can be used; both the discretization of
         !       the time derivative and its contribution to the central
         !       jacobian are computed by this routine.
-        !       Only nAdv equations are treated, while the actual system has
-        !       size mAdv. The reason is that some equations for some
-        !       turbulence equations do not have a time derivative, e.g. the
-        !       f equation in the v2-f model. The argument offset indicates
-        !       the offset in the w vector where this subsystem starts. As a
-        !       consequence it is assumed that the indices of the current
-        !       subsystem are contiguous, e.g. if a 2*2 system is solved the
-        !       Last index in w is offset+1 and offset+2 respectively.
+        !
+        !       qq is an optional argument and is ignored in the code when it 
+        !       is not given. mAdv is needed to tell the routine the size of 
+        !       qq. If qq is not given, mAdv must have a dummy argument.
+        !       wIndices(:) and scratchIndices(:) tell the routine where to 
+        !       store the computed terms. Both arrays must have the same
+        !       dimension
         !
         use blockPointers
         use flowVarRefState
@@ -437,16 +575,25 @@ contains
         !
         !      Subroutine arguments.
         !
-        integer(kind=intType), intent(in) :: mAdv, nAdv, offset
-
-        real(kind=realType), dimension(2:il, 2:jl, 2:kl, mAdv, mAdv), &
-            intent(inout) :: qq
+        integer(kind=intType), intent(in), dimension(:) :: wIndices, scratchIndices
+        integer(kind=intType), intent(in) :: mAdv
+        real(kind=realType), dimension(2:il, 2:jl, 2:kl, mAdv, mAdv), intent(inout), optional :: qq
         !
         !      Local variables.
         !
-        integer(kind=intType) :: i, j, k, ii, jj, nn
+        integer(kind=intType) :: i, j, k, ii, nn, nAdv
 
         real(kind=realType) :: oneOverDt, tmp
+
+        logical :: qqPresent
+
+        ! figure out if qq is present
+        qqPresent = .False.
+        if (present(qq)) then
+            qqPresent = .True.
+        end if
+
+        nAdv = size(wIndices)
 
         ! Determine the equation mode.
 
@@ -481,10 +628,6 @@ contains
 
                 nAdvLoopUnsteady: do ii = 1, nAdv
 
-                    ! Store the index of the current turbulent variable in jj.
-
-                    jj = ii + offset
-
                     ! Loop over the owned cells of this block to compute the
                     ! time derivative.
 
@@ -496,13 +639,13 @@ contains
                                 ! level multiplied by the corresponding coefficient
                                 ! in the time integration scheme.
 
-                                tmp = coefTime(0) * w(i, j, k, jj)
+                                tmp = coefTime(0) * w(i, j, k, wIndices(ii))
 
                                 ! Loop over the old time levels and add the
                                 ! corresponding contribution to tmp.
 
                                 do nn = 1, noldLevels
-                                    tmp = tmp + coefTime(nn) * wold(nn, i, j, k, jj)
+                                    tmp = tmp + coefTime(nn) * wold(nn, i, j, k, wIndices(ii))
                                 end do
 
                                 ! Update the residual. Note that in the turbulent
@@ -511,7 +654,8 @@ contains
                                 ! Therefore the time derivative must be substracted
                                 ! from dvt.
 
-                                scratch(i, j, k, idvt + ii - 1) = scratch(i, j, k, idvt + ii - 1) - oneOverDt * tmp
+                                scratch(i, j, k, scratchIndices(ii)) = scratch(i, j, k, scratchIndices(ii)) - &
+                                    oneOverDt * tmp
 
                                 ! Update the central jacobian.
 
@@ -544,10 +688,6 @@ contains
 
             nAdvLoopSpectral: do ii = 1, nAdv
 
-                ! Store the index of the current turbulent variable in jj.
-
-                jj = ii + offset
-
                 ! The time derivative has been computed earlier in
                 ! unsteadyTurbSpectral and stored in entry jj of scratch.
                 ! Substract this value for all owned cells. It must be
@@ -565,7 +705,8 @@ contains
                 do k = 2, kl
                     do j = 2, jl
                         do i = 2, il
-                            scratch(i, j, k, idvt + ii - 1) = scratch(i, j, k, idvt + ii - 1) - dw(i, j, k, jj)
+                            scratch(i, j, k, scratchIndices(ii)) = &
+                                scratch(i, j, k, scratchIndices(ii)) - dw(i, j, k, wIndices(ii))
                             qq(i, j, k, ii, ii) = qq(i, j, k, ii, ii) + tmp
                         end do
                     end do
@@ -589,6 +730,8 @@ contains
         use inputPhysics
         use iteration
         use blockPointers
+        use turbBCRoutines, only: applyAllTurbBCThisBlock
+        use haloExchange, only: whalo1
         implicit none
 
         ! Input Parameter
@@ -598,7 +741,7 @@ contains
         !      Local variables.
         !
         logical :: returnImmediately
-        integer(kind=intType) :: iBeg, iEnd, jBeg, jEnd, kBeg, kEnd
+        integer(kind=intType) :: iBeg, iEnd, jBeg, jEnd, kBeg, kEnd, nn
 
         ! Check if an immediate return can be made.
 
@@ -632,20 +775,46 @@ contains
             kEnd = kl
         end if
 
+        ! saveguard againts using values on BC's where they might not be assinged
+        do nn = 1, nBocos
+
+            select case (BCFaceID(nn))
+
+            case (iMin)
+                iBeg = 2
+
+            case (iMax)
+                iEnd = il
+
+            case (jMin)
+                jBeg = 2
+
+            case (jMax)
+                jEnd = jl
+
+            case (kMin)
+                kBeg = 2
+
+            case (kMax)
+                kEnd = kl
+
+            end select
+        end do
+
         select case (turbModel)
 
         case (spalartAllmaras, spalartAllmarasEdwards)
             call saEddyViscosity(iBeg, iEnd, jBeg, jEnd, kBeg, kEnd)
+
+        case (menterSST)
+            call SSTEddyViscosity(iBeg, iEnd, jBeg, jEnd, kBeg, kEnd)
 #ifndef USE_TAPENADE
 
         case (v2f)
             call vfEddyViscosity(iBeg, iEnd, jBeg, jEnd, kBeg, kEnd)
+
         case (komegaWilcox, komegaModified)
             call kwEddyViscosity(iBeg, iEnd, jBeg, jEnd, kBeg, kEnd)
-
-        case (menterSST)
-            call SSTEddyViscosity(iBeg, iEnd, jBeg, jEnd, kBeg, kEnd)
-
         case (ktau)
             call ktEddyViscosity(iBeg, iEnd, jBeg, jEnd, kBeg, kEnd)
 #endif
@@ -758,11 +927,16 @@ contains
         !       SSTEddyViscosity computes the eddy viscosity according to
         !       menter's SST variant of the k-omega turbulence model for the
         !       block given in blockPointers.
+        !       Should ALWAYS be called with Beg>1 and <End! d2wall is not defined otherwise.
         !
         use constants
         use blockPointers
         use paramTurb
         use turbMod
+        use flowVarRefState, only: timeRef
+        use inputPhysics, only: use2003SST
+        use utils, only: smoothMax
+        use inputIteration, only: smoothSSTphi
         implicit none
         ! Input variables
         integer(kind=intType) :: iBeg, iEnd, jBeg, jEnd, kBeg, kEnd
@@ -770,17 +944,21 @@ contains
         !      Local variables.
         !
         integer(kind=intType) :: i, j, k, ii, iSize, jSize, kSize
-        real(kind=realType) :: t1, t2, arg2, f2, vortMag
+        real(kind=realType) :: t1, t2, arg2, f2
 
         ! Compute the vorticity squared in the cell centers. The reason
         ! for computing the vorticity squared is that a routine exists
         ! for it; for the actual eddy viscosity computation the vorticity
         ! itself is needed.
 
-        call prodWmag2
+        if (use2003SST) then
+            call strainNorm2(iBeg, iEnd, jBeg, jEnd, kBeg, kEnd, iprodAlt)
+        else
+            call prodWmag2(iBeg, iEnd, jBeg, jEnd, kBeg, kEnd, iprodAlt)
+        end if
 
         ! Loop over the cells of this block and compute the eddy viscosity.
-        ! Do not include halo's.
+        ! Most of the time, do not include halo's (iBeg=2...il,...)
 #ifdef TAPENADE_REVERSE
         iSize = (iEnd - iBeg) + 1
         jSize = (jEnd - jBeg) + 1
@@ -805,13 +983,17 @@ contains
                              / (w(i, j, k, irho) * w(i, j, k, itu2) * d2Wall(i, j, k)**2)
 
                         arg2 = max(t1, t2)
+                        call smoothMax(arg2, t1, t2, smoothSSTphi(1)) ! 1e3
                         f2 = tanh(arg2**2)
 
                         ! And compute the eddy viscosity.
+                        ! Same definition as in
+                        ! Note that https://www.cfd-online.com/Wiki/SST_k-omega_model utilizes the strain and not the vorticity
+                        t1 = rSSTA1 * w(i, j, k, itu2)
+                        t2 = f2 * sqrt(scratch(i, j, k, iprodAlt))
 
-                        vortMag = sqrt(scratch(i, j, k, iprod))
-                        rev(i, j, k) = w(i, j, k, irho) * rSSTA1 * w(i, j, k, itu1) &
-                                       / max(rSSTA1 * w(i, j, k, itu2), f2 * vortMag)
+                        call smoothMax(arg2, t1, t2, smoothSSTphi(2)) ! 1e1
+                        rev(i, j, k) = w(i, j, k, irho) * rSSTA1 * w(i, j, k, itu1)  / arg2
 #ifdef TAPENADE_REVERSE
                     end do
 #else
@@ -822,7 +1004,7 @@ contains
 
     end subroutine SSTEddyViscosity
 
-    subroutine turbAdvection(mAdv, nAdv, offset, qq)
+    subroutine turbAdvection(wIndices, scratchIndices, mAdv, qq)
         !
         !       turbAdvection discretizes the advection part of the turbulent
         !       transport equations. As the advection part is the same for all
@@ -833,14 +1015,13 @@ contains
         !       discretization. When the discretization must be second order
         !       accurate, the fully upwind (kappa = -1) scheme in combination
         !       with the minmod limiter is used.
-        !       Only nAdv equations are treated, while the actual system has
-        !       size mAdv. The reason is that some equations for some
-        !       turbulence equations do not have an advection part, e.g. the
-        !       f equation in the v2-f model. The argument offset indicates
-        !       the offset in the w vector where this subsystem starts. As a
-        !       consequence it is assumed that the indices of the current
-        !       subsystem are contiguous, e.g. if a 2*2 system is solved the
-        !       Last index in w is offset+1 and offset+2 respectively.
+        !
+        !       qq is an optional argument and is ignored in the code when it 
+        !       is not given. mAdv is needed to tell the routine the size of 
+        !       qq. If qq is not given, mAdv must have a dummy argument.
+        !       wIndices(:) and scratchIndices(:) tell the routine where to 
+        !       store the computed terms. Both arrays must have the same
+        !       dimension
         !
         use constants
         use blockPointers, only: nx, ny, nz, il, jl, kl, vol, sfaceI, sfaceJ, sfaceK, &
@@ -853,19 +1034,27 @@ contains
         !
         !      Subroutine arguments.
         !
-        integer(kind=intType), intent(in) :: nAdv, mAdv, offset
+        integer(kind=intType), intent(in), dimension(:) :: wIndices, scratchIndices
 
-        real(kind=realType), dimension(2:il, 2:jl, 2:kl, mAdv, mAdv), &
-            intent(inout) :: qq
+        integer(kind=intType), intent(in) :: mAdv
+        real(kind=realType), dimension(2:il, 2:jl, 2:kl, mAdv, mAdv), intent(inout), optional :: qq
         !
         !      Local variables.
         !
-        integer(kind=intType) :: i, j, k, ii, jj, kk, iii
+        integer(kind=intType) :: i, j, k, ii, kk, iii, nAdv
 
         real(kind=realType) :: qs, voli, xa, ya, za
-        real(kind=realType) :: uu, dwt, dwtm1, dwtp1, dwti, dwtj, dwtk
+        real(kind=realType) :: uu, dwt, dwtm1, dwtp1, dwti, dwtj, dwtk, tmp
+        
+        logical :: qqPresent
 
-        real(kind=realType), dimension(mAdv) :: impl
+        ! figure out if qq is present
+        qqPresent = .False.
+        if (present(qq)) then
+            qqPresent = .True.
+        end if
+
+        nAdv = size(wIndices)
 
         ! Determine whether or not a second order discretization for the
         ! advective terms must be used.
@@ -923,11 +1112,6 @@ contains
                             !$AD II-LOOP
                             do ii = 1, nAdv
 
-                                ! Set the value of jj such that it corresponds to the
-                                ! turbulent entry in w.
-
-                                jj = ii + offset
-
                                 ! Check whether a first or a second order discretization
                                 ! must be used.
 
@@ -936,9 +1120,9 @@ contains
                                     ! Second order; store the three differences for the
                                     ! discretization of the derivative in k-direction.
 
-                                    dwtm1 = w(i, j, k - 1, jj) - w(i, j, k - 2, jj)
-                                    dwt = w(i, j, k, jj) - w(i, j, k - 1, jj)
-                                    dwtp1 = w(i, j, k + 1, jj) - w(i, j, k, jj)
+                                    dwtm1 = w(i, j, k - 1, wIndices(ii)) - w(i, j, k - 2, wIndices(ii))
+                                    dwt = w(i, j, k, wIndices(ii)) - w(i, j, k - 1, wIndices(ii))
+                                    dwtp1 = w(i, j, k + 1, wIndices(ii)) - w(i, j, k, wIndices(ii))
 
                                     ! Construct the derivative in this cell center. This
                                     ! is the first order upwind derivative with two
@@ -966,7 +1150,7 @@ contains
 
                                     ! 1st order upwind scheme.
 
-                                    dwtk = w(i, j, k, jj) - w(i, j, k - 1, jj)
+                                    dwtk = w(i, j, k, wIndices(ii)) - w(i, j, k - 1, wIndices(ii))
 
                                 end if
 
@@ -975,30 +1159,28 @@ contains
                                 ! the equation as the source and viscous terms.
                                 ! uu*dwtk = (V.dot.face_normal)*delta(nuTilde)/delta(x)
 
-                                scratch(i, j, k, idvt + ii - 1) = scratch(i, j, k, idvt + ii - 1) - uu * dwtk
+                                scratch(i, j, k, scratchIndices(ii)) = scratch(i, j, k, scratchIndices(ii)) - uu * dwtk
 #ifndef USE_TAPENADE
-                                ! Update the central jacobian. First the term which is
-                                ! always present, i.e. uu.
+                                if (qqPresent) then
+                                    ! Update the central jacobian. First the term which is
+                                    ! always present, i.e. uu.
 
-                                qq(i, j, k, ii, ii) = qq(i, j, k, ii, ii) + uu
+                                    qq(i, j, k, ii, ii) = qq(i, j, k, ii, ii) + uu
 
-                                ! For boundary cells k == 2, the implicit treatment must
-                                ! be taken into account. Note that the implicit part
-                                ! is only based on the 1st order discretization.
-                                ! To improve stability the diagonal term is only taken
-                                ! into account when it improves stability, i.e. when
-                                ! it is positive.
+                                    ! For boundary cells k == 2, the implicit treatment must
+                                    ! be taken into account. Note that the implicit part
+                                    ! is only based on the 1st order discretization.
+                                    ! To improve stability the diagonal term is only taken
+                                    ! into account when it improves stability, i.e. when
+                                    ! it is positive.
 
-                                if (k == 2) then
-                                    do kk = 1, mAdv
-                                        impl(kk) = bmtk1(i, j, jj, kk + offset)
-                                    end do
-
-                                    impl(ii) = max(impl(ii), zero)
-
-                                    do kk = 1, mAdv
-                                        qq(i, j, k, ii, kk) = qq(i, j, k, ii, kk) + uu * impl(kk)
-                                    end do
+                                    if (k == 2) then
+                                        do kk = 1, mAdv
+                                            tmp = bmtk1(i, j, wIndices(ii), wIndices(kk))
+                                            tmp = max(tmp, zero)
+                                            qq(i, j, k, ii, kk) = qq(i, j, k, ii, kk) + uu * tmp
+                                        end do
+                                    end if
                                 end if
 #endif
 
@@ -1011,11 +1193,6 @@ contains
                             !$AD II-LOOP
                             do ii = 1, nAdv
 
-                                ! Set the value of jj such that it corresponds to the
-                                ! turbulent entry in w.
-
-                                jj = ii + offset
-
                                 ! Check whether a first or a second order discretization
                                 ! must be used.
 
@@ -1024,9 +1201,9 @@ contains
                                     ! Store the three differences for the discretization of
                                     ! the derivative in k-direction.
 
-                                    dwtm1 = w(i, j, k, jj) - w(i, j, k - 1, jj)
-                                    dwt = w(i, j, k + 1, jj) - w(i, j, k, jj)
-                                    dwtp1 = w(i, j, k + 2, jj) - w(i, j, k + 1, jj)
+                                    dwtm1 = w(i, j, k, wIndices(ii)) - w(i, j, k - 1, wIndices(ii))
+                                    dwt = w(i, j, k + 1, wIndices(ii)) - w(i, j, k, wIndices(ii))
+                                    dwtp1 = w(i, j, k + 2, wIndices(ii)) - w(i, j, k + 1, wIndices(ii))
 
                                     ! Construct the derivative in this cell center. This is
                                     ! the first order upwind derivative with two nonlinear
@@ -1054,7 +1231,7 @@ contains
 
                                     ! 1st order upwind scheme.
 
-                                    dwtk = w(i, j, k + 1, jj) - w(i, j, k, jj)
+                                    dwtk = w(i, j, k + 1, wIndices(ii)) - w(i, j, k, wIndices(ii))
 
                                 end if
 
@@ -1062,30 +1239,28 @@ contains
                                 ! substracted, because it appears on the other side
                                 ! of the equation as the source and viscous terms.
 
-                                scratch(i, j, k, idvt + ii - 1) = scratch(i, j, k, idvt + ii - 1) - uu * dwtk
+                                scratch(i, j, k, scratchIndices(ii)) = scratch(i, j, k, scratchIndices(ii)) - uu * dwtk
 
                                 ! Update the central jacobian. First the term which is
                                 ! always present, i.e. -uu.
 #ifndef USE_TAPENADE
-                                qq(i, j, k, ii, ii) = qq(i, j, k, ii, ii) - uu
+                                if (qqPresent) then
+                                    qq(i, j, k, ii, ii) = qq(i, j, k, ii, ii) - uu
 
-                                ! For boundary cells k == kl, the implicit treatment must
-                                ! be taken into account. Note that the implicit part
-                                ! is only based on the 1st order discretization.
-                                ! To improve stability the diagonal term is only taken
-                                ! into account when it improves stability, i.e. when
-                                ! it is positive.
+                                    ! For boundary cells k == kl, the implicit treatment must
+                                    ! be taken into account. Note that the implicit part
+                                    ! is only based on the 1st order discretization.
+                                    ! To improve stability the diagonal term is only taken
+                                    ! into account when it improves stability, i.e. when
+                                    ! it is positive.
 
-                                if (k == kl) then
-                                    do kk = 1, mAdv
-                                        impl(kk) = bmtk2(i, j, jj, kk + offset)
-                                    end do
-
-                                    impl(ii) = max(impl(ii), zero)
-
-                                    do kk = 1, mAdv
-                                        qq(i, j, k, ii, kk) = qq(i, j, k, ii, kk) - uu * impl(kk)
-                                    end do
+                                    if (k == kl) then
+                                        do kk = 1, mAdv
+                                            tmp = bmtk2(i, j, wIndices(ii), wIndices(kk))
+                                            tmp = max(tmp, zero)
+                                            qq(i, j, k, ii, kk) = qq(i, j, k, ii, kk) - uu * tmp
+                                        end do
+                                    end if
                                 end if
 #endif
                             end do
@@ -1148,11 +1323,6 @@ contains
                             !$AD II-LOOP
                             do ii = 1, nAdv
 
-                                ! Set the value of jj such that it corresponds to the
-                                ! turbulent entry in w.
-
-                                jj = ii + offset
-
                                 ! Check whether a first or a second order discretization
                                 ! must be used.
 
@@ -1161,9 +1331,9 @@ contains
                                     ! Second order; store the three differences for the
                                     ! discretization of the derivative in j-direction.
 
-                                    dwtm1 = w(i, j - 1, k, jj) - w(i, j - 2, k, jj)
-                                    dwt = w(i, j, k, jj) - w(i, j - 1, k, jj)
-                                    dwtp1 = w(i, j + 1, k, jj) - w(i, j, k, jj)
+                                    dwtm1 = w(i, j - 1, k, wIndices(ii)) - w(i, j - 2, k, wIndices(ii))
+                                    dwt = w(i, j, k, wIndices(ii)) - w(i, j - 1, k, wIndices(ii))
+                                    dwtp1 = w(i, j + 1, k, wIndices(ii)) - w(i, j, k, wIndices(ii))
 
                                     ! Construct the derivative in this cell center. This is
                                     ! the first order upwind derivative with two nonlinear
@@ -1191,7 +1361,7 @@ contains
 
                                     ! 1st order upwind scheme.
 
-                                    dwtj = w(i, j, k, jj) - w(i, j - 1, k, jj)
+                                    dwtj = w(i, j, k, wIndices(ii)) - w(i, j - 1, k, wIndices(ii))
 
                                 end if
 
@@ -1199,30 +1369,28 @@ contains
                                 ! substracted, because it appears on the other side of
                                 ! the equation as the source and viscous terms.
 
-                                scratch(i, j, k, idvt + ii - 1) = scratch(i, j, k, idvt + ii - 1) - uu * dwtj
+                                scratch(i, j, k, scratchIndices(ii)) = scratch(i, j, k, scratchIndices(ii)) - uu * dwtj
 
                                 ! Update the central jacobian. First the term which is
                                 ! always present, i.e. uu.
 #ifndef USE_TAPENADE
-                                qq(i, j, k, ii, ii) = qq(i, j, k, ii, ii) + uu
+                                if (qqPresent) then
+                                    qq(i, j, k, ii, ii) = qq(i, j, k, ii, ii) + uu
 
-                                ! For boundary cells j == 2, the implicit treatment must
-                                ! be taken into account. Note that the implicit part
-                                ! is only based on the 1st order discretization.
-                                ! To improve stability the diagonal term is only taken
-                                ! into account when it improves stability, i.e. when
-                                ! it is positive.
+                                    ! For boundary cells j == 2, the implicit treatment must
+                                    ! be taken into account. Note that the implicit part
+                                    ! is only based on the 1st order discretization.
+                                    ! To improve stability the diagonal term is only taken
+                                    ! into account when it improves stability, i.e. when
+                                    ! it is positive.
 
-                                if (j == 2) then
-                                    do kk = 1, mAdv
-                                        impl(kk) = bmtj1(i, k, jj, kk + offset)
-                                    end do
-
-                                    impl(ii) = max(impl(ii), zero)
-
-                                    do kk = 1, mAdv
-                                        qq(i, j, k, ii, kk) = qq(i, j, k, ii, kk) + uu * impl(kk)
-                                    end do
+                                    if (j == 2) then
+                                        do kk = 1, mAdv
+                                            tmp = bmtj1(i, k, wIndices(ii), wIndices(kk))
+                                            tmp = max(tmp, zero)
+                                            qq(i, j, k, ii, kk) = qq(i, j, k, ii, kk) + uu * tmp
+                                        end do
+                                    end if
                                 end if
 #endif
                             end do
@@ -1234,11 +1402,6 @@ contains
                             !$AD II-LOOP
                             do ii = 1, nAdv
 
-                                ! Set the value of jj such that it corresponds to the
-                                ! turbulent entry in w.
-
-                                jj = ii + offset
-
                                 ! Check whether a first or a second order discretization
                                 ! must be used.
 
@@ -1247,9 +1410,9 @@ contains
                                     ! Store the three differences for the discretization of
                                     ! the derivative in j-direction.
 
-                                    dwtm1 = w(i, j, k, jj) - w(i, j - 1, k, jj)
-                                    dwt = w(i, j + 1, k, jj) - w(i, j, k, jj)
-                                    dwtp1 = w(i, j + 2, k, jj) - w(i, j + 1, k, jj)
+                                    dwtm1 = w(i, j, k, wIndices(ii)) - w(i, j - 1, k, wIndices(ii))
+                                    dwt = w(i, j + 1, k, wIndices(ii)) - w(i, j, k, wIndices(ii))
+                                    dwtp1 = w(i, j + 2, k, wIndices(ii)) - w(i, j + 1, k, wIndices(ii))
 
                                     ! Construct the derivative in this cell center. This is
                                     ! the first order upwind derivative with two nonlinear
@@ -1277,7 +1440,7 @@ contains
 
                                     ! 1st order upwind scheme.
 
-                                    dwtj = w(i, j + 1, k, jj) - w(i, j, k, jj)
+                                    dwtj = w(i, j + 1, k, wIndices(ii)) - w(i, j, k, wIndices(ii))
 
                                 end if
 
@@ -1285,30 +1448,28 @@ contains
                                 ! substracted, because it appears on the other side
                                 ! of the equation as the source and viscous terms.
 
-                                scratch(i, j, k, idvt + ii - 1) = scratch(i, j, k, idvt + ii - 1) - uu * dwtj
+                                scratch(i, j, k, scratchIndices(ii)) = scratch(i, j, k, scratchIndices(ii)) - uu * dwtj
 
                                 ! Update the central jacobian. First the term which is
                                 ! always present, i.e. -uu.
 #ifndef USE_TAPENADE
-                                qq(i, j, k, ii, ii) = qq(i, j, k, ii, ii) - uu
+                                if (qqPresent) then
+                                    qq(i, j, k, ii, ii) = qq(i, j, k, ii, ii) - uu
 
-                                ! For boundary cells j == jl, the implicit treatment must
-                                ! be taken into account. Note that the implicit part
-                                ! is only based on the 1st order discretization.
-                                ! To improve stability the diagonal term is only taken
-                                ! into account when it improves stability, i.e. when
-                                ! it is positive.
+                                    ! For boundary cells j == jl, the implicit treatment must
+                                    ! be taken into account. Note that the implicit part
+                                    ! is only based on the 1st order discretization.
+                                    ! To improve stability the diagonal term is only taken
+                                    ! into account when it improves stability, i.e. when
+                                    ! it is positive.
 
-                                if (j == jl) then
-                                    do kk = 1, mAdv
-                                        impl(kk) = bmtj2(i, k, jj, kk + offset)
-                                    end do
-
-                                    impl(ii) = max(impl(ii), zero)
-
-                                    do kk = 1, mAdv
-                                        qq(i, j, k, ii, kk) = qq(i, j, k, ii, kk) - uu * impl(kk)
-                                    end do
+                                    if (j == jl) then
+                                        do kk = 1, mAdv
+                                            tmp = bmtj2(i, k, wIndices(ii), wIndices(kk))
+                                            tmp = max(tmp, zero)
+                                            qq(i, j, k, ii, kk) = qq(i, j, k, ii, kk) - uu * tmp
+                                        end do
+                                    end if
                                 end if
 #endif
                             end do
@@ -1371,11 +1532,6 @@ contains
                             !$AD II-LOOP
                             do ii = 1, nAdv
 
-                                ! Set the value of jj such that it corresponds to the
-                                ! turbulent entry in w.
-
-                                jj = ii + offset
-
                                 ! Check whether a first or a second order discretization
                                 ! must be used.
 
@@ -1384,9 +1540,9 @@ contains
                                     ! Second order; store the three differences for the
                                     ! discretization of the derivative in i-direction.
 
-                                    dwtm1 = w(i - 1, j, k, jj) - w(i - 2, j, k, jj)
-                                    dwt = w(i, j, k, jj) - w(i - 1, j, k, jj)
-                                    dwtp1 = w(i + 1, j, k, jj) - w(i, j, k, jj)
+                                    dwtm1 = w(i - 1, j, k, wIndices(ii)) - w(i - 2, j, k, wIndices(ii))
+                                    dwt = w(i, j, k, wIndices(ii)) - w(i - 1, j, k, wIndices(ii))
+                                    dwtp1 = w(i + 1, j, k, wIndices(ii)) - w(i, j, k, wIndices(ii))
 
                                     ! Construct the derivative in this cell center. This is
                                     ! the first order upwind derivative with two nonlinear
@@ -1414,7 +1570,7 @@ contains
 
                                     ! 1st order upwind scheme.
 
-                                    dwti = w(i, j, k, jj) - w(i - 1, j, k, jj)
+                                    dwti = w(i, j, k, wIndices(ii)) - w(i - 1, j, k, wIndices(ii))
 
                                 end if
 
@@ -1422,30 +1578,28 @@ contains
                                 ! substracted, because it appears on the other side of
                                 ! the equation as the source and viscous terms.
 
-                                scratch(i, j, k, idvt + ii - 1) = scratch(i, j, k, idvt + ii - 1) - uu * dwti
+                                scratch(i, j, k, scratchIndices(ii)) = scratch(i, j, k, scratchIndices(ii)) - uu * dwti
 
                                 ! Update the central jacobian. First the term which is
                                 ! always present, i.e. uu.
 #ifndef USE_TAPENADE
-                                qq(i, j, k, ii, ii) = qq(i, j, k, ii, ii) + uu
+                                if (qqPresent) then
+                                    qq(i, j, k, ii, ii) = qq(i, j, k, ii, ii) + uu
 
-                                ! For boundary cells i == 2, the implicit treatment must
-                                ! be taken into account. Note that the implicit part
-                                ! is only based on the 1st order discretization.
-                                ! To improve stability the diagonal term is only taken
-                                ! into account when it improves stability, i.e. when
-                                ! it is positive.
+                                    ! For boundary cells i == 2, the implicit treatment must
+                                    ! be taken into account. Note that the implicit part
+                                    ! is only based on the 1st order discretization.
+                                    ! To improve stability the diagonal term is only taken
+                                    ! into account when it improves stability, i.e. when
+                                    ! it is positive.
 
-                                if (i == 2) then
-                                    do kk = 1, mAdv
-                                        impl(kk) = bmti1(j, k, jj, kk + offset)
-                                    end do
-
-                                    impl(ii) = max(impl(ii), zero)
-
-                                    do kk = 1, mAdv
-                                        qq(i, j, k, ii, kk) = qq(i, j, k, ii, kk) + uu * impl(kk)
-                                    end do
+                                    if (i == 2) then
+                                        do kk = 1, mAdv
+                                            tmp = bmti1(j, k, wIndices(ii), wIndices(kk))
+                                            tmp = max(tmp, zero)
+                                            qq(i, j, k, ii, kk) = qq(i, j, k, ii, kk) + uu * tmp
+                                        end do
+                                    end if
                                 end if
 #endif
                             end do
@@ -1457,11 +1611,6 @@ contains
                             !$AD II-LOOP
                             do ii = 1, nAdv
 
-                                ! Set the value of jj such that it corresponds to the
-                                ! turbulent entry in w.
-
-                                jj = ii + offset
-
                                 ! Check whether a first or a second order discretization
                                 ! must be used.
 
@@ -1470,9 +1619,9 @@ contains
                                     ! Second order; store the three differences for the
                                     ! discretization of the derivative in i-direction.
 
-                                    dwtm1 = w(i, j, k, jj) - w(i - 1, j, k, jj)
-                                    dwt = w(i + 1, j, k, jj) - w(i, j, k, jj)
-                                    dwtp1 = w(i + 2, j, k, jj) - w(i + 1, j, k, jj)
+                                    dwtm1 = w(i, j, k, wIndices(ii)) - w(i - 1, j, k, wIndices(ii))
+                                    dwt = w(i + 1, j, k, wIndices(ii)) - w(i, j, k, wIndices(ii))
+                                    dwtp1 = w(i + 2, j, k, wIndices(ii)) - w(i + 1, j, k, wIndices(ii))
 
                                     ! Construct the derivative in this cell center. This is
                                     ! the first order upwind derivative with two nonlinear
@@ -1500,7 +1649,7 @@ contains
 
                                     ! 1st order upwind scheme.
 
-                                    dwti = w(i + 1, j, k, jj) - w(i, j, k, jj)
+                                    dwti = w(i + 1, j, k, wIndices(ii)) - w(i, j, k, wIndices(ii))
 
                                 end if
 
@@ -1508,30 +1657,28 @@ contains
                                 ! substracted, because it appears on the other side
                                 ! of the equation as the source and viscous terms.
 
-                                scratch(i, j, k, idvt + ii - 1) = scratch(i, j, k, idvt + ii - 1) - uu * dwti
+                                scratch(i, j, k, scratchIndices(ii)) = scratch(i, j, k, scratchIndices(ii)) - uu * dwti
 
                                 ! Update the central jacobian. First the term which is
                                 ! always present, i.e. -uu.
 #ifndef USE_TAPENADE
-                                qq(i, j, k, ii, ii) = qq(i, j, k, ii, ii) - uu
+                                if (qqPresent) then
+                                    qq(i, j, k, ii, ii) = qq(i, j, k, ii, ii) - uu
 
-                                ! For boundary cells i == il, the implicit treatment must
-                                ! be taken into account. Note that the implicit part
-                                ! is only based on the 1st order discretization.
-                                ! To improve stability the diagonal term is only taken
-                                ! into account when it improves stability, i.e. when
-                                ! it is positive.
+                                    ! For boundary cells i == il, the implicit treatment must
+                                    ! be taken into account. Note that the implicit part
+                                    ! is only based on the 1st order discretization.
+                                    ! To improve stability the diagonal term is only taken
+                                    ! into account when it improves stability, i.e. when
+                                    ! it is positive.
 
-                                if (i == il) then
-                                    do kk = 1, mAdv
-                                        impl(kk) = bmti2(j, k, jj, kk + offset)
-                                    end do
-
-                                    impl(ii) = max(impl(ii), zero)
-
-                                    do kk = 1, mAdv
-                                        qq(i, j, k, ii, kk) = qq(i, j, k, ii, kk) - uu * impl(kk)
-                                    end do
+                                    if (i == il) then
+                                        do kk = 1, mAdv
+                                            tmp = bmti2(j, k, wIndices(ii), wIndices(kk))
+                                            tmp = max(tmp, zero)
+                                            qq(i, j, k, ii, kk) = qq(i, j, k, ii, kk) - uu * tmp
+                                        end do
+                                    end if
                                 end if
 #endif
                             end do
@@ -1548,6 +1695,130 @@ contains
         !$AD CHECKPOINT-END
         continue
     end subroutine turbAdvection
+
+    subroutine kwCDterm
+        !
+        !       kwCDterm computes the cross-diffusion term in the omega-eqn
+        !       for the SST version as well as the modified k-omega turbulence
+        !       model. It is assumed that the pointers in blockPointers and
+        !       turbMod are already set.
+        !
+        use constants
+        use blockPointers
+        implicit none
+        !
+        !      Local variables.
+        !
+        integer(kind=intType) :: i, j, k, ii, nn
+        integer(kind=intType) :: iSize, iBeg, iEnd
+        integer(kind=intType) :: jSize, jBeg, jEnd
+        integer(kind=intType) :: kSize, kBeg, kEnd
+        real(kind=realType) :: kx, ky, kz, wwx, wwy, wwz
+        real(kind=realType) :: lnwip1, lnwim1, lnwjp1, lnwjm1
+        real(kind=realType) :: lnwkp1, lnwkm1
+
+        ! Loop over the cell centers of the given block. It may be more
+        ! efficient to loop over the faces and to scatter the gradient,
+        ! but in that case the gradients for k and omega must be stored.
+        ! In the current approach no extra memory is needed.
+
+        iBeg = 1; jBeg = 1; kBeg = 1
+        iEnd = ie; jEnd = je; kEnd = ke
+
+        do nn = 1, nBocos
+
+            select case (BCFaceID(nn))
+
+            case (iMin)
+                iBeg = 2
+
+            case (iMax)
+                iEnd = il
+
+            case (jMin)
+                jBeg = 2
+
+            case (jMax)
+                jEnd = jl
+
+            case (kMin)
+                kBeg = 2
+
+            case (kMax)
+                kEnd = kl
+
+            end select
+        end do
+
+        ! Compute the blending function f1 for all owned cells.
+#ifdef TAPENADE_REVERSE
+        iSize = (iEnd - iBeg) + 1
+        jSize = (jEnd - jBeg) + 1
+        kSize = (kEnd - kBeg) + 1
+
+        !$AD II-LOOP
+        do ii = 0, iSize * jSize * kSize - 1
+            i = mod(ii, iSize) + iBeg
+            j = mod(ii / iSize, jSize) + jBeg
+            k = ii / ((iSize * jSize)) + kBeg
+#else
+            do k = kBeg, kEnd
+                do j = jBeg, jEnd
+                    do i = iBeg, iEnd
+#endif
+
+                        ! Compute the gradient of k in the cell center. Use is made
+                        ! of the fact that the surrounding normals sum up to zero,
+                        ! such that the cell i,j,k does not give a contribution.
+                        ! The gradient is scaled by a factor 1/2vol.
+
+                        kx = w(i + 1, j, k, itu1) * si(i, j, k, 1) - w(i - 1, j, k, itu1) * si(i - 1, j, k, 1) &
+                             + w(i, j + 1, k, itu1) * sj(i, j, k, 1) - w(i, j - 1, k, itu1) * sj(i, j - 1, k, 1) &
+                             + w(i, j, k + 1, itu1) * sk(i, j, k, 1) - w(i, j, k - 1, itu1) * sk(i, j, k - 1, 1)
+                        ky = w(i + 1, j, k, itu1) * si(i, j, k, 2) - w(i - 1, j, k, itu1) * si(i - 1, j, k, 2) &
+                             + w(i, j + 1, k, itu1) * sj(i, j, k, 2) - w(i, j - 1, k, itu1) * sj(i, j - 1, k, 2) &
+                             + w(i, j, k + 1, itu1) * sk(i, j, k, 2) - w(i, j, k - 1, itu1) * sk(i, j, k - 1, 2)
+                        kz = w(i + 1, j, k, itu1) * si(i, j, k, 3) - w(i - 1, j, k, itu1) * si(i - 1, j, k, 3) &
+                             + w(i, j + 1, k, itu1) * sj(i, j, k, 3) - w(i, j - 1, k, itu1) * sj(i, j - 1, k, 3) &
+                             + w(i, j, k + 1, itu1) * sk(i, j, k, 3) - w(i, j, k - 1, itu1) * sk(i, j, k - 1, 3)
+
+                        ! Compute the logarithm of omega in the points that
+                        ! contribute to the gradient in this cell.
+                        ! Because: 1/omega*d/dx_j(omega) = d/dx_j( log(omega) )
+
+                        lnwip1 = log(abs(w(i + 1, j, k, itu2)))
+                        lnwim1 = log(abs(w(i - 1, j, k, itu2)))
+                        lnwjp1 = log(abs(w(i, j + 1, k, itu2)))
+                        lnwjm1 = log(abs(w(i, j - 1, k, itu2)))
+                        lnwkp1 = log(abs(w(i, j, k + 1, itu2)))
+                        lnwkm1 = log(abs(w(i, j, k - 1, itu2)))
+
+                        ! Compute the scaled gradient of ln omega.
+
+                        wwx = lnwip1 * si(i, j, k, 1) - lnwim1 * si(i - 1, j, k, 1) &
+                              + lnwjp1 * sj(i, j, k, 1) - lnwjm1 * sj(i, j - 1, k, 1) &
+                              + lnwkp1 * sk(i, j, k, 1) - lnwkm1 * sk(i, j, k - 1, 1)
+                        wwy = lnwip1 * si(i, j, k, 2) - lnwim1 * si(i - 1, j, k, 2) &
+                              + lnwjp1 * sj(i, j, k, 2) - lnwjm1 * sj(i, j - 1, k, 2) &
+                              + lnwkp1 * sk(i, j, k, 2) - lnwkm1 * sk(i, j, k - 1, 2)
+                        wwz = lnwip1 * si(i, j, k, 3) - lnwim1 * si(i - 1, j, k, 3) &
+                              + lnwjp1 * sj(i, j, k, 3) - lnwjm1 * sj(i, j - 1, k, 3) &
+                              + lnwkp1 * sk(i, j, k, 3) - lnwkm1 * sk(i, j, k - 1, 3)
+
+                        ! Compute the dot product grad k grad ln omega.
+                        ! Multiply it by the correct scaling factor and store it.
+
+                        scratch(i, j, k, icd) = fourth * (kx * wwx + ky * wwy + kz * wwz) / (vol(i, j, k)**2)
+
+#ifdef TAPENADE_REVERSE
+                    end do
+#else
+                end do
+            end do
+        end do
+#endif
+
+    end subroutine kwCDterm
 
     ! ----------------------------------------------------------------------
     !                                                                      |
@@ -1803,13 +2074,13 @@ contains
         !
         select case (turbProd)
         case (strain)
-            call prodSmag2
+            call prodSmag2(2, il, 2, jl, 2, kl, iprod)
 
         case (vorticity)
-            call prodWmag2
+            call prodWmag2(2, il, 2, jl, 2, kl, iprod)
 
         case (katoLaunder)
-            call prodKatoLaunder
+            call prodKatoLaunder(2, il, 2, jl, 2, kl, iprod)
 
         end select
         !
@@ -2065,80 +2336,5 @@ contains
 
     end subroutine initKOmega
 
-    subroutine kwCDterm
-        !
-        !       kwCDterm computes the cross-diffusion term in the omega-eqn
-        !       for the SST version as well as the modified k-omega turbulence
-        !       model. It is assumed that the pointers in blockPointers and
-        !       turbMod are already set.
-        !
-        use constants
-        use blockPointers
-        use turbMod
-        implicit none
-        !
-        !      Local variables.
-        !
-        integer(kind=intType) :: i, j, k
-        real(kind=realType) :: kx, ky, kz, wwx, wwy, wwz
-        real(kind=realType) :: lnwip1, lnwim1, lnwjp1, lnwjm1
-        real(kind=realType) :: lnwkp1, lnwkm1
-
-        ! Loop over the cell centers of the given block. It may be more
-        ! efficient to loop over the faces and to scatter the gradient,
-        ! but in that case the gradients for k and omega must be stored.
-        ! In the current approach no extra memory is needed.
-
-        do k = 2, kl
-            do j = 2, jl
-                do i = 2, il
-
-                    ! Compute the gradient of k in the cell center. Use is made
-                    ! of the fact that the surrounding normals sum up to zero,
-                    ! such that the cell i,j,k does not give a contribution.
-                    ! The gradient is scaled by a factor 1/2vol.
-
-                    kx = w(i + 1, j, k, itu1) * si(i, j, k, 1) - w(i - 1, j, k, itu1) * si(i - 1, j, k, 1) &
-                         + w(i, j + 1, k, itu1) * sj(i, j, k, 1) - w(i, j - 1, k, itu1) * sj(i, j - 1, k, 1) &
-                         + w(i, j, k + 1, itu1) * sk(i, j, k, 1) - w(i, j, k - 1, itu1) * sk(i, j, k - 1, 1)
-                    ky = w(i + 1, j, k, itu1) * si(i, j, k, 2) - w(i - 1, j, k, itu1) * si(i - 1, j, k, 2) &
-                         + w(i, j + 1, k, itu1) * sj(i, j, k, 2) - w(i, j - 1, k, itu1) * sj(i, j - 1, k, 2) &
-                         + w(i, j, k + 1, itu1) * sk(i, j, k, 2) - w(i, j, k - 1, itu1) * sk(i, j, k - 1, 2)
-                    kz = w(i + 1, j, k, itu1) * si(i, j, k, 3) - w(i - 1, j, k, itu1) * si(i - 1, j, k, 3) &
-                         + w(i, j + 1, k, itu1) * sj(i, j, k, 3) - w(i, j - 1, k, itu1) * sj(i, j - 1, k, 3) &
-                         + w(i, j, k + 1, itu1) * sk(i, j, k, 3) - w(i, j, k - 1, itu1) * sk(i, j, k - 1, 3)
-
-                    ! Compute the logarithm of omega in the points that
-                    ! contribute to the gradient in this cell.
-
-                    lnwip1 = log(abs(w(i + 1, j, k, itu2)))
-                    lnwim1 = log(abs(w(i - 1, j, k, itu2)))
-                    lnwjp1 = log(abs(w(i, j + 1, k, itu2)))
-                    lnwjm1 = log(abs(w(i, j - 1, k, itu2)))
-                    lnwkp1 = log(abs(w(i, j, k + 1, itu2)))
-                    lnwkm1 = log(abs(w(i, j, k - 1, itu2)))
-
-                    ! Compute the scaled gradient of ln omega.
-
-                    wwx = lnwip1 * si(i, j, k, 1) - lnwim1 * si(i - 1, j, k, 1) &
-                          + lnwjp1 * sj(i, j, k, 1) - lnwjm1 * sj(i, j - 1, k, 1) &
-                          + lnwkp1 * sk(i, j, k, 1) - lnwkm1 * sk(i, j, k - 1, 1)
-                    wwy = lnwip1 * si(i, j, k, 2) - lnwim1 * si(i - 1, j, k, 2) &
-                          + lnwjp1 * sj(i, j, k, 2) - lnwjm1 * sj(i, j - 1, k, 2) &
-                          + lnwkp1 * sk(i, j, k, 2) - lnwkm1 * sk(i, j, k - 1, 2)
-                    wwz = lnwip1 * si(i, j, k, 3) - lnwim1 * si(i - 1, j, k, 3) &
-                          + lnwjp1 * sj(i, j, k, 3) - lnwjm1 * sj(i, j - 1, k, 3) &
-                          + lnwkp1 * sk(i, j, k, 3) - lnwkm1 * sk(i, j, k - 1, 3)
-
-                    ! Compute the dot product grad k grad ln omega.
-                    ! Multiply it by the correct scaling factor and store it.
-
-                    kwCD(i, j, k) = fourth * (kx * wwx + ky * wwy + kz * wwz) / (vol(i, j, k)**2)
-
-                end do
-            end do
-        end do
-
-    end subroutine kwCDterm
 #endif
 end module turbUtils

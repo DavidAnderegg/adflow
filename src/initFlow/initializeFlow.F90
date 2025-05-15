@@ -28,15 +28,17 @@ contains
         !         (Non-dimensionalized values used in actual computations)
         !
         use constants
+        use variableConstants
         use paramTurb
         use inputPhysics, only: equations, Mach, machCoef, &
                                 muSuthDim, TSuthDim, velDirFreeStream, &
-                                rGasDim, SSuthDim, eddyVisInfRatio, turbModel, turbIntensityInf
+                                rGasDim, SSuthDim, eddyVisInfRatio, turbModel, turbIntensityInf, &
+                                transitionModel
         use flowVarRefState, only: pInfDim, TinfDim, rhoInfDim, &
                                    muInfDim, &
                                    pRef, rhoRef, Tref, muRef, timeRef, uRef, hRef, &
                                    pInf, pInfCorr, rhoInf, uInf, rGas, muInf, gammaInf, wInf, &
-                                   nw, nwf, kPresent, wInf
+                                   nw, nwf, kPresent, wInf, TuInf
         use flowUtils, only: computeGamma, eTot
         use turbUtils, only: saNuKnownEddyRatio
         implicit none
@@ -137,10 +139,16 @@ contains
 
                 !=============================================================
 
-            case (komegaWilcox, komegaModified, menterSST)
+            case (komegaWilcox, komegaModified, menterSST, langtryMenterSST)
 
                 wInf(itu1) = 1.5_realType * uInf2 * turbIntensityInf**2
                 wInf(itu2) = wInf(itu1) / (eddyVisInfRatio * nuInf)
+                !both are consistent with https://www.cfd-online.com/Wiki/Turbulence_free-stream_boundary_conditions,
+                ! NASA https://turbmodels.larc.nasa.gov/sst.html has slightly different values
+                !The NASA ref specify that the freestream turbulent viscosity should be between 10-5 and 10-2 times freestream laminar viscosity.
+                ! Not clear why eddyVisInfRatio default to 0.009
+                !This ref suggests similar things: k determined so that nuTInf = nuInf * 0.009
+                ! https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.901.7078&rep=rep1&type=pdf
 
                 !=============================================================
 
@@ -158,6 +166,22 @@ contains
                              / (eddyVisInfRatio * nuInf)
                 wInf(itu3) = 0.666666_realType * wInf(itu1)
                 wInf(itu4) = 0.0_realType
+
+            end select
+
+            select case (transitionModel)
+            
+            case (GammaRetheta)
+                !TuInf = 500 * muInf / (rhoInf * UInf**2)
+                TuInf = turbIntensityInf
+
+                wInf(iTransition1) = 1.0
+
+                if (TuInf .gt. 1.3) then
+                    wInf(iTransition2)  = 331.50 *((TuInf - 0.5658)**(-0.671))
+                else
+                    wInf(iTransition2) = 1173.51 - 589.428*TuInf + 0.2196*(TuInf**(-2))
+                end if
 
             end select
 
@@ -1323,7 +1347,7 @@ contains
 
         ! Exchange the solution on the multigrid start level.
         ! It is possible that the halo values are needed for the boundary
-        ! conditions. Viscosities are not exchanged.
+        ! conditions and eddy viscosity. Viscosities are not exchanged.
 
         call whalo2(mgStartlevel, 1_intType, nw, .true., .true., &
                     .false.)

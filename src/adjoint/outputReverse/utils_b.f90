@@ -1771,6 +1771,204 @@ contains
 &              'no idea how to convert this time to si units')
     end select
   end subroutine sivelocity
+
+!  differentiation of smoothmax in reverse (adjoint) mode (with options noisize i4 dr8 r8):
+!   gradient     of useful results: smax g1 g2
+!   with respect to varying inputs: smax g1 g2
+!   rw status of diff variables: smax:in-zero g1:incr g2:incr
+  subroutine smoothmax_b(smax, smaxd, g1, g1d, g2, g2d, phi)
+    use constants
+    implicit none
+    real(kind=realtype) :: smax
+    real(kind=realtype) :: smaxd
+    real(kind=realtype), intent(in) :: g1, g2, phi
+    real(kind=realtype) :: g1d, g2d
+    real(kind=realtype) :: a, b, p_switch
+    real(kind=realtype) :: ad, bd
+    intrinsic max
+    intrinsic min
+    intrinsic abs
+    intrinsic log
+    intrinsic exp
+    real(kind=realtype) :: abs0
+    real(kind=realtype) :: tempd
+    integer :: branch
+    p_switch = 1e-15
+    if (g1 .lt. g2) then
+      a = g2
+      call pushcontrol1b(0)
+    else
+      a = g1
+      call pushcontrol1b(1)
+    end if
+    if (g1 .gt. g2) then
+      b = g2
+      call pushcontrol1b(0)
+    else
+      b = g1
+      call pushcontrol1b(1)
+    end if
+    if (a - b .ge. 0.) then
+      abs0 = a - b
+    else
+      abs0 = -(a-b)
+    end if
+    if (abs0 .gt. -(log(phi*p_switch)/phi)) then
+      ad = smaxd
+      bd = 0.0_8
+    else
+      tempd = exp(phi*(b-a))*smaxd/(exp(phi*(b-a))+1.0)
+      ad = smaxd - tempd
+      bd = tempd
+    end if
+    call popcontrol1b(branch)
+    if (branch .eq. 0) then
+      g2d = g2d + bd
+    else
+      g1d = g1d + bd
+    end if
+    call popcontrol1b(branch)
+    if (branch .eq. 0) then
+      g2d = g2d + ad
+    else
+      g1d = g1d + ad
+    end if
+    smaxd = 0.0_8
+  end subroutine smoothmax_b
+
+  subroutine smoothmax(smax, g1, g2, phi)
+    use constants
+    implicit none
+    real(kind=realtype), intent(out) :: smax
+    real(kind=realtype), intent(in) :: g1, g2, phi
+    real(kind=realtype) :: a, b, p_switch
+    intrinsic max
+    intrinsic min
+    intrinsic abs
+    intrinsic log
+    intrinsic exp
+    real(kind=realtype) :: abs0
+    p_switch = 1e-15
+    if (g1 .lt. g2) then
+      a = g2
+    else
+      a = g1
+    end if
+    if (g1 .gt. g2) then
+      b = g2
+    else
+      b = g1
+    end if
+    if (a - b .ge. 0.) then
+      abs0 = a - b
+    else
+      abs0 = -(a-b)
+    end if
+    if (abs0 .gt. -(log(phi*p_switch)/phi)) then
+      smax = a
+    else
+      smax = a + log(1.0+exp(phi*(b-a)))/phi
+    end if
+  end subroutine smoothmax
+
+!  differentiation of smoothmin in reverse (adjoint) mode (with options noisize i4 dr8 r8):
+!   gradient     of useful results: g1 g2 smin
+!   with respect to varying inputs: g1 g2 smin
+!   rw status of diff variables: g1:incr g2:incr smin:in-zero
+  subroutine smoothmin_b(smin, smind, g1, g1d, g2, g2d, phi)
+    use constants
+    implicit none
+    real(kind=realtype) :: smin
+    real(kind=realtype) :: smind
+    real(kind=realtype), intent(in) :: g1, g2, phi
+    real(kind=realtype) :: g1d, g2d
+    real(kind=realtype) :: a, b, p_switch
+    real(kind=realtype) :: ad, bd
+    intrinsic max
+    intrinsic min
+    intrinsic abs
+    intrinsic log
+    intrinsic exp
+    real(kind=realtype) :: abs0
+    real(kind=realtype) :: tempd
+    integer :: branch
+    p_switch = 1e-15
+    if (g1 .lt. g2) then
+      a = g2
+      call pushcontrol1b(0)
+    else
+      a = g1
+      call pushcontrol1b(1)
+    end if
+    if (g1 .gt. g2) then
+      b = g2
+      call pushcontrol1b(0)
+    else
+      b = g1
+      call pushcontrol1b(1)
+    end if
+    if (a - b .ge. 0.) then
+      abs0 = a - b
+    else
+      abs0 = -(a-b)
+    end if
+    if (abs0 .gt. -(log(phi*p_switch)/phi)) then
+      bd = smind
+      ad = 0.0_8
+    else
+      tempd = exp(-(phi*(a-b)))*smind/(exp(-(phi*(a-b)))+1.0)
+      bd = smind - tempd
+      ad = tempd
+    end if
+    call popcontrol1b(branch)
+    if (branch .eq. 0) then
+      g2d = g2d + bd
+    else
+      g1d = g1d + bd
+    end if
+    call popcontrol1b(branch)
+    if (branch .eq. 0) then
+      g2d = g2d + ad
+    else
+      g1d = g1d + ad
+    end if
+    smind = 0.0_8
+  end subroutine smoothmin_b
+
+  subroutine smoothmin(smin, g1, g2, phi)
+    use constants
+    implicit none
+    real(kind=realtype), intent(out) :: smin
+    real(kind=realtype), intent(in) :: g1, g2, phi
+    real(kind=realtype) :: a, b, p_switch
+    intrinsic max
+    intrinsic min
+    intrinsic abs
+    intrinsic log
+    intrinsic exp
+    real(kind=realtype) :: abs0
+    p_switch = 1e-15
+    if (g1 .lt. g2) then
+      a = g2
+    else
+      a = g1
+    end if
+    if (g1 .gt. g2) then
+      b = g2
+    else
+      b = g1
+    end if
+    if (a - b .ge. 0.) then
+      abs0 = a - b
+    else
+      abs0 = -(a-b)
+    end if
+    if (abs0 .gt. -(log(phi*p_switch)/phi)) then
+      smin = b
+    else
+      smin = b + log(1.0+exp(-(phi*(a-b))))/(-phi)
+    end if
+  end subroutine smoothmin
 ! ----------------------------------------------------------------------
 !                                                                      |
 !                    no tapenade routine below this line               |

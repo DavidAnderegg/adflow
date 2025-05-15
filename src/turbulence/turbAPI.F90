@@ -16,6 +16,7 @@ contains
         use iteration
         use turbMod
         use inputTimeSpectral, only: nTimeIntervalsSpectral
+        use turbBCRoutines, only: bcTurbTreatment, applyAllTurbBCThisBlock
         use sa
         use kw
         use kt
@@ -33,13 +34,6 @@ contains
         ! Loop over the number of iterations for the turbulence.
 
         do iter = 1, nSubIterTurb
-
-            ! Compute the quantities for certain turbulence models that
-            ! need to be communicated between blocks.
-
-            if (turbModel == menterSST) then
-                call f1SST
-            end if
 
             ! Compute the time derivative for the time spectral mode.
             select case (turbModel)
@@ -62,17 +56,22 @@ contains
                     ! setPointers for this block:
                     call setPointers(nn, currentLevel, sps)
 
+                    ! Set the arrays for the boundary condition treatment.
+                    call bcTurbTreatment
+
                     ! Now call the selected turbulence model
                     select case (turbModel)
 
                     case (spalartAllmaras)
-                        call sa_block(.false.)
+                        call sa_block_residuals(.False.)
+                        call saSolve
 
                     case (komegaWilcox, komegaModified)
                         call kw_block(.false.)
 
                     case (menterSST)
-                        call SST_block(.false.)
+                        call SST_block_residuals(.false.)
+                        call SSTSolve
 
                     case (ktau)
                         call kt_block(.false.)
@@ -81,6 +80,12 @@ contains
                         call vf_block(.false.)
 
                     end select
+
+                    ! Set the halo values for the turbulent variables.
+                    ! We are on the finest mesh, so the second layer of halo
+                    ! cells must be computed as well.
+
+                    call applyAllTurbBCThisBlock(.true.)
 
                 end do domains
             end do spectralLoop
@@ -116,13 +121,6 @@ contains
 
         integer(kind=intType) :: nn, sps
 
-        ! Compute the quantities for certain turbulence models that
-        ! need to be communicated between blocks.
-
-        if (turbModel == menterSST) then
-            call f1SST
-        end if
-
         ! Loop over the number of spectral solutions.
 
         spectralLoop: do sps = 1, nTimeIntervalsSpectral
@@ -138,13 +136,13 @@ contains
                 select case (turbModel)
 
                 case (spalartAllmaras)
-                    call sa_block(.True.)
+                    call sa_block_residuals(.True.)
 
                 case (komegaWilcox, komegaModified)
                     call kw_block(.True.)
 
-                case (menterSST)
-                    call SST_block(.True.)
+                case (menterSST, langtryMenterSST)
+                    call SST_block_residuals(.True.)
 
                 case (ktau)
                     call kt_block(.True.)

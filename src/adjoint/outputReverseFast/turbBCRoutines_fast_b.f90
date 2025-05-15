@@ -622,6 +622,7 @@ bocos:do nn=1,nbocos
     use flowvarrefstate
     use inputphysics
     use constants
+    use variableconstants
     use paramturb
     implicit none
 !
@@ -696,7 +697,7 @@ bocos:do nn=1,nbocos
         end do
       end select
 !        ================================================================
-    case (komegawilcox, komegamodified, mentersst) 
+    case (komegawilcox, komegamodified, mentersst, langtrymentersst) 
 ! k-omega type of models. k is zero on the wall and thus the
 ! halo value is the negative of the first internal cell.
 ! for omega the situation is a bit more complicated.
@@ -738,6 +739,12 @@ bocos:do nn=1,nbocos
             bmti1(i, j, itu1, itu1) = one
             bmti1(i, j, itu2, itu2) = one
             bvti1(i, j, itu2) = two*60.0_realtype*nu*tmpd
+! this is consistent with the guideline for sst in https://turbmodels.larc.nasa.gov/sst.html
+! note: the factor two comes from the fact that we impose that the mean of the 1st halo cell and
+!       the first domain cell is equal to the target value.
+!     omega_halo = - bmt_onega * omega + bvt_omega
+!  => omega_halo = - one * omega_1 + two*60.0_realtype*nu*tmpd
+!  => (omega_halo + omega_1)/2 = 60.0_realtype*nu*tmpd
           end do
         end do
       case (imax) 
@@ -950,6 +957,66 @@ bocos:do nn=1,nbocos
         end do
       end select
 !        ================================================================
+    end select
+    select case  (transitionmodel) 
+    case (gammaretheta) 
+! apply neumann bc (zero normal derivative) for gamma and re_theta at the wall
+      select case  (bcfaceid(nn)) 
+      case (imin) 
+        do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
+          do i=bcdata(nn)%icbeg,bcdata(nn)%icend
+            bmti1(i, j, itransition1, itransition1) = bmti1(i+1, j, &
+&             itransition1, itransition1)
+            bmti1(i, j, itransition2, itransition2) = bmti1(i+1, j, &
+&             itransition2, itransition2)
+          end do
+        end do
+      case (imax) 
+        do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
+          do i=bcdata(nn)%icbeg,bcdata(nn)%icend
+            bmti2(i, j, itransition1, itransition1) = bmti2(i-1, j, &
+&             itransition1, itransition1)
+            bmti2(i, j, itransition2, itransition2) = bmti2(i-1, j, &
+&             itransition2, itransition2)
+          end do
+        end do
+      case (jmin) 
+        do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
+          do i=bcdata(nn)%icbeg,bcdata(nn)%icend
+            bmtj1(i, j, itransition1, itransition1) = bmtj1(i, j+1, &
+&             itransition1, itransition1)
+            bmtj1(i, j, itransition2, itransition2) = bmtj1(i, j+1, &
+&             itransition2, itransition2)
+          end do
+        end do
+      case (jmax) 
+        do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
+          do i=bcdata(nn)%icbeg,bcdata(nn)%icend
+            bmtj2(i, j, itransition1, itransition1) = bmtj2(i, j-1, &
+&             itransition1, itransition1)
+            bmtj2(i, j, itransition2, itransition2) = bmtj2(i, j-1, &
+&             itransition2, itransition2)
+          end do
+        end do
+      case (kmin) 
+        do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
+          do i=bcdata(nn)%icbeg,bcdata(nn)%icend
+            bmtk1(i, j, itransition1, itransition1) = bmtk1(i, j, &
+&             itransition1, itransition1+1)
+            bmtk1(i, j, itransition2, itransition2) = bmtk1(i, j, &
+&             itransition2, itransition2+1)
+          end do
+        end do
+      case (kmax) 
+        do j=bcdata(nn)%jcbeg,bcdata(nn)%jcend
+          do i=bcdata(nn)%icbeg,bcdata(nn)%icend
+            bmtk2(i, j, itransition1, itransition1) = bmtk2(i, j, &
+&             itransition1, itransition1-1)
+            bmtk2(i, j, itransition2, itransition2) = bmtk2(i, j, &
+&             itransition2, itransition2-1)
+          end do
+        end do
+      end select
     end select
   end subroutine bcturbwall
 
